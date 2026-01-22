@@ -11,6 +11,7 @@ import {
   query, 
   where, 
   getDocs,
+  getDoc,
   serverTimestamp,
   arrayUnion,
   arrayRemove
@@ -96,7 +97,7 @@ interface GameContextType {
   payoutHistory: PayoutEvent[];
   loading: boolean;
   createGame: (name: string, price: number, teamA: string, teamB: string) => Promise<string>;
-  joinGame: (gameId: string, password?: string, userId?: string) => Promise<void>;
+  joinGame: (gameId: string, password?: string, userId?: string) => Promise<{ ok: boolean; error?: string }>;
   leaveGame: () => void;
   claimSquare: (row: number, col: number, user: { id: string; name: string }) => Promise<void>;
   unclaimSquare: (row: number, col: number, userId: string) => Promise<void>;
@@ -197,9 +198,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
 
   const joinGame = async (gameId: string, password?: string, userId?: string) => {
-     // In a real app, you might check a password or whitelist here.
-     // For now, we just set the ID and let the snapshot listener handle the rest.
-     setActiveGameId(gameId);
+    try {
+      // In a real app, you might check a password or whitelist here.
+      // We check if the game exists before setting it as active
+      const gameDoc = await getDoc(doc(db, "games", gameId));
+      if (gameDoc.exists()) {
+         setActiveGameId(gameId);
+         return { ok: true };
+      } else {
+         return { ok: false, error: "Game not found" };
+      }
+    } catch (error) {
+       console.error("Error joining game:", error);
+       return { ok: false, error: "Failed to join game" };
+    }
   };
 
   const leaveGame = () => {
