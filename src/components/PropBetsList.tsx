@@ -1,37 +1,25 @@
 "use client";
 
 import React from "react";
-import { useGame } from "@/context/GameContext";
 import CreatePropBetForm from "./CreatePropBetForm";
-import PropBetCard from "./PropBetCard";
 
-interface PropBetsListProps {
-  isAdmin: boolean;
+interface Props {
+  isAdmin?: boolean;
 }
 
-export default function PropBetsList({ isAdmin }: PropBetsListProps) {
-  const { propBets } = useGame();
-  
+export default function PropBetsList({ isAdmin }: Props) {
   return (
-    <div className="max-w-2xl mx-auto space-y-8 pb-24">
-       <div className="text-center space-y-2">
-         <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Prop Bets</h2>
-         <p className="text-slate-500">Side hustles for the real degenerates.</p>
-       </div>
-
-       {isAdmin && (
-         <CreatePropBetForm />
-       )}
-
-       <div className="space-y-4">
-         {propBets.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 italic">No prop bets open yet.</div>
-         ) : (
-            propBets.map(prop => (
-                <PropBetCard key={prop.id} prop={prop} isAdmin={isAdmin} />
-            ))
-         )}
-       </div>
+    <div className="max-w-2xl mx-auto p-4 space-y-6">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-white/5 text-center">
+        <div className="text-4xl mb-4">🚧</div>
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase">Coming Soon</h2>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-md mx-auto">
+           We are focusing on the Quarterly Rotation Squares for the big game. Prop bets will return in a future update!
+        </p>
+      </div>
+      
+      {/* Keep the admin form hidden/safe but render the placeholder */}
+      {isAdmin && <CreatePropBetForm />}
     </div>
   );
 }
