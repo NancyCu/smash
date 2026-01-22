@@ -22,15 +22,19 @@ export default function JoinGameForm({ onSuccess, initialGameId = "" }: Props) {
     setIsJoining(true);
 
     try {
-      // The Fix: We await the function. If it fails, it throws an error (caught below).
-      // If it succeeds, it returns nothing, so we just proceed.
-      await joinGame(gameId, password);
+      const result = await joinGame(gameId, password);
+      
+      if (!result.ok) {
+         setError(result.error || "Failed to join game. Please verify the code.");
+         setIsJoining(false);
+         return;
+      }
+
       onSuccess();
     } catch (err: any) {
       console.error("Join failed", err);
       // Fallback error message if the error doesn't have a message
       setError(err.message || "Failed to join game. Check the code and try again.");
-    } finally {
       setIsJoining(false);
     }
   };
