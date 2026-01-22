@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { useGame } from "@/context/GameContext";
-import { Loader2, Trophy, DollarSign, Users, Target } from "lucide-react";
+import { Loader2, Trophy, DollarSign, Users, Target, Calendar } from "lucide-react";
+import { useEspnScores } from "@/hooks/useEspnScores";
 
 interface Props {
   onSuccess: () => void;
@@ -10,25 +11,59 @@ interface Props {
 
 export default function CreateGameForm({ onSuccess }: Props) {
   const { createGame } = useGame();
+  const { games } = useEspnScores();
   const [isLoading, setIsLoading] = useState(false);
+
+
   const [formData, setFormData] = useState({
     name: "",
     price: 10,
     teamA: "Chiefs",
-    teamB: "Eagles"
+    teamB: "Eagles",
+    espnGameId: "",
+    eventDate: "",
+    eventName: "",
+    espnLeague: ""
   });
+
+  const sortedGames = [...games].sort((a, b) => {
+    if (a.league === "NFL" && b.league !== "NFL") return -1;
+    if (a.league !== "NFL" && b.league === "NFL") return 1;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
+
+  const handleGameSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const gameId = e.target.value;
+    const selectedGame = games.find(g => g.id === gameId);
+    if (selectedGame) {
+      setFormData(prev => ({
+        ...prev,
+        name: `${selectedGame.awayTeam.name} vs ${selectedGame.homeTeam.name}`,
+        teamA: selectedGame.awayTeam.name,
+        teamB: selectedGame.homeTeam.name,
+        espnGameId: selectedGame.id,
+        eventDate: selectedGame.date,
+        eventName: selectedGame.name,
+        espnLeague: selectedGame.league
+      }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // The Fix: We now pass 4 separate arguments instead of 1 big object
+      // The Fix: We now pass 8 separate arguments instead of 1 big object
       await createGame(
         formData.name, 
         Number(formData.price), 
         formData.teamA, 
-        formData.teamB
+        formData.teamB,
+        formData.espnGameId,
+        formData.eventDate,
+        formData.eventName,
+        formData.espnLeague
       );
       onSuccess();
     } catch (err) {
@@ -50,6 +85,35 @@ export default function CreateGameForm({ onSuccess }: Props) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Select Live Game */}
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Live Game</label>
+          <div className="relative">
+            <Calendar className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
+            <select
+              onChange={handleGameSelect}
+              className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none text-slate-900 dark:text-white"
+              defaultValue=""
+            >
+              <option value="" disabled>Choose a live game...</option>
+              {sortedGames.map((game) => {
+                const date = new Date(game.date);
+                const day = date.toLocaleDateString('en-US', { weekday: 'short' });
+                const dateStr = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+                const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                return (
+                  <option key={game.id} value={game.id}>
+                    {game.league} - {game.awayTeam.name} vs {game.homeTeam.name} ({day} {dateStr} {time})
+                  </option>
+                );
+              })}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+            </div>
+          </div>
+        </div>
+
         {/* Game Name */}
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Game Name</label>

@@ -69,27 +69,27 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
     <div className="relative w-full h-full flex flex-col items-center justify-center pt-2 pl-6 md:pt-4 md:pl-10">
       {/* Team B Label (Horizontal Top) - Centered above Grid */}
       <div className="absolute top-0 left-0 right-0 pl-6 md:pl-10 flex items-center justify-center gap-2 md:gap-4 z-30 pointer-events-none -translate-y-3/4">
-          {showLogos && teamBLogo && (
-            <div className="relative w-6 h-6 md:w-8 md:h-8 shrink-0">
-              <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-md" />
-            </div>
-          )}
           <div className="text-center font-black text-xl md:text-3xl text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
             {teamB}
           </div>
+          {showLogos && teamBLogo && (
+            <div className="relative w-8 h-8 md:w-12 md:h-12 shrink-0">
+              <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-md" />
+            </div>
+          )}
       </div>
 
       {/* Team A Label (Vertical Left) - Centered left of Grid */}
-      <div className="absolute left-0 top-0 bottom-0 pt-6 md:pt-10 flex items-center justify-center z-30 pointer-events-none translate-x-3">
-        <div className="flex flex-col items-center gap-2 md:gap-4">
-          {showLogos && teamALogo && (
-              <div className="relative w-6 h-6 md:w-8 md:h-8 shrink-0">
-                <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-md" />
-              </div>
-          )}
+      <div className="absolute left-0 top-0 bottom-0 pt-6 md:pt-10 flex items-center justify-center z-30 pointer-events-none translate-x-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <div className="[writing-mode:vertical-lr] rotate-180 font-black text-xl md:text-3xl text-pink-600 dark:text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(236,72,153,0.5)] whitespace-nowrap">
             {teamA}
           </div>
+          {showLogos && teamALogo && (
+              <div className="relative w-8 h-8 md:w-12 md:h-12 shrink-0">
+                <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-md" />
+              </div>
+          )}
         </div>
       </div>
 
@@ -97,24 +97,31 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
       <div className="relative w-full aspect-square rounded-xl shadow-2xl bg-slate-300 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-700/50 p-0.5 md:p-1">
         <div className="grid grid-cols-11 w-full h-full bg-slate-100 dark:bg-slate-900">
             {/* Top-left empty corner */}
-            <div className="aspect-square bg-slate-200 dark:bg-slate-800 shadow-md border-b border-r border-slate-300 dark:border-white/10"></div>
+            <div className="aspect-square bg-black dark:bg-black shadow-md border-b border-r border-slate-300 dark:border-white/10"></div>
 
             {/* Column Headers (0-9) */}
             {cols.map((num) => (
               <div
                 key={`col-${num}`}
-                className="aspect-square flex items-center justify-center bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 text-cyan-600 dark:text-cyan-400 font-black text-xs sm:text-sm md:text-xl shadow-sm"
+                className="aspect-square flex items-center justify-center bg-black dark:bg-black border-b border-r border-slate-200 dark:border-white/10 text-cyan-600 dark:text-cyan-400 font-black text-xs sm:text-sm md:text-xl shadow-sm relative overflow-hidden"
               >
                 {isScrambled ? (
-                  num
+                  <span className="relative z-10">{num}</span>
                 ) : (
-                  showLogos && teamBLogo && (
-                    <div className="relative w-full h-full p-1 opacity-20 hover:opacity-100 transition-opacity">
-                      <Image src={teamBLogo} alt={teamB} fill className="object-contain" />
+                  teamBLogo && (
+                    <div className="absolute inset-0 flex items-center justify-center p-2">
+                      <div
+                        className="relative w-full h-full"
+                        style={{
+                          mask: "radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)",
+                          WebkitMask: "radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)",
+                        }}
+                      >
+                        <Image src={teamBLogo} alt={teamB} fill className="object-contain opacity-80" />
+                      </div>
                     </div>
                   )
                 )}
-                {!isScrambled && !teamBLogo && num}
               </div>
             ))}
 
@@ -122,17 +129,24 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
             {rows.map((rowNum, rowIndex) => (
               <React.Fragment key={`row-${rowNum}`}>
                 {/* Row Header */}
-                <div className="aspect-square flex items-center justify-center bg-slate-100 dark:bg-slate-900 border-r border-slate-200 dark:border-white/10 text-pink-600 dark:text-pink-500 font-black text-xs sm:text-sm md:text-xl shadow-sm">
+                <div className="aspect-square flex items-center justify-center bg-black dark:bg-black border-r border-b border-slate-200 dark:border-white/10 text-pink-600 dark:text-pink-500 font-black text-xs sm:text-sm md:text-xl shadow-sm relative overflow-hidden">
                   {isScrambled ? (
-                    rowNum
+                    <span className="relative z-10">{rowNum}</span>
                   ) : (
-                    showLogos && teamALogo && (
-                      <div className="relative w-full h-full p-1 opacity-20 hover:opacity-100 transition-opacity">
-                        <Image src={teamALogo} alt={teamA} fill className="object-contain" />
+                    teamALogo && (
+                      <div className="absolute inset-0 flex items-center justify-center p-2">
+                        <div
+                          className="relative w-full h-full"
+                          style={{
+                            mask: "radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)",
+                            WebkitMask: "radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)",
+                          }}
+                        >
+                          <Image src={teamALogo} alt={teamA} fill className="object-contain opacity-80" />
+                        </div>
                       </div>
                     )
                   )}
-                  {!isScrambled && !teamALogo && rowNum}
                 </div>
 
                 {/* Squares */}
