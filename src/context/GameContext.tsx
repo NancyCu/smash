@@ -96,7 +96,7 @@ interface GameContextType {
   scores: { teamA: number; teamB: number };
   payoutHistory: PayoutEvent[];
   loading: boolean;
-  createGame: (name: string, price: number, teamA: string, teamB: string) => Promise<string>;
+  createGame: (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => Promise<string>;
   joinGame: (gameId: string, password?: string, userId?: string) => Promise<{ ok: boolean; error?: string }>;
   leaveGame: () => void;
   claimSquare: (row: number, col: number, user: { id: string; name: string }) => Promise<void>;
@@ -167,7 +167,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return () => unsub();
   }, [activeGameId]);
 
-  const createGame = async (name: string, price: number, teamA: string, teamB: string) => {
+  const createGame = async (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => {
     if (!user) throw new Error("Must be logged in");
 
     const newGame: Omit<GameState, "id"> = {
@@ -183,7 +183,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
         cols: [],
         isScrambled: false,
         payouts: [],
-        payoutFrequency: "Standard"
+        payoutFrequency: "Standard",
+        espnGameId,
+        eventDate,
+        eventName,
+        espnLeague
       },
       squares: {},
       players: [],
