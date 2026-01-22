@@ -26,6 +26,7 @@ export interface Player {
   name: string;
   squares: number; // Count of squares owned
   paid: boolean;
+  paidAt?: number; // Timestamp when payment was made
 }
 
 export interface PayoutEvent {
@@ -298,6 +299,8 @@ updates[`squares.${key}`] = arrayUnion({
 
     const updatedPlayers = [...activeGame.players];
     updatedPlayers[playerIndex].paid = !updatedPlayers[playerIndex].paid;
+    // Set paidAt timestamp when marking as paid, clear when marking as unpaid
+    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : undefined;
     
     await updateDoc(doc(db, "games", activeGame.id), { players: updatedPlayers });
   };
