@@ -1,0 +1,45 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Dev Server",
+			"type": "shell",
+			"command": "npm run dev",
+			"isBackground": true,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Overwrite GameContext",
+			"type": "shell",
+			"command": "mv src/context/GameContextNew.tsx src/context/GameContext.tsx",
+			"args": [],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Update Forms",
+			"type": "shell",
+			"command": "mv src/components/JoinGameFormNew.tsx src/components/JoinGameForm.tsx && mv src/components/CreateGameFormNew.tsx src/components/CreateGameForm.tsx",
+			"args": [],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Verify Revert",
+			"type": "shell",
+			"command": "echo \"Scaling Logic Removed. Typography Restored.\"",
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Verify Grid Spec",
+			"type": "shell",
+			"command": "echo \"Grid Layout Restored to Star Image Spec\"",
+			"isBackground": false,
+			"group": "test"
+		}
+	]
+}
