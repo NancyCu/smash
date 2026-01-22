@@ -886,7 +886,6 @@ function SquaresApp() {
                         <div className="hidden md:block w-32 order-3"></div>
                       </div>
                   </div>
-                </div>
 
                 {/* Sidebar - Game Info & Players */}
                  <div className="w-full lg:w-[480px] lg:shrink-0 flex flex-col gap-3 order-2">

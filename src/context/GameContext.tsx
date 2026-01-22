@@ -69,6 +69,7 @@ export interface GameSettings {
 export interface SquareClaim {
   uid: string;
   name: string;
+  claimedAt: number; 
 }
 
 export interface GameState {
@@ -243,8 +244,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // We will do a simple updateDoc and assume low contention for this MVP.
     
     const updates: Record<string, any> = {};
-    updates[`squares.${key}`] = arrayUnion({ uid: claimant.id, name: claimant.name });
-    
+   // Replace Line 247 with this:
+updates[`squares.${key}`] = arrayUnion({ 
+  uid: claimant.id, 
+  name: claimant.name, 
+  claimedAt: Date.now() 
+}); 
+
     if (playerIndex === -1) {
         // Add new player to array
         newPlayer = true;
