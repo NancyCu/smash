@@ -1,10 +1,12 @@
 "use client";
 
 import React from 'react';
-// Import your existing component
+import { useRouter } from 'next/navigation';
 import JoinGameForm from '@/components/JoinGameForm'; 
 
 export default function JoinPage() {
+  const router = useRouter();
+
   return (
     <main className="min-h-screen pt-12 pb-24 px-4 bg-[#0B0C15] flex flex-col items-center">
       <div className="p-4 rounded-full bg-cyan-900/20 mb-6">
@@ -17,8 +19,7 @@ export default function JoinPage() {
         Enter the game code provided by your host to jump into the grid.
       </p>
       
-      {/* RENDER YOUR OLD FORM HERE */}
-      <JoinGameForm />
+      <JoinGameForm onSuccess={() => router.push('/?view=game')} />
       
     </main>
   );

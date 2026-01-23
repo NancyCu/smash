@@ -7,12 +7,9 @@ import CreateGameForm from '@/components/CreateGameForm';
 export default function CreatePage() {
   const router = useRouter();
 
-  // This is the missing instruction
+  // Redirect straight into the active game grid after creation
   const handleSuccess = () => {
-    // 1. Optional: Show a confetti blast or toast here
-    // 2. Redirect back to home so they can see their new game
-    router.push('/'); 
-    // Or router.push('/grid') if you want to go straight to the game
+    router.push('/?view=game');
   };
 
   return (
