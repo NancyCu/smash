@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type PayoutEvent } from '@/context/GameContext'; // <-- IMPORT PayoutEvent
 
@@ -9,10 +8,9 @@ import { type PayoutEvent } from '@/context/GameContext'; // <-- IMPORT PayoutEv
 interface TrophyCaseProps {
   payouts: { label: string; amount: number }[];
   history: PayoutEvent[]; // <-- USE PayoutEvent[] for history
-  totalPot: number;
 }
 
-const TrophyCase: React.FC<TrophyCaseProps> = ({ payouts, history, totalPot }) => {
+const TrophyCase: React.FC<TrophyCaseProps> = ({ payouts, history }) => {
   // Create a map of historical winners for quick lookup by label
   const historyMap = new Map(history.map(h => [h.label, h]));
 

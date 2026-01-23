@@ -14,7 +14,8 @@ import {
   getDoc,
   serverTimestamp,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  writeBatch
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthContext";
@@ -263,8 +264,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const updatedPlayers = [...activeGame.players];
         const newCount = Math.max(0, updatedPlayers[playerIndex].squares - 1);
         if (newCount === 0) {
-            // Remove player if they have no squares left
-            updates["players"] = arrayRemove(updatedPlayers[playerIndex]);
+            // Remove player by filtering the array instead of using arrayRemove
+            updates["players"] = updatedPlayers.filter(p => p.id !== userId);
         } else {
             updatedPlayers[playerIndex].squares = newCount;
             updates["players"] = updatedPlayers;
@@ -312,18 +313,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const scrambleGridDigits = async () => {
     if (!activeGame) return;
-    const newAxisData = generateQuarterlyNumbers();
-    const newRows = newAxisData.q1.rows;
-    const newCols = newAxisData.q1.cols;
+    try {
+      const newAxisData = generateQuarterlyNumbers();
+      const newRows = newAxisData.q1.rows;
+      const newCols = newAxisData.q1.cols;
 
-    const updates = {
-      "settings.isScrambled": true,
-      "settings.rows": newRows,
-      "settings.cols": newCols,
-      "settings.axisValues": newAxisData, 
-    };
+      const updates = {
+        "settings.isScrambled": true,
+        "settings.rows": newRows,
+        "settings.cols": newCols,
+        "settings.axisValues": newAxisData, 
+      };
 
-    await updateDoc(doc(db, "games", activeGame.id), updates);
+      await updateDoc(doc(db, "games", activeGame.id), updates);
+    } catch (error) {
+      console.error("Failed to scramble grid digits:", error);
+      throw error;
+    }
   };
 
   const resetGridDigits = async () => {
@@ -356,7 +362,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return snapHost.docs.map(d => ({ ...d.data(), id: d.id } as GameState));
   };
 
-  // --- MODIFIED: This function now writes to two places ---
+  // --- MODIFIED: This function now writes to two places using batch for atomicity ---
   const logPayout = async (event: PayoutEvent) => {
     if (!activeGame) return;
     if (!event.id) {
@@ -364,15 +370,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    // 1. Add to the specific game's payoutHistory array (for in-game UI)
-    const gameDocRef = doc(db, "games", activeGame.id);
-    await updateDoc(gameDocRef, {
-        payoutHistory: arrayUnion(event)
-    });
+    try {
+      const batch = writeBatch(db);
 
-    // 2. Add to the top-level 'payouts' collection (for global winners page)
-    const payoutDocRef = doc(db, "payouts", event.id);
-    await setDoc(payoutDocRef, event);
+      // 1. Add to the specific game's payoutHistory array (for in-game UI)
+      const gameDocRef = doc(db, "games", activeGame.id);
+      batch.update(gameDocRef, {
+          payoutHistory: arrayUnion(event)
+      });
+
+      // 2. Add to the top-level 'payouts' collection (for global winners page)
+      const payoutDocRef = doc(db, "payouts", event.id);
+      batch.set(payoutDocRef, event);
+
+      // Commit both writes atomically
+      await batch.commit();
+    } catch (error) {
+      console.error("Failed to log payout:", error);
+      throw error;
+    }
   };
 
   const deleteGame = async () => {
