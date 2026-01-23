@@ -23,23 +23,21 @@ export const metadata: Metadata = {
   description: "The ultimate squares game for sports fans",
 };
 
-import "./globals.css";
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-<html lang="en" className="dark">  {/* <--- ADD IT HERE */}
+    <html lang="en" className="dark">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
-     <body className="antialiased bg-[#0B0C15] text-white">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0B0C15] text-white`}>
         <ThemeProvider>
           <AuthProvider>
             <GameProvider>
-              <div className="min-h-screen w-full relative flex flex-col">
+              <div className="min-h-screen w-full relative flex flex-col pb-20">
                 {children}
                 <Suspense fallback={null}>
                   <BottomNav />
@@ -48,7 +46,7 @@ export default function RootLayout({
             </GameProvider>
           </AuthProvider>
         </ThemeProvider>
-       <SpeedInsights />
+        <SpeedInsights />
       </body>
     </html>
   );
