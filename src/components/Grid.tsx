@@ -1,15 +1,15 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
+// --- Types ---
 type SquareClaim = {
   uid: string;
   name: string;
   claimedAt: number;
 };
-
-import Image from 'next/image';
 
 interface GridProps {
   rows: number[];
@@ -25,6 +25,7 @@ interface GridProps {
   selectedCell?: { row: number; col: number } | null;
 }
 
+// --- Helpers ---
 function hashToHue(input: string): number {
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
@@ -62,6 +63,7 @@ function classesForUid(uid: string) {
   return USER_COLOR_CLASSES[idx];
 }
 
+// --- Component ---
 export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB, teamALogo, teamBLogo, isScrambled, winningCell, selectedCell }: GridProps) {
   const showLogos = !isScrambled;
 
@@ -81,11 +83,16 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
       </div>
 
       {/* Team A Label (Vertical Left) */}
+      {/* FIX: ensure logic keeps logo at the TOP of the vertical text */}
       <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center z-30 pointer-events-none -translate-x-1/3">
-        <div className="transform -rotate-90 flex items-center gap-3 whitespace-nowrap">
+        <div className="transform -rotate-90 flex items-center gap-3 whitespace-nowrap origin-center">
+            
+            {/* 1. TEAM NAME (First = Bottom after -90deg rotation) */}
             <span className="font-black text-xl md:text-3xl text-pink-600 dark:text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">
               {teamA}
             </span>
+
+            {/* 2. TEAM LOGO (Second = Top after -90deg rotation) */}
             {showLogos && teamALogo && (
                 <div className="relative w-6 h-6 md:w-8 md:h-8 shrink-0">
                   <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-md" />
@@ -172,7 +179,7 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                       )}
                     >
                       {claims.length === 0 ? (
-                         <div className="absolute inset-0 m-auto w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700/50 group-hover:bg-cyan-500/50 transition-colors" />
+                          <div className="absolute inset-0 m-auto w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700/50 group-hover:bg-cyan-500/50 transition-colors" />
                       ) : claims.length <= 4 ? (
                         <div className="w-full h-full flex flex-col">
                           {claims.map((c, idx) => (

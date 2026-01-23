@@ -120,6 +120,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [activeGame, setActiveGame] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Restore activeGameId from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('activeGameId');
+    if (saved) setActiveGameId(saved);
+  }, []);
+
+  // Save activeGameId to localStorage when it changes
+  useEffect(() => {
+    if (activeGameId) {
+      localStorage.setItem('activeGameId', activeGameId);
+    } else {
+      localStorage.removeItem('activeGameId');
+    }
+  }, [activeGameId]);
+
   const defaultSettings: GameSettings = {
     name: "",
     teamA: "Team A",

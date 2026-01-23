@@ -29,17 +29,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0B0C15] text-white`}>
         <ThemeProvider>
           <AuthProvider>
             <GameProvider>
-              <div className="min-h-screen w-full relative flex flex-col">
+              <div className="min-h-screen w-full relative flex flex-col pb-20">
                 {children}
                 <Suspense fallback={null}>
                   <BottomNav />
@@ -48,7 +46,7 @@ export default function RootLayout({
             </GameProvider>
           </AuthProvider>
         </ThemeProvider>
-       <SpeedInsights />
+        <SpeedInsights />
       </body>
     </html>
   );
