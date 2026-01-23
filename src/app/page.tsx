@@ -19,7 +19,6 @@ import BottomNav from '@/components/BottomNav';
 
 import { useAuth } from '@/context/AuthContext';
 import { useGame, type GameState } from '@/context/GameContext';
-import { cn } from '@/lib/utils';
 import { type EspnScoreData, useEspnScores } from '@/hooks/useEspnScores';
 import { type GameAxisData } from '@/lib/game-logic';
 
