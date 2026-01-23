@@ -95,6 +95,8 @@ interface GameContextType {
   scores: { teamA: number; teamB: number };
   payoutHistory: PayoutEvent[];
   loading: boolean;
+  error: string | null;
+  clearError: () => void;
   createGame: (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => Promise<string>;
   joinGame: (gameId: string, password?: string, userId?: string) => Promise<{ ok: boolean; error?: string }>;
   leaveGame: () => void;
@@ -119,6 +121,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [activeGame, setActiveGame] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const defaultSettings: GameSettings = {
     name: "",
@@ -131,6 +134,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     payouts: [],
     payoutFrequency: "Standard"
   };
+
+  const clearError = () => setError(null);
 
   useEffect(() => {
     if (!activeGameId) {
@@ -312,28 +317,42 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const scrambleGridDigits = async () => {
     if (!activeGame) return;
-    const newAxisData = generateQuarterlyNumbers();
-    const newRows = newAxisData.q1.rows;
-    const newCols = newAxisData.q1.cols;
+    
+    try {
+      const newAxisData = generateQuarterlyNumbers();
+      const newRows = newAxisData.q1.rows;
+      const newCols = newAxisData.q1.cols;
 
-    const updates = {
-      "settings.isScrambled": true,
-      "settings.rows": newRows,
-      "settings.cols": newCols,
-      "settings.axisValues": newAxisData, 
-    };
+      const updates = {
+        "settings.isScrambled": true,
+        "settings.rows": newRows,
+        "settings.cols": newCols,
+        "settings.axisValues": newAxisData, 
+      };
 
-    await updateDoc(doc(db, "games", activeGame.id), updates);
+      await updateDoc(doc(db, "games", activeGame.id), updates);
+      setError(null); // Clear any previous errors on success
+    } catch (err) {
+      console.error("Error scrambling grid:", err);
+      setError("Failed to scramble grid. Please try again.");
+    }
   };
 
   const resetGridDigits = async () => {
     if (!activeGame) return;
-    await updateDoc(doc(db, "games", activeGame.id), {
+    
+    try {
+      await updateDoc(doc(db, "games", activeGame.id), {
         "settings.rows": [],
         "settings.cols": [],
         "settings.isScrambled": false,
         "settings.axisValues": null
-    });
+      });
+      setError(null); // Clear any previous errors on success
+    } catch (err) {
+      console.error("Error resetting grid:", err);
+      setError("Failed to reset grid. Please try again.");
+    }
   };
   
   const resetGame = async () => {
@@ -391,6 +410,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       scores: activeGame?.scores || { teamA: 0, teamB: 0 },
       payoutHistory: activeGame?.payoutHistory || [],
       loading,
+      error,
+      clearError,
       createGame,
       joinGame,
       leaveGame,

@@ -33,7 +33,7 @@ function SquaresApp() {
   const currentView = (searchParams.get('view') as View) || (initialGameCode ? 'join' : 'home');
 
   const { user, logout, loading, isAdmin } = useAuth();
-  const { activeGame, settings, squares, players, scores, claimSquare, unclaimSquare, togglePaid, deletePlayer, updateScores, scrambleGridDigits, resetGridDigits, updateSettings, logPayout, payoutHistory, deleteGame } = useGame();
+  const { activeGame, settings, squares, players, scores, claimSquare, unclaimSquare, togglePaid, deletePlayer, updateScores, scrambleGridDigits, resetGridDigits, updateSettings, logPayout, payoutHistory, deleteGame, error, clearError } = useGame();
   const { games: liveGames } = useEspnScores();
   
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
@@ -214,6 +214,23 @@ function SquaresApp() {
             </div>
         </div>
       </header>
+
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-4">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-lg flex items-start justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+            <p className="text-sm font-medium">{error}</p>
+            <button
+              onClick={clearError}
+              className="ml-4 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors"
+              aria-label="Dismiss error"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className='w-full px-4 lg:px-8 max-w-7xl mx-auto py-6'>
         {currentView === 'game' && activeGame ? (
