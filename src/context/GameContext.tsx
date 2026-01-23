@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { 
@@ -49,7 +49,7 @@ export interface PayoutEvent {
   winners?: { uid: string; name: string }[]; // For shared pots
 }
 
-export type PayoutLog = PayoutEvent; // <--- ADD THIS ALIAS
+export type PayoutLog = PayoutEvent;
 
 export interface GameSettings {
   name: string;
@@ -66,7 +66,6 @@ export interface GameSettings {
   eventDate?: string; // ISO date string
   payoutFrequency?: "Standard" | "NBA_Frequent" | "Manual";
   
-  // --- NEW: The Container for Quarterly Data ---
   axisValues?: GameAxisData; 
 }
 
@@ -121,7 +120,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [activeGame, setActiveGame] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Default empty state to prevent crashes
   const defaultSettings: GameSettings = {
     name: "",
     teamA: "Team A",
@@ -134,7 +132,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     payoutFrequency: "Standard"
   };
 
-  // Sync with Firebase when activeGameId changes
   useEffect(() => {
     if (!activeGameId) {
       setActiveGame(null);
@@ -146,16 +143,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       if (docSnap.exists()) {
         const data = docSnap.data() as GameState;
-        // Ensure arrays exist
         if (!data.squares) data.squares = {};
         if (!data.players) data.players = [];
         if (!data.payoutHistory) data.payoutHistory = [];
-        // Sort history by timestamp desc (newest first)
         data.payoutHistory.sort((a, b) => b.timestamp - a.timestamp);
         
         setActiveGame({ ...data, id: docSnap.id });
       } else {
-        // Game deleted or invalid
         setActiveGameId(null);
         setActiveGame(null);
       }
@@ -195,7 +189,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       payoutHistory: []
     };
 
-    const docRef = await doc(collection(db, "games"));
+    const docRef = doc(collection(db, "games"));
     await setDoc(docRef, newGame);
     setActiveGameId(docRef.id);
     return docRef.id;
@@ -203,8 +197,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const joinGame = async (gameId: string, password?: string, userId?: string) => {
     try {
-      // In a real app, you might check a password or whitelist here.
-      // We check if the game exists before setting it as active
       const gameDoc = await getDoc(doc(db, "games", gameId));
       if (gameDoc.exists()) {
          setActiveGameId(gameId);
@@ -235,51 +227,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const claimSquare = async (row: number, col: number, claimant: { id: string; name: string }) => {
     if (!activeGame) return;
     
-    // Optimistic check
     const key = `${row}-${col}`;
-    const existing = activeGame.squares[key] || [];
-    // Rule: Usually 1 person per square, but some variants allow multiple. 
-    // We will assume 1 per square for standard logic unless modified.
-    if (existing.length > 0) {
-        // alert("Square already taken!"); 
-        // return;
-        // Actually, let's allow overwrite ONLY if host? Or block?
-        // Let's Block for now to prevent race conditions visual glitches
-        // throw new Error("Square Taken");
-    }
-
-    // Update Square
-    // We use arrayUnion to allow multiple if we change logic later, 
-    // but typically we just overwrite if strictly 1-to-1.
-    // For specific key update in map:
-    // Firestore map update: "squares.0-0": [...]
-    
-    // We also need to update Player count.
-    // Check if player exists in list
-    let playerIndex = activeGame.players.findIndex(p => p.id === claimant.id);
-    let newPlayer = false;
-    
-    // To do this atomically is hard without a Transaction. 
-    // We will do a simple updateDoc and assume low contention for this MVP.
-    
     const updates: Record<string, any> = {};
-   // Replace Line 247 with this:
-updates[`squares.${key}`] = arrayUnion({ 
-  uid: claimant.id, 
-  name: claimant.name, 
-  claimedAt: Date.now() 
-}); 
+    updates[`squares.${key}`] = arrayUnion({ 
+      uid: claimant.id, 
+      name: claimant.name, 
+      claimedAt: Date.now() 
+    }); 
 
+    const playerIndex = activeGame.players.findIndex(p => p.id === claimant.id);
     if (playerIndex === -1) {
-        // Add new player to array
-        newPlayer = true;
         updates["players"] = arrayUnion({ id: claimant.id, name: claimant.name, squares: 1, paid: false });
     } else {
-        // Increment player square count. 
-        // arrayUnion doesn't support updating object fields in array. 
-        // We have to read-modify-write players array or store players as a Map.
-        // Storing as Map is better for updates, but Array is easier for iteration.
-        // We'll do read-modify-write since we have local state.
         const updatedPlayers = [...activeGame.players];
         updatedPlayers[playerIndex].squares += 1;
         updates["players"] = updatedPlayers;
@@ -299,12 +258,17 @@ updates[`squares.${key}`] = arrayUnion({
     const updates: Record<string, any> = {};
     updates[`squares.${key}`] = arrayRemove(claimToRemove);
 
-    // Decrement player count
     const playerIndex = activeGame.players.findIndex(p => p.id === userId);
     if (playerIndex !== -1) {
         const updatedPlayers = [...activeGame.players];
-        updatedPlayers[playerIndex].squares = Math.max(0, updatedPlayers[playerIndex].squares - 1);
-        updates["players"] = updatedPlayers;
+        const newCount = Math.max(0, updatedPlayers[playerIndex].squares - 1);
+        if (newCount === 0) {
+            // Remove player if they have no squares left
+            updates["players"] = arrayRemove(updatedPlayers[playerIndex]);
+        } else {
+            updatedPlayers[playerIndex].squares = newCount;
+            updates["players"] = updatedPlayers;
+        }
     }
 
     await updateDoc(doc(db, "games", activeGame.id), updates);
@@ -317,25 +281,17 @@ updates[`squares.${key}`] = arrayUnion({
 
     const updatedPlayers = [...activeGame.players];
     updatedPlayers[playerIndex].paid = !updatedPlayers[playerIndex].paid;
-    // Set paidAt timestamp when marking as paid, clear when marking as unpaid
-    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : undefined;
+    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : null;
     
     await updateDoc(doc(db, "games", activeGame.id), { players: updatedPlayers });
   };
 
   const deletePlayer = async (playerId: string) => {
       if (!activeGame) return;
-      // This is nuclear: Remove player AND all their squares?
-      // For MVP, just remove player from list. Squares remain "claimed" by ID but orphaned? 
-      // Better to unclaim all squares too.
-      
       const newSquares = { ...activeGame.squares };
-      let changed = false;
-      
       Object.keys(newSquares).forEach(key => {
           const originalLen = newSquares[key].length;
           newSquares[key] = newSquares[key].filter(c => c.uid !== playerId);
-          if (newSquares[key].length !== originalLen) changed = true;
           if (newSquares[key].length === 0) delete newSquares[key];
       });
 
@@ -354,19 +310,12 @@ updates[`squares.${key}`] = arrayUnion({
     });
   };
 
-  // --- UPDATED: ENGINE UPGRADE ---
   const scrambleGridDigits = async () => {
     if (!activeGame) return;
-
-    // 1. Generate 4 sets of random numbers (Q1, Q2, Q3, Final)
     const newAxisData = generateQuarterlyNumbers();
-
-    // 2. Update the "Visual" rows/cols (Defaults to Q1 for immediate display)
     const newRows = newAxisData.q1.rows;
     const newCols = newAxisData.q1.cols;
 
-    // 3. Save EVERYTHING to Firebase
-    // We save 'axisValues' (the history) AND 'rows/cols' (the current view)
     const updates = {
       "settings.isScrambled": true,
       "settings.rows": newRows,
@@ -374,12 +323,7 @@ updates[`squares.${key}`] = arrayUnion({
       "settings.axisValues": newAxisData, 
     };
 
-    try {
-      await updateDoc(doc(db, "games", activeGame.id), updates);
-    } catch (error) {
-      console.error("Failed to scramble grid:", error);
-      alert("Failed to scramble grid. Check console.");
-    }
+    await updateDoc(doc(db, "games", activeGame.id), updates);
   };
 
   const resetGridDigits = async () => {
@@ -388,7 +332,7 @@ updates[`squares.${key}`] = arrayUnion({
         "settings.rows": [],
         "settings.cols": [],
         "settings.isScrambled": false,
-        "settings.axisValues": null // Clear history
+        "settings.axisValues": null
     });
   };
   
@@ -407,29 +351,28 @@ updates[`squares.${key}`] = arrayUnion({
   };
 
   const getUserGames = async (userId: string): Promise<GameState[]> => {
-    // 1. Hosted Games
     const qHost = query(collection(db, "games"), where("hostUserId", "==", userId));
     const snapHost = await getDocs(qHost);
-    const hosted = snapHost.docs.map(d => ({ ...d.data(), id: d.id } as GameState));
-
-    // 2. Joined Games (This is expensive in Firestore if we don't denormalize)
-    // We can cheat: We only find games where we are host for now in this helper?
-    // Or we rely on client side filtering if lists are small? No.
-    // Correct way: "participants" array in game doc.
-    // We haven't added "participants" array yet. 
-    // We'll rely on hosted games + activeGame for now, or just hosted.
-    // A better way for "My Games" list is to store "myGames" subcollection on User.
-    // For this MVP, we will only return Hosted Games to keep it simple and fast.
-    
-    return hosted;
+    return snapHost.docs.map(d => ({ ...d.data(), id: d.id } as GameState));
   };
 
+  // --- MODIFIED: This function now writes to two places ---
   const logPayout = async (event: PayoutEvent) => {
     if (!activeGame) return;
-    // Append to history
-    await updateDoc(doc(db, "games", activeGame.id), {
+    if (!event.id) {
+        console.error("Payout event is missing a unique ID.");
+        return;
+    }
+
+    // 1. Add to the specific game's payoutHistory array (for in-game UI)
+    const gameDocRef = doc(db, "games", activeGame.id);
+    await updateDoc(gameDocRef, {
         payoutHistory: arrayUnion(event)
     });
+
+    // 2. Add to the top-level 'payouts' collection (for global winners page)
+    const payoutDocRef = doc(db, "payouts", event.id);
+    await setDoc(payoutDocRef, event);
   };
 
   const deleteGame = async () => {

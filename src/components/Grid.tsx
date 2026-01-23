@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React from "react";
-import { cn } from "@/lib/utils";
+import React from 'react';
+import { cn } from '@/lib/utils';
 
 type SquareClaim = {
   uid: string;
@@ -9,7 +9,7 @@ type SquareClaim = {
   claimedAt: number;
 };
 
-import Image from "next/image";
+import Image from 'next/image';
 
 interface GridProps {
   rows: number[];
@@ -34,27 +34,27 @@ function hashToHue(input: string): number {
 }
 
 const USER_COLOR_CLASSES = [
-  { bg: "bg-rose-200 dark:bg-rose-900/60", text: "text-rose-900 dark:text-rose-100", border: "border-rose-300 dark:border-rose-500/60" },
-  { bg: "bg-red-200 dark:bg-red-900/60", text: "text-red-900 dark:text-red-100", border: "border-red-300 dark:border-red-500/60" },
-  { bg: "bg-orange-200 dark:bg-orange-900/60", text: "text-orange-900 dark:text-orange-100", border: "border-orange-300 dark:border-orange-500/60" },
-  { bg: "bg-amber-200 dark:bg-amber-900/60", text: "text-amber-900 dark:text-amber-100", border: "border-amber-300 dark:border-amber-500/60" },
-  { bg: "bg-yellow-200 dark:bg-yellow-900/60", text: "text-yellow-900 dark:text-yellow-100", border: "border-yellow-300 dark:border-yellow-500/60" },
-  { bg: "bg-lime-200 dark:bg-lime-900/60", text: "text-lime-900 dark:text-lime-100", border: "border-lime-300 dark:border-lime-500/60" },
-  { bg: "bg-green-200 dark:bg-green-900/60", text: "text-green-900 dark:text-green-100", border: "border-green-300 dark:border-green-500/60" },
-  { bg: "bg-emerald-200 dark:bg-emerald-900/60", text: "text-emerald-900 dark:text-emerald-100", border: "border-emerald-300 dark:border-emerald-500/60" },
-  { bg: "bg-teal-200 dark:bg-teal-900/60", text: "text-teal-900 dark:text-teal-100", border: "border-teal-300 dark:border-teal-500/60" },
-  { bg: "bg-cyan-200 dark:bg-cyan-900/60", text: "text-cyan-900 dark:text-cyan-100", border: "border-cyan-300 dark:border-cyan-500/60" },
-  { bg: "bg-sky-200 dark:bg-sky-900/60", text: "text-sky-900 dark:text-sky-100", border: "border-sky-300 dark:border-sky-500/60" },
-  { bg: "bg-blue-200 dark:bg-blue-900/60", text: "text-blue-900 dark:text-blue-100", border: "border-blue-300 dark:border-blue-500/60" },
-  { bg: "bg-indigo-200 dark:bg-indigo-900/60", text: "text-indigo-900 dark:text-indigo-100", border: "border-indigo-300 dark:border-indigo-500/60" },
-  { bg: "bg-violet-200 dark:bg-violet-900/60", text: "text-violet-900 dark:text-violet-100", border: "border-violet-300 dark:border-violet-500/60" },
-  { bg: "bg-purple-200 dark:bg-purple-900/60", text: "text-purple-900 dark:text-purple-100", border: "border-purple-300 dark:border-purple-500/60" },
-  { bg: "bg-fuchsia-200 dark:bg-fuchsia-900/60", text: "text-fuchsia-900 dark:text-fuchsia-100", border: "border-fuchsia-300 dark:border-fuchsia-500/60" },
-  { bg: "bg-pink-200 dark:bg-pink-900/60", text: "text-pink-900 dark:text-pink-100", border: "border-pink-300 dark:border-pink-500/60" },
-  { bg: "bg-rose-300 dark:bg-rose-800/70", text: "text-rose-950 dark:text-rose-100", border: "border-rose-400 dark:border-rose-500/70" },
-  { bg: "bg-cyan-300 dark:bg-cyan-800/70", text: "text-cyan-950 dark:text-cyan-100", border: "border-cyan-400 dark:border-cyan-500/70" },
-  { bg: "bg-emerald-300 dark:bg-emerald-800/70", text: "text-emerald-950 dark:text-emerald-100", border: "border-emerald-400 dark:border-emerald-500/70" },
-  { bg: "bg-indigo-300 dark:bg-indigo-800/70", text: "text-indigo-950 dark:text-indigo-100", border: "border-indigo-400 dark:border-indigo-500/70" },
+  { bg: 'bg-rose-200 dark:bg-rose-900/60', text: 'text-rose-900 dark:text-rose-100', border: 'border-rose-300 dark:border-rose-500/60' },
+  { bg: 'bg-red-200 dark:bg-red-900/60', text: 'text-red-900 dark:text-red-100', border: 'border-red-300 dark:border-red-500/60' },
+  { bg: 'bg-orange-200 dark:bg-orange-900/60', text: 'text-orange-900 dark:text-orange-100', border: 'border-orange-300 dark:border-orange-500/60' },
+  { bg: 'bg-amber-200 dark:bg-amber-900/60', text: 'text-amber-900 dark:text-amber-100', border: 'border-amber-300 dark:border-amber-500/60' },
+  { bg: 'bg-yellow-200 dark:bg-yellow-900/60', text: 'text-yellow-900 dark:text-yellow-100', border: 'border-yellow-300 dark:border-yellow-500/60' },
+  { bg: 'bg-lime-200 dark:bg-lime-900/60', text: 'text-lime-900 dark:text-lime-100', border: 'border-lime-300 dark:border-lime-500/60' },
+  { bg: 'bg-green-200 dark:bg-green-900/60', text: 'text-green-900 dark:text-green-100', border: 'border-green-300 dark:border-green-500/60' },
+  { bg: 'bg-emerald-200 dark:bg-emerald-900/60', text: 'text-emerald-900 dark:text-emerald-100', border: 'border-emerald-300 dark:border-emerald-500/60' },
+  { bg: 'bg-teal-200 dark:bg-teal-900/60', text: 'text-teal-900 dark:text-teal-100', border: 'border-teal-300 dark:border-teal-500/60' },
+  { bg: 'bg-cyan-200 dark:bg-cyan-900/60', text: 'text-cyan-900 dark:text-cyan-100', border: 'border-cyan-300 dark:border-cyan-500/60' },
+  { bg: 'bg-sky-200 dark:bg-sky-900/60', text: 'text-sky-900 dark:text-sky-100', border: 'border-sky-300 dark:border-sky-500/60' },
+  { bg: 'bg-blue-200 dark:bg-blue-900/60', text: 'text-blue-900 dark:text-blue-100', border: 'border-blue-300 dark:border-blue-500/60' },
+  { bg: 'bg-indigo-200 dark:bg-indigo-900/60', text: 'text-indigo-900 dark:text-indigo-100', border: 'border-indigo-300 dark:border-indigo-500/60' },
+  { bg: 'bg-violet-200 dark:bg-violet-900/60', text: 'text-violet-900 dark:text-violet-100', border: 'border-violet-300 dark:border-violet-500/60' },
+  { bg: 'bg-purple-200 dark:bg-purple-900/60', text: 'text-purple-900 dark:text-purple-100', border: 'border-purple-300 dark:border-purple-500/60' },
+  { bg: 'bg-fuchsia-200 dark:bg-fuchsia-900/60', text: 'text-fuchsia-900 dark:text-fuchsia-100', border: 'border-fuchsia-300 dark:border-fuchsia-500/60' },
+  { bg: 'bg-pink-200 dark:bg-pink-900/60', text: 'text-pink-900 dark:text-pink-100', border: 'border-pink-300 dark:border-pink-500/60' },
+  { bg: 'bg-rose-300 dark:bg-rose-800/70', text: 'text-rose-950 dark:text-rose-100', border: 'border-rose-400 dark:border-rose-500/70' },
+  { bg: 'bg-cyan-300 dark:bg-cyan-800/70', text: 'text-cyan-950 dark:text-cyan-100', border: 'border-cyan-400 dark:border-cyan-500/70' },
+  { bg: 'bg-emerald-300 dark:bg-emerald-800/70', text: 'text-emerald-950 dark:text-emerald-100', border: 'border-emerald-400 dark:border-emerald-500/70' },
+  { bg: 'bg-indigo-300 dark:bg-indigo-800/70', text: 'text-indigo-950 dark:text-indigo-100', border: 'border-indigo-400 dark:border-indigo-500/70' },
 ];
 
 function classesForUid(uid: string) {
@@ -67,29 +67,30 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center pt-2 pl-6 md:pt-4 md:pl-10">
-      {/* Team B Label (Horizontal Top) - Centered above Grid */}
-      <div className="absolute top-0 left-0 right-0 pl-6 md:pl-10 flex items-center justify-center gap-2 md:gap-4 z-30 pointer-events-none -translate-y-3/4">
-          <div className="text-center font-black text-xl md:text-3xl text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
-            {teamB}
+
+      {/* Team B Label (Horizontal Top) */}
+      <div className="absolute top-0 left-0 right-0 pl-6 md:pl-10 flex items-center justify-center gap-3 z-30 pointer-events-none -translate-y-3/4">
+        <span className="text-center font-black text-xl md:text-3xl text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
+          {teamB}
+        </span>
+        {showLogos && teamBLogo && (
+          <div className="relative w-8 h-8 md:w-10 md:h-10 shrink-0">
+            <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-md" />
           </div>
-          {showLogos && teamBLogo && (
-            <div className="relative w-8 h-8 md:w-12 md:h-12 shrink-0">
-              <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-md" />
-            </div>
-          )}
+        )}
       </div>
 
-      {/* Team A Label (Vertical Left) - Centered left of Grid */}
-      <div className="absolute left-0 top-0 bottom-0 pt-6 md:pt-10 flex items-center justify-center z-30 pointer-events-none translate-x-4">
-        <div className="flex items-center gap-2 md:gap-4">
-          <div className="[writing-mode:vertical-lr] rotate-180 font-black text-xl md:text-3xl text-pink-600 dark:text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(236,72,153,0.5)] whitespace-nowrap">
-            {teamA}
-          </div>
-          {showLogos && teamALogo && (
-              <div className="relative w-8 h-8 md:w-12 md:h-12 shrink-0">
-                <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-md" />
-              </div>
-          )}
+      {/* Team A Label (Vertical Left) */}
+      <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center z-30 pointer-events-none -translate-x-1/3">
+        <div className="transform -rotate-90 flex items-center gap-3 whitespace-nowrap">
+            <span className="font-black text-xl md:text-3xl text-pink-600 dark:text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">
+              {teamA}
+            </span>
+            {showLogos && teamALogo && (
+                <div className="relative w-6 h-6 md:w-8 md:h-8 shrink-0">
+                  <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-md" />
+                </div>
+            )}
         </div>
       </div>
 
@@ -113,8 +114,8 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                       <div
                         className="relative w-full h-full"
                         style={{
-                          mask: "radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)",
-                          WebkitMask: "radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)",
+                          mask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
+                          WebkitMask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
                         }}
                       >
                         <Image src={teamBLogo} alt={teamB} fill className="object-contain opacity-80" />
@@ -138,8 +139,8 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                         <div
                           className="relative w-full h-full"
                           style={{
-                            mask: "radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)",
-                            WebkitMask: "radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)",
+                            mask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
+                            WebkitMask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
                           }}
                         >
                           <Image src={teamALogo} alt={teamA} fill className="object-contain opacity-80" />
@@ -162,12 +163,12 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                       key={key}
                       onClick={() => onSquareClick(rowIndex, colIndex)}
                       className={cn(
-                        "aspect-square relative w-full h-full gap-[1px] group overflow-hidden border-[0.5px] border-slate-200/50 dark:border-white/5",
-                        claims.length > 0 ? "bg-slate-50 dark:bg-slate-800/60" : "bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/80",
-                        isFull ? "cursor-not-allowed opacity-90" : "cursor-pointer",
-                        (isWinner || isSelected) && "z-10",
-                        isWinner && "ring-2 ring-yellow-400 bg-yellow-400/20 animate-pulse shadow-[0_0_20px_rgba(250,204,21,0.5)] z-20",
-                        isSelected && !isWinner && "ring-2 ring-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)] z-20"
+                        'aspect-square relative w-full h-full gap-[1px] group overflow-hidden border-[0.5px] border-slate-200/50 dark:border-white/5',
+                        claims.length > 0 ? 'bg-slate-50 dark:bg-slate-800/60' : 'bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/80',
+                        isFull ? 'cursor-not-allowed opacity-90' : 'cursor-pointer',
+                        (isWinner || isSelected) && 'z-10',
+                        isWinner && 'ring-2 ring-yellow-400 bg-yellow-400/20 animate-pulse shadow-[0_0_20px_rgba(250,204,21,0.5)] z-20',
+                        isSelected && !isWinner && 'ring-2 ring-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)] z-20'
                       )}
                     >
                       {claims.length === 0 ? (
@@ -178,7 +179,7 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                             <div
                               key={c.uid}
                               className={cn(
-                                "flex-1 flex items-center justify-center text-[8px] lg:text-[10px] leading-none font-bold truncate px-0.5",
+                                'flex-1 flex items-center justify-center text-[8px] lg:text-[10px] leading-none font-bold truncate px-0.5',
                                 classesForUid(c.uid).bg,
                                 classesForUid(c.uid).text
                               )}
@@ -194,7 +195,7 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                              <div
                               key={c.uid}
                               className={cn(
-                                "flex items-center justify-center text-[6px] lg:text-[8px] font-white font-bold leading-none",
+                                'flex items-center justify-center text-[6px] lg:text-[8px] font-white font-bold leading-none',
                                 classesForUid(c.uid).bg,
                                 classesForUid(c.uid).text
                               )}

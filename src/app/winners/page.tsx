@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { collectionGroup, getDocs, orderBy, query, limit } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, limit } from "firebase/firestore"; // <-- MODIFIED
 import { db } from "@/lib/firebase";
 import { PayoutLog } from "@/context/GameContext";
 import { Trophy, Calendar, DollarSign, ArrowLeft } from "lucide-react";
@@ -14,8 +14,9 @@ export default function WinnersPage() {
   useEffect(() => {
     async function fetchWinners() {
       try {
+        // --- THIS IS THE CORRECTED QUERY ---
         const q = query(
-          collectionGroup(db, "payouts"),
+          collection(db, "payouts"), // <-- Use collection() instead of collectionGroup()
           orderBy("timestamp", "desc"),
           limit(50)
         );
