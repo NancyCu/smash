@@ -272,8 +272,6 @@ function SquaresApp() {
         )}
       </main>
       
-      <BottomNav />
-
     </div>
   );
 }
