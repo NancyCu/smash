@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, Suspense } from 'react';
+import React, { useMemo, useState, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Copy, LayoutGrid, Users as UsersIcon, LogOut, DollarSign, Trophy } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 // Component Imports
 import QuarterTabs from '@/components/QuarterTabs';
@@ -18,22 +18,21 @@ import AuthModal from '@/components/AuthModal';
 import BottomNav from '@/components/BottomNav';
 
 import { useAuth } from '@/context/AuthContext';
-import { useGame, type GameState } from '@/context/GameContext';
+import { useGame } from '@/context/GameContext';
 import { type EspnScoreData, useEspnScores } from '@/hooks/useEspnScores';
-import { type GameAxisData } from '@/lib/game-logic';
 
 type View = 'home' | 'create' | 'game' | 'join' | 'props';
 
 function SquaresApp() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialGameCode = searchParams.get('code') || '';
-  const currentView = (searchParams.get('view') as View) || (initialGameCode ? 'join' : 'home');
-
   const { user, logout, loading, isAdmin } = useAuth();
   const { activeGame, settings, squares, players, scores, claimSquare, unclaimSquare, togglePaid, deletePlayer, updateScores, scrambleGridDigits, resetGridDigits, updateSettings, logPayout, payoutHistory, deleteGame } = useGame();
   const { games: liveGames } = useEspnScores();
   
+  const initialGameCode = searchParams.get('code') || '';
+  const currentView = (searchParams.get('view') as View) || (activeGame ? 'game' : (initialGameCode ? 'join' : 'home'));
+
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
   type QuarterKey = 'q1' | 'q2' | 'q3' | 'final';
   const [viewQuarter, setViewQuarter] = useState<QuarterKey>('q1');
@@ -43,14 +42,15 @@ function SquaresApp() {
     return liveGames.find(g => g.id === settings.espnGameId) || null;
   }, [liveGames, activeGame, settings.espnGameId]);
 
-  useEffect(() => {
+  // Sync quarter view with live game period during render (React pattern for adjusting state based on props)
+  const [prevPeriod, setPrevPeriod] = useState<number | undefined>(matchedLiveGame?.period);
+  if (matchedLiveGame?.period !== prevPeriod) {
+    setPrevPeriod(matchedLiveGame?.period);
     if (matchedLiveGame?.period) {
-      if (matchedLiveGame.period === 1) setViewQuarter('q1');
-      else if (matchedLiveGame.period === 2) setViewQuarter('q2');
-      else if (matchedLiveGame.period === 3) setViewQuarter('q3');
-      else if (matchedLiveGame.period >= 4) setViewQuarter('final');
+      const p = matchedLiveGame.period;
+      setViewQuarter(p === 1 ? 'q1' : p === 2 ? 'q2' : p === 3 ? 'q3' : 'final');
     }
-  }, [matchedLiveGame?.period]);
+  }
 
   const totalPot = useMemo(() => {
     return players.reduce((acc, p) => acc + (p.squares * settings.pricePerSquare), 0);
@@ -72,7 +72,7 @@ function SquaresApp() {
   const canManage = isAdmin || (!!user && !!activeGame && user.uid === activeGame.hostUserId);
 
   const currentAxis = useMemo(() => {
-    const axisData = (settings as any).axisValues as GameAxisData | undefined;
+    const axisData = settings.axisValues;
     const defaultIndices = Array.from({ length: 10 }, (_, i) => i);
     if (axisData?.[viewQuarter]) return axisData[viewQuarter];
     if (!settings.rows || settings.rows.length === 0) return { rows: defaultIndices, cols: defaultIndices };
@@ -196,7 +196,7 @@ function SquaresApp() {
     <div className='min-h-screen bg-slate-50 dark:bg-slate-900 pb-40 md:pb-24 text-slate-800 dark:text-slate-200 transition-colors duration-300'>
       <header className="bg-white/80 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200 dark:border-white/5 sticky top-0 z-40 px-4 py-3">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-           <Link href="/?view=home" className="flex items-center gap-3">
+           <Link href="/" className="flex items-center gap-3">
                 <div className="relative w-10 h-10 rounded-xl overflow-hidden shadow-md dark:shadow-[0_0_15px_rgba(99,102,241,0.5)] ring-2 ring-indigo-500/50 rotate-[-2deg]">
                     <Image src="/SouperBowlDark.png" alt="Souper Bowl Logo" fill sizes="40px" className="object-cover" priority />
                 </div>
