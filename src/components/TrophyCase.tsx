@@ -1,23 +1,14 @@
-"use client";
+'use client';
 
 import React from 'react';
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-// Define a type for a single winner entry
-export interface Winner {
-  id: string;
-  period: number;
-  label: string;
-  amount: number;
-  winnerName: string;
-  isPaid?: boolean;
-}
+import { type PayoutEvent } from '@/context/GameContext'; // <-- IMPORT PayoutEvent
 
 // Define the props for the TrophyCase component
 interface TrophyCaseProps {
   payouts: { label: string; amount: number }[];
-  history: Winner[];
+  history: PayoutEvent[]; // <-- USE PayoutEvent[] for history
   totalPot: number;
 }
 
