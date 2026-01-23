@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, PlusSquare, Ticket, Dices, User } from 'lucide-react';
+import { Home, PlusSquare, Zap, Dices, User } from 'lucide-react';
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -31,18 +31,18 @@ export default function BottomNav() {
           <span className="text-[10px] font-bold mt-1">CREATE</span>
         </Link>
 
-        {/* 3. JOIN (The Big Center Ticket) -> MUST POINT TO /join */}
-        <Link href="/join" className="relative -top-6 group">
+        {/* 3. LIVE (The Big Center Button) -> /live */}
+        <Link href="/live" className="relative -top-6 group">
           <div className={`
             p-4 rounded-full border-4 border-[#0B0C15] shadow-lg transition-transform duration-200 group-hover:scale-105
-            ${pathname === '/join' 
-              ? "bg-gradient-to-tr from-cyan-500 to-blue-600" 
-              : "bg-gray-700 group-hover:bg-gray-600"}
+            ${pathname === '/live' 
+              ? "bg-gradient-to-tr from-cyan-400 to-blue-600 shadow-[0_0_25px_rgba(34,211,238,0.7)]" 
+              : "bg-gray-700 group-hover:bg-gray-600 group-hover:shadow-[0_0_18px_rgba(34,211,238,0.45)]"}
           `}>
-            <Ticket size={32} color="white" />
+            <Zap size={32} color="white" />
           </div>
           <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-400 group-hover:text-white">
-            JOIN
+            LIVE
           </span>
         </Link>
 
