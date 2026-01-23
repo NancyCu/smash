@@ -67,29 +67,30 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center pt-2 pl-6 md:pt-4 md:pl-10">
-      {/* Team B Label (Horizontal Top) - Centered above Grid */}
-      <div className="absolute top-0 left-0 right-0 pl-6 md:pl-10 flex items-center justify-center gap-2 md:gap-4 z-30 pointer-events-none -translate-y-3/4">
-          <div className="text-center font-black text-xl md:text-3xl text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
-            {teamB}
+
+      {/* Team B Label (Horizontal Top) */}
+      <div className="absolute top-0 left-0 right-0 pl-6 md:pl-10 flex items-center justify-center gap-3 z-30 pointer-events-none -translate-y-3/4">
+        <span className="text-center font-black text-xl md:text-3xl text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
+          {teamB}
+        </span>
+        {showLogos && teamBLogo && (
+          <div className="relative w-8 h-8 md:w-10 md:h-10 shrink-0">
+            <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-md" />
           </div>
-          {showLogos && teamBLogo && (
-            <div className="relative w-8 h-8 md:w-12 md:h-12 shrink-0">
-              <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-md" />
-            </div>
-          )}
+        )}
       </div>
 
-      {/* Team A Label (Vertical Left) - Centered left of Grid */}
-      <div className="absolute left-0 top-0 bottom-0 pt-6 md:pt-10 flex items-center justify-center z-30 pointer-events-none translate-x-4">
-        <div className="flex items-center gap-2 md:gap-4">
-          <div className="[writing-mode:vertical-lr] rotate-180 font-black text-xl md:text-3xl text-pink-600 dark:text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(236,72,153,0.5)] whitespace-nowrap">
-            {teamA}
-          </div>
-          {showLogos && teamALogo && (
-              <div className="relative w-8 h-8 md:w-12 md:h-12 shrink-0">
-                <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-md" />
-              </div>
-          )}
+      {/* Team A Label (Vertical Left) */}
+      <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center z-30 pointer-events-none -translate-x-1/3">
+        <div className="transform -rotate-90 flex items-center gap-3 whitespace-nowrap">
+            <span className="font-black text-xl md:text-3xl text-pink-600 dark:text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">
+              {teamA}
+            </span>
+            {showLogos && teamALogo && (
+                <div className="relative w-6 h-6 md:w-8 md:h-8 shrink-0">
+                  <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-md" />
+                </div>
+            )}
         </div>
       </div>
 
@@ -202,16 +203,16 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                             >
                               {c.name.charAt(0).toUpperCase()}
                             </div>
-                          ))}
+                          ))}\
                         </div>
-                      )}
+                      )}\
                     </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-    </div>
-  );
-}
+                  );\
+                })}\
+              </React.Fragment>\
+            ))}\
+          </div>\
+        </div>\
+    </div>\
+  );\
+}\
