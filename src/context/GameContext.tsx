@@ -14,7 +14,8 @@ import {
   getDoc,
   serverTimestamp,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  writeBatch
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthContext";
@@ -108,7 +109,7 @@ interface GameContextType {
   resetGame: () => Promise<void>;
   updateSettings: (newSettings: Partial<GameSettings>) => Promise<void>;
   getUserGames: (userId: string) => Promise<GameState[]>;
-  logPayout: (event: PayoutEvent) => Promise<void>;
+  logPayout: (event: PayoutEvent) => Promise<{ ok: boolean; error?: string }>;
   deleteGame: () => Promise<void>;
 }
 
@@ -371,23 +372,36 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return snapHost.docs.map(d => ({ ...d.data(), id: d.id } as GameState));
   };
 
-  // --- MODIFIED: This function now writes to two places ---
+  // --- MODIFIED: This function now writes to two places atomically ---
   const logPayout = async (event: PayoutEvent) => {
-    if (!activeGame) return;
+    if (!activeGame) return { ok: false, error: "No active game" };
     if (!event.id) {
         console.error("Payout event is missing a unique ID.");
-        return;
+        return { ok: false, error: "Payout event is missing a unique ID" };
     }
 
-    // 1. Add to the specific game's payoutHistory array (for in-game UI)
-    const gameDocRef = doc(db, "games", activeGame.id);
-    await updateDoc(gameDocRef, {
-        payoutHistory: arrayUnion(event)
-    });
+    try {
+      // Use writeBatch to ensure both writes succeed or fail together
+      const batch = writeBatch(db);
 
-    // 2. Add to the top-level 'payouts' collection (for global winners page)
-    const payoutDocRef = doc(db, "payouts", event.id);
-    await setDoc(payoutDocRef, event);
+      // 1. Add to the specific game's payoutHistory array (for in-game UI)
+      const gameDocRef = doc(db, "games", activeGame.id);
+      batch.update(gameDocRef, {
+          payoutHistory: arrayUnion(event)
+      });
+
+      // 2. Add to the top-level 'payouts' collection (for global winners page)
+      const payoutDocRef = doc(db, "payouts", event.id);
+      batch.set(payoutDocRef, event);
+
+      // Commit the batch atomically
+      await batch.commit();
+
+      return { ok: true };
+    } catch (error) {
+      console.error("Error logging payout:", error);
+      return { ok: false, error: "Failed to log payout" };
+    }
   };
 
   const deleteGame = async () => {

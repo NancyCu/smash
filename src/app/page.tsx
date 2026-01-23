@@ -169,7 +169,7 @@ function SquaresApp() {
     const primaryWinner = winners[0] || { uid: 'NONE', name: 'No Winner' };
     const winnerNames = winners.length > 0 ? winners.map(w => w.name).join(', ') : primaryWinner.name;
 
-    await logPayout({
+    const result = await logPayout({
       id: `manual_${Date.now()}`,
       period: nextLabelIndex + 1,
       label,
@@ -186,6 +186,10 @@ function SquaresApp() {
       teamB: settings.teamB,
       eventDate: settings.eventDate
     });
+
+    if (!result?.ok) {
+      alert(`Failed to log payout: ${result?.error || 'Unknown error'}`);
+    }
   };
 
 
