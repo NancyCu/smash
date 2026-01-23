@@ -27,3 +27,96 @@ body {
 ::-webkit-scrollbar {
   display: none;
 }
+
+/* 5. CUSTOM UTILITY CLASSES (Neon text + animations) */
+
+/* Neon text shadow effect used in hero/headline elements */
+.text-shadow-neon {
+  text-shadow:
+    0 0 8px rgba(56, 189, 248, 0.8),
+    0 0 16px rgba(56, 189, 248, 0.8),
+    0 0 24px rgba(56, 189, 248, 0.8);
+}
+
+/* Base animation utility: duration, easing, fill mode */
+.animate-in {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+/* Fade-in utility */
+.fade-in {
+  animation-name: fade-in;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Slide in from bottom (Tailwind-like “from-bottom-4”) */
+.slide-in-from-bottom-4 {
+  animation-name: slide-in-from-bottom-4;
+}
+
+@keyframes slide-in-from-bottom-4 {
+  from {
+    transform: translateY(1rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Zoom-in variants */
+.zoom-in {
+  animation-name: zoom-in;
+}
+
+.zoom-in-50 {
+  animation-name: zoom-in-50;
+}
+
+.zoom-in-90 {
+  animation-name: zoom-in-90;
+}
+
+@keyframes zoom-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in-50 {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in-90 {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
