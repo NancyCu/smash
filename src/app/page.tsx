@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Copy, LayoutGrid, Users as UsersIcon, LogOut, DollarSign, Trophy } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 // Component Imports
 import QuarterTabs from '@/components/QuarterTabs';
@@ -15,10 +15,10 @@ import PlayerList from '@/components/PlayerList';
 import JoinGameForm from '@/components/JoinGameForm';
 import SquareDetails from '@/components/SquareDetails';
 import AuthModal from '@/components/AuthModal';
-import BottomNav from '@/components/BottomNav';
+
 
 import { useAuth } from '@/context/AuthContext';
-import { useGame, type GameState } from '@/context/GameContext';
+import { useGame } from '@/context/GameContext';
 import { type EspnScoreData, useEspnScores } from '@/hooks/useEspnScores';
 import { type GameAxisData } from '@/lib/game-logic';
 
@@ -202,7 +202,7 @@ function SquaresApp() {
                 </div>
                 <div className="flex flex-col leading-none">
                     <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase drop-shadow-md">The Souper Bowl</h1>
-                    <div className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] text-shadow-neon">Squares</div>
+                    <div className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(34,211,238,0.9)]">Squares</div>
                 </div>
             </Link>
             <div className="flex items-center gap-4">
@@ -218,7 +218,7 @@ function SquaresApp() {
           <div className='flex flex-col lg:flex-row items-stretch lg:items-start gap-4 animate-in fade-in duration-500 max-w-[2200px] mx-auto w-full'>
             <div className='flex-1 flex flex-col gap-4 w-full min-w-0'>
               <div className='w-full relative rounded-2xl ring-1 ring-slate-200 dark:ring-white/10 shadow-xl bg-white/60 dark:bg-slate-800/50 backdrop-blur-md p-4'>
-                <TrophyCase payouts={payouts} history={payoutHistory} totalPot={totalPot} />
+                <TrophyCase payouts={payouts} history={payoutHistory} />
                 <QuarterTabs activeQuarter={viewQuarter} setActiveQuarter={setViewQuarter} isGameStarted={isGameStarted} />
               </div>
               <div className='w-full relative rounded-2xl ring-1 ring-slate-200 dark:ring-white/10 shadow-2xl bg-white/60 dark:bg-slate-800/50 backdrop-blur-md'>
@@ -271,8 +271,6 @@ function SquaresApp() {
             </div>
         )}
       </main>
-      
-      <BottomNav />
 
     </div>
   );

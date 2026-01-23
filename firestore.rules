@@ -69,5 +69,18 @@ service cloud.firestore {
         allow delete: if isHost(gameId) || isAdmin();
       }
     }
+
+    // Payouts (global winners page)
+    match /payouts/{payoutId} {
+      // Anyone signed in can read payouts for the winners page
+      allow read: if isSignedIn();
+      
+      // Only authenticated users can create payout records
+      // (typically done by the game host via logPayout function)
+      allow create: if isSignedIn();
+      
+      // Only admins can update or delete payout records
+      allow update, delete: if isAdmin();
+    }
   }
 }
