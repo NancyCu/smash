@@ -281,7 +281,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const updatedPlayers = [...activeGame.players];
     updatedPlayers[playerIndex].paid = !updatedPlayers[playerIndex].paid;
-    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : undefined;
+    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : null;
     
     await updateDoc(doc(db, "games", activeGame.id), { players: updatedPlayers });
   };
