@@ -1,33 +1,53 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Custom utility classes and animations restored for Tailwind v4 setup */
-@layer utilities {
-  /* Neon text shadow utility (previously defined in globals.css) */
-  .text-shadow-neon {
-    text-shadow:
-      0 0 5px rgba(59, 130, 246, 0.7),
-      0 0 10px rgba(59, 130, 246, 0.9),
-      0 0 20px rgba(59, 130, 246, 0.9);
-  }
+/* 1. GLOBAL RESET & THEME COLORS */
+:root {
+  --background: #0B0C15;
+  --foreground: #F3F4F6;
+}
 
-  /* Base animation utility, similar to tailwindcss-animate's .animate-in */
-  .animate-in {
-    animation-duration: 150ms;
-    animation-fill-mode: both;
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  }
+/* 2. BASE STYLES */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
 
-  /* Fade-in animation name utility */
-  .fade-in {
-    animation-name: fade-in;
-  }
+/* 3. UTILITIES (The Glass Effect) */
+/* We use standard CSS here to prevent Tailwind parsing errors */
+.glass-panel {
+  background-color: rgba(17, 24, 39, 0.7); /* Dark Blue-Grey with opacity */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(75, 85, 99, 0.4);
+}
 
-  /* Slide in from bottom by 1rem (4 in Tailwind spacing scale) */
-  .slide-in-from-bottom-4 {
-    animation-name: slide-in-from-bottom-4;
-  }
+/* 4. HIDE SCROLLBARS (For cleaner mobile UI) */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* 5. CUSTOM UTILITY CLASSES (Neon text + animations) */
+
+/* Neon text shadow effect used in hero/headline elements */
+.text-shadow-neon {
+  text-shadow:
+    0 0 8px rgba(56, 189, 248, 0.8),
+    0 0 16px rgba(56, 189, 248, 0.8),
+    0 0 24px rgba(56, 189, 248, 0.8);
+}
+
+/* Base animation utility: duration, easing, fill mode */
+.animate-in {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+/* Fade-in utility */
+.fade-in {
+  animation-name: fade-in;
 }
 
 @keyframes fade-in {
@@ -39,6 +59,11 @@
   }
 }
 
+/* Slide in from bottom (Tailwind-like “from-bottom-4”) */
+.slide-in-from-bottom-4 {
+  animation-name: slide-in-from-bottom-4;
+}
+
 @keyframes slide-in-from-bottom-4 {
   from {
     transform: translateY(1rem);
@@ -46,6 +71,52 @@
   }
   to {
     transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Zoom-in variants */
+.zoom-in {
+  animation-name: zoom-in;
+}
+
+.zoom-in-50 {
+  animation-name: zoom-in-50;
+}
+
+.zoom-in-90 {
+  animation-name: zoom-in-90;
+}
+
+@keyframes zoom-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in-50 {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in-90 {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
     opacity: 1;
   }
 }
