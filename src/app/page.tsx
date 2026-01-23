@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, Suspense } from 'react';
+import React, { useMemo, useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -42,15 +42,14 @@ function SquaresApp() {
     return liveGames.find(g => g.id === settings.espnGameId) || null;
   }, [liveGames, activeGame, settings.espnGameId]);
 
-  // Sync quarter view with live game period during render (React pattern for adjusting state based on props)
-  const [prevPeriod, setPrevPeriod] = useState<number | undefined>(matchedLiveGame?.period);
-  if (matchedLiveGame?.period !== prevPeriod) {
-    setPrevPeriod(matchedLiveGame?.period);
+  useEffect(() => {
     if (matchedLiveGame?.period) {
-      const p = matchedLiveGame.period;
-      setViewQuarter(p === 1 ? 'q1' : p === 2 ? 'q2' : p === 3 ? 'q3' : 'final');
+      if (matchedLiveGame.period === 1) setViewQuarter('q1');
+      else if (matchedLiveGame.period === 2) setViewQuarter('q2');
+      else if (matchedLiveGame.period === 3) setViewQuarter('q3');
+      else if (matchedLiveGame.period >= 4) setViewQuarter('final');
     }
-  }
+  }, [matchedLiveGame?.period]);
 
   const totalPot = useMemo(() => {
     return players.reduce((acc, p) => acc + (p.squares * settings.pricePerSquare), 0);
