@@ -16,7 +16,7 @@ import CreateGameForm from '@/components/CreateGameForm';
 import JoinGameForm from '@/components/JoinGameForm';
 import SquareDetails from '@/components/SquareDetails';
 import AuthModal from '@/components/AuthModal';
-import BottomNav from '@/components/BottomNav'; // <-- IMPORTED
+import BottomNav from '@/components/BottomNav';
 
 import { useAuth } from '@/context/AuthContext';
 import { useGame, type GameState } from '@/context/GameContext';
@@ -116,6 +116,80 @@ function SquaresApp() {
       void claimSquare(row, col, { id: user.uid, name: user.displayName || 'Anonymous' });
     }
   };
+  
+  // --- RESTORED HANDLER FUNCTIONS ---
+  const handleEventSelect = (game: EspnScoreData | null) => {
+    if (!canManage) return;
+    if (game) {
+      void updateSettings({
+        teamA: game.awayTeam.name,
+        teamB: game.homeTeam.name,
+        espnGameId: game.id,
+        eventName: game.name,
+        espnLeague: game.league,
+        eventDate: game.date,
+      });
+    } else {
+      void updateSettings({ espnGameId: '', eventName: '', espnLeague: '', eventDate: '' });
+    }
+  };
+
+  const handleDeleteGame = async () => {
+    if (!canManage) return;
+    if (window.confirm('Are you sure you want to PERMANENTLY DELETE this game? This action cannot be undone.')) {
+      if (window.confirm('Please confirm one last time: Delete Game Forever?')) {
+        await deleteGame();
+        setView('home');
+      }
+    }
+  };
+
+  const handleManualPayout = async (teamA: number, teamB: number) => {
+    if (!canManage || !activeGame) return;
+    await updateScores(teamA, teamB);
+    const rowDigit = teamA % 10;
+    const colDigit = teamB % 10;
+    const rowIndex = currentAxis.rows.indexOf(rowDigit);
+    const colIndex = currentAxis.cols.indexOf(colDigit);
+
+    if (rowIndex < 0 || colIndex < 0) {
+      alert('Cannot determine winner: Grid digits are invalid.');
+      return;
+    }
+
+    const key = `${rowIndex}-${colIndex}`;
+    const claims = squares[key] || [];
+    const standardLabels = ["Q1 Winner", "Q2 Winner", "Q3 Winner", "Final Winner"];
+    const nextLabelIndex = Math.min(payoutHistory.length, standardLabels.length - 1);
+    const label = standardLabels[nextLabelIndex];
+    const payoutInfo = payouts.find(p => p.label === label) || payouts[payouts.length - 1];
+    const amount = payoutInfo?.amount || 0;
+
+    if (claims.length === 0 && !confirm(`No player on square ${teamA}-${teamB}. Log \"No Winner\"?`)) return;
+
+    const winners = claims.map(c => ({ uid: c.uid, name: c.name }));
+    const primaryWinner = winners[0] || { uid: 'NONE', name: 'No Winner' };
+    const winnerNames = winners.length > 0 ? winners.map(w => w.name).join(', ') : primaryWinner.name;
+
+    await logPayout({
+      id: `manual_${Date.now()}`,
+      period: nextLabelIndex + 1,
+      label,
+      amount,
+      winnerUserId: primaryWinner.uid,
+      winnerName: winnerNames,
+      winners,
+      timestamp: Date.now(),
+      teamAScore: teamA,
+      teamBScore: teamB,
+      gameId: activeGame.id,
+      gameName: settings.name,
+      teamA: settings.teamA,
+      teamB: settings.teamB,
+      eventDate: settings.eventDate
+    });
+  };
+
 
   if (loading) return null;
   if (!user) return <AuthModal />;
@@ -180,15 +254,15 @@ function SquaresApp() {
                  isScrambled={settings.isScrambled ?? false}
                  onUpdateScores={updateScores}
                  onScrambleGridDigits={scrambleGridDigits}
-                 onDeleteGame={() => {}}
-                 onSelectEvent={() => {}}
+                 onDeleteGame={handleDeleteGame} // <-- RESTORED
+                 onSelectEvent={handleEventSelect} // <-- RESTORED
                  selectedEventId={settings.espnGameId ?? ''}
                  eventDate={settings.eventDate ?? ''}
                  eventName={settings.eventName ?? ''}
                  eventLeague={settings.espnLeague ?? ''}
                  availableGames={liveGames}
                  onResetGridDigits={resetGridDigits}
-                 onManualPayout={() => {}}
+                 onManualPayout={handleManualPayout} // <-- RESTORED
                />
                <PlayerList players={players} pricePerSquare={settings.pricePerSquare} canManagePayments={isAdmin} canManagePlayers={canManage} onTogglePaid={togglePaid} onDeletePlayer={deletePlayer} />
             </div>
@@ -200,7 +274,6 @@ function SquaresApp() {
         )}
       </main>
       
-      {/* ADDING THE BOTTOM NAV COMPONENT */}
       <BottomNav />
 
     </div>
