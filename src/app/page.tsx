@@ -12,7 +12,6 @@ import TrophyCase from '@/components/TrophyCase';
 import Grid from '@/components/Grid';
 import GameInfo from '@/components/GameInfo';
 import PlayerList from '@/components/PlayerList';
-import CreateGameForm from '@/components/CreateGameForm';
 import JoinGameForm from '@/components/JoinGameForm';
 import SquareDetails from '@/components/SquareDetails';
 import AuthModal from '@/components/AuthModal';
