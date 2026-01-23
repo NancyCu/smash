@@ -33,7 +33,7 @@ function SquaresApp() {
   const currentView = (searchParams.get('view') as View) || (initialGameCode ? 'join' : 'home');
 
   const { user, logout, loading, isAdmin } = useAuth();
-  const { activeGame, settings, squares, players, scores, claimSquare, unclaimSquare, togglePaid, deletePlayer, updateScores, leaveGame, resetGame, scrambleGridDigits, resetGridDigits, updateSettings, getUserGames, joinGame, logPayout, payoutHistory, deleteGame } = useGame();
+  const { activeGame, settings, squares, players, scores, claimSquare, unclaimSquare, togglePaid, deletePlayer, updateScores, scrambleGridDigits, resetGridDigits, updateSettings, logPayout, payoutHistory, deleteGame } = useGame();
   const { games: liveGames } = useEspnScores();
   
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
