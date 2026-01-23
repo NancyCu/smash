@@ -220,7 +220,7 @@ function SquaresApp() {
           <div className='flex flex-col lg:flex-row items-stretch lg:items-start gap-4 animate-in fade-in duration-500 max-w-[2200px] mx-auto w-full'>
             <div className='flex-1 flex flex-col gap-4 w-full min-w-0'>
               <div className='w-full relative rounded-2xl ring-1 ring-slate-200 dark:ring-white/10 shadow-xl bg-white/60 dark:bg-slate-800/50 backdrop-blur-md p-4'>
-                <TrophyCase payouts={payouts} history={payoutHistory} totalPot={totalPot} />
+                <TrophyCase payouts={payouts} history={payoutHistory} />
                 <QuarterTabs activeQuarter={viewQuarter} setActiveQuarter={setViewQuarter} isGameStarted={isGameStarted} />
               </div>
               <div className='w-full relative rounded-2xl ring-1 ring-slate-200 dark:ring-white/10 shadow-2xl bg-white/60 dark:bg-slate-800/50 backdrop-blur-md'>
