@@ -15,7 +15,6 @@ import PlayerList from '@/components/PlayerList';
 import JoinGameForm from '@/components/JoinGameForm';
 import SquareDetails from '@/components/SquareDetails';
 import AuthModal from '@/components/AuthModal';
-import BottomNav from '@/components/BottomNav';
 
 import { useAuth } from '@/context/AuthContext';
 import { useGame, type GameState } from '@/context/GameContext';
@@ -271,8 +270,6 @@ function SquaresApp() {
             </div>
         )}
       </main>
-      
-      <BottomNav />
 
     </div>
   );
