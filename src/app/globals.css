@@ -2,50 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom utility classes and animations restored for Tailwind v4 setup */
-@layer utilities {
-  /* Neon text shadow utility (previously defined in globals.css) */
-  .text-shadow-neon {
-    text-shadow:
-      0 0 5px rgba(59, 130, 246, 0.7),
-      0 0 10px rgba(59, 130, 246, 0.9),
-      0 0 20px rgba(59, 130, 246, 0.9);
+@layer components {
+  .glass-panel {
+    @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-lg border border-white/20 dark:border-white/5 shadow-xl;
+  }
+  
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
-  /* Base animation utility, similar to tailwindcss-animate's .animate-in */
-  .animate-in {
-    animation-duration: 150ms;
-    animation-fill-mode: both;
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  /* Fade-in animation name utility */
-  .fade-in {
-    animation-name: fade-in;
-  }
-
-  /* Slide in from bottom by 1rem (4 in Tailwind spacing scale) */
-  .slide-in-from-bottom-4 {
-    animation-name: slide-in-from-bottom-4;
+  .text-shadow-glow {
+    text-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
   }
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+/* 1. FORCE THE DARK THEME VARIABLES */
+:root {
+  --background: #0B0C15;
+  --foreground: #F3F4F6;
 }
 
-@keyframes slide-in-from-bottom-4 {
-  from {
-    transform: translateY(1rem);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+/* 2. HARDCODE THE BODY DEFAULTS */
+body {
+  background-color: #0B0C15 !important; /* Force Dark Charcoal */
+  color: #F3F4F6 !important; /* Force White Text */
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 3. FIX THE GLASS PANELS */
+.glass-panel {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(75, 85, 99, 0.4);
+}
+
+/* 4. HIDE THE SCROLLBAR (Keeps mobile clean) */
+::-webkit-scrollbar {
+  display: none;
 }

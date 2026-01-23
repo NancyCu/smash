@@ -23,19 +23,19 @@ export const metadata: Metadata = {
   description: "The ultimate squares game for sports fans",
 };
 
+import "./globals.css";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+<html lang="en" className="dark">  {/* <--- ADD IT HERE */}
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300`}
-      >
+     <body className="antialiased bg-[#0B0C15] text-white">
         <ThemeProvider>
           <AuthProvider>
             <GameProvider>
