@@ -220,6 +220,7 @@ export default function GamePage() {
   const currentAxis = game.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
 
   return (
+    <main className="flex flex-col lg:flex-row h-screen w-full bg-[#0B0C15] overflow-hidden">
 
       {/* MOBILE HEADER (Always Visible on Small Screens) */}
       <div className="lg:hidden p-4 bg-[#0B0C15]/90 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5 shrink-0">
@@ -253,8 +254,6 @@ export default function GamePage() {
       {/* LEFT: ACTION AREA (Grid + Score) */}
       {/* -------------------- */}
       <div className={`flex-1 flex-col h-full relative overflow-y-auto lg:overflow-hidden no-scrollbar ${mobileView === 'board' ? 'flex' : 'hidden'} lg:flex`}>
-/button>
-        </div>
 
         {/* MAIN CONTENT AREA */}
         <div className="flex-1 flex flex-col items-center justify-start p-2 lg:p-6 w-full">
@@ -347,7 +346,7 @@ export default function GamePage() {
 
             {/* 2. THE GRID */}
             <div className="relative w-full max-w-[85vh] aspect-square flex items-center justify-center bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 overflow-hidden shrink-0">
-                <Grid{`w-full lg:w-[420px] bg-[#0f111a] border-l border-white/5 overflow-y-auto z-20 shadow-2xl h-full lg:h-full ${mobileView === 'info' ? 'flex flex-col flex-1' : 'hidden'} lg:block`}
+                <Grid 
                   rows={currentAxis.row}
                   cols={currentAxis.col}
                   squares={formattedSquares}
@@ -365,7 +364,7 @@ export default function GamePage() {
       {/* -------------------- */}
       {/* RIGHT: SIDEBAR (Info) */}
       {/* -------------------- */}
-      <div className="w-full lg:w-[420px] bg-[#0f111a] border-l border-white/5 overflow-y-auto z-20 shadow-2xl h-auto lg:h-full">
+      <div className={`w-full lg:w-[420px] bg-[#0f111a] border-l border-white/5 overflow-y-auto z-20 shadow-2xl h-full lg:h-full ${mobileView === 'info' ? 'flex flex-col flex-1' : 'hidden'} lg:block`}>
          <div className="p-6 space-y-8">
             {/* Desktop Header */}
             <div className="hidden lg:flex items-center justify-between mb-6">
