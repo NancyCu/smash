@@ -69,10 +69,12 @@ export default function GameInfo({
       setTeamAScore(scores.teamA); 
       setTeamBScore(scores.teamB); 
     } 
-  }, [scores?.teamA, scores?.teamB]);
+  }, [scores]);
 
   useEffect(() => { 
-    setLocalEventId(selectedEventId ?? ""); 
+    if (selectedEventId !== undefined) {
+      setLocalEventId(selectedEventId ?? ""); 
+    }
   }, [selectedEventId]);
 
   const handleShare = async () => {
@@ -109,7 +111,7 @@ export default function GameInfo({
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
                 <span className="font-mono font-bold text-indigo-300 text-xs tracking-wider">{gameId}</span>
               </div>
-              <button onClick={handleShare} className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-300 hover:text-white transition-colors"><Share2 className="w-4 h-4" /></button>
+              <button aria-label="Share Game" onClick={handleShare} className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-300 hover:text-white transition-colors"><Share2 className="w-4 h-4" /></button>
             </div>
           )}
         </div>
