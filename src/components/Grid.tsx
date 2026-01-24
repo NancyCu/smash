@@ -64,100 +64,65 @@ function classesForUid(uid: string) {
 }
 
 // --- Component ---
+// ... imports and helpers stay the same ...
+
 export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB, teamALogo, teamBLogo, isScrambled, winningCell, selectedCell }: GridProps) {
   const showLogos = !isScrambled;
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center pt-2 pl-6 md:pt-4 md:pl-10">
 
-      {/* Team B Label (Horizontal Top) */}
+      {/* --- TEAM B HEADER (Top) --- */}
       <div className="absolute top-0 left-0 right-0 pl-6 md:pl-10 flex items-center justify-center gap-3 z-30 pointer-events-none -translate-y-3/4">
-        <span className="text-center font-black text-xl md:text-3xl text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
-          {teamB}
-        </span>
+        {/* LOGO FIRST for Horizontal */}
         {showLogos && teamBLogo && (
-          <div className="relative w-8 h-8 md:w-10 md:h-10 shrink-0">
+          <div className="relative w-6 h-6 md:w-10 md:h-10 shrink-0">
             <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-md" />
           </div>
         )}
+        <span className="text-center font-black text-xl md:text-3xl text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
+          {teamB}
+        </span>
       </div>
 
-      {/* Team A Label (Vertical Left) */}
-      {/* FIX: ensure logic keeps logo at the TOP of the vertical text */}
+      {/* --- TEAM A HEADER (Left/Vertical) --- */}
       <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center z-30 pointer-events-none -translate-x-1/3">
         <div className="transform -rotate-90 flex items-center gap-3 whitespace-nowrap origin-center">
-            
-            {/* 1. TEAM NAME (First = Bottom after -90deg rotation) */}
-            <span className="font-black text-xl md:text-3xl text-pink-600 dark:text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">
-              {teamA}
-            </span>
-
-            {/* 2. TEAM LOGO (Second = Top after -90deg rotation) */}
+            {/* LOGO FIRST (Visual Top) */}
             {showLogos && teamALogo && (
                 <div className="relative w-6 h-6 md:w-8 md:h-8 shrink-0">
                   <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-md" />
                 </div>
             )}
+            <span className="font-black text-xl md:text-3xl text-pink-600 dark:text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">
+              {teamA}
+            </span>
         </div>
       </div>
 
-      {/* The Grid Wrapper */}
+      {/* --- THE GRID --- */}
       <div className="relative w-full aspect-square rounded-xl shadow-2xl bg-slate-300 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-700/50 p-0.5 md:p-1">
         <div className="grid grid-cols-11 w-full h-full bg-slate-100 dark:bg-slate-900">
-            {/* Top-left empty corner */}
+            
+            {/* Corner */}
             <div className="aspect-square bg-black dark:bg-black shadow-md border-b border-r border-slate-300 dark:border-white/10"></div>
 
-            {/* Column Headers (0-9) */}
+            {/* Column Headers */}
             {cols.map((num) => (
-              <div
-                key={`col-${num}`}
-                className="aspect-square flex items-center justify-center bg-black dark:bg-black border-b border-r border-slate-200 dark:border-white/10 text-cyan-600 dark:text-cyan-400 font-black text-xs sm:text-sm md:text-xl shadow-sm relative overflow-hidden"
-              >
-                {isScrambled ? (
-                  <span className="relative z-10">{num}</span>
-                ) : (
-                  teamBLogo && (
-                    <div className="absolute inset-0 flex items-center justify-center p-2">
-                      <div
-                        className="relative w-full h-full"
-                        style={{
-                          mask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
-                          WebkitMask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
-                        }}
-                      >
-                        <Image src={teamBLogo} alt={teamB} fill className="object-contain opacity-80" />
-                      </div>
-                    </div>
-                  )
-                )}
+              <div key={`col-${num}`} className="aspect-square flex items-center justify-center bg-black dark:bg-black border-b border-r border-slate-200 dark:border-white/10 text-cyan-400 font-black text-sm sm:text-base md:text-2xl shadow-sm">
+                {num}
               </div>
             ))}
 
-            {/* Rows & Cells */}
+            {/* Rows Loop */}
             {rows.map((rowNum, rowIndex) => (
               <React.Fragment key={`row-${rowNum}`}>
                 {/* Row Header */}
-                <div className="aspect-square flex items-center justify-center bg-black dark:bg-black border-r border-b border-slate-200 dark:border-white/10 text-pink-600 dark:text-pink-500 font-black text-xs sm:text-sm md:text-xl shadow-sm relative overflow-hidden">
-                  {isScrambled ? (
-                    <span className="relative z-10">{rowNum}</span>
-                  ) : (
-                    teamALogo && (
-                      <div className="absolute inset-0 flex items-center justify-center p-2">
-                        <div
-                          className="relative w-full h-full"
-                          style={{
-                            mask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
-                            WebkitMask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
-                          }}
-                        >
-                          <Image src={teamALogo} alt={teamA} fill className="object-contain opacity-80" />
-                        </div>
-                      </div>
-                    )
-                  )}
+                <div className="aspect-square flex items-center justify-center bg-black dark:bg-black border-r border-b border-slate-200 dark:border-white/10 text-pink-500 font-black text-sm sm:text-base md:text-2xl shadow-sm">
+                  {rowNum}
                 </div>
 
-                {/* Squares */}
+                {/* CELLS */}
                 {cols.map((colNum, colIndex) => {
                   const key = `${rowIndex}-${colIndex}`;
                   const claims = (squares[key] ?? []).slice(0, 10);
@@ -170,45 +135,39 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                       key={key}
                       onClick={() => onSquareClick(rowIndex, colIndex)}
                       className={cn(
-                        'aspect-square relative w-full h-full gap-[1px] group overflow-hidden border-[0.5px] border-slate-200/50 dark:border-white/5',
+                        'aspect-square relative w-full h-full border-[0.5px] border-slate-200/50 dark:border-white/5 overflow-hidden group',
                         claims.length > 0 ? 'bg-slate-50 dark:bg-slate-800/60' : 'bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/80',
-                        isFull ? 'cursor-not-allowed opacity-90' : 'cursor-pointer',
-                        (isWinner || isSelected) && 'z-10',
-                        isWinner && 'ring-2 ring-yellow-400 bg-yellow-400/20 animate-pulse shadow-[0_0_20px_rgba(250,204,21,0.5)] z-20',
-                        isSelected && !isWinner && 'ring-2 ring-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)] z-20'
+                        isFull ? 'cursor-not-allowed' : 'cursor-pointer',
+                        isWinner && 'ring-2 ring-yellow-400 bg-yellow-400/20 animate-pulse z-20',
+                        isSelected && !isWinner && 'ring-2 ring-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.4)] z-20'
                       )}
                     >
                       {claims.length === 0 ? (
-                          <div className="absolute inset-0 m-auto w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700/50 group-hover:bg-cyan-500/50 transition-colors" />
-                      ) : claims.length <= 4 ? (
-                        <div className="w-full h-full flex flex-col">
-                          {claims.map((c, idx) => (
-                            <div
-                              key={c.uid}
-                              className={cn(
-                                'flex-1 items-center justify-center text-[8px] lg:text-[10px] leading-none font-bold truncate px-0.5',
-                                classesForUid(c.uid).bg,
-                                classesForUid(c.uid).text
-                              )}
-                              title={c.name}
-                            >
-                              {c.name}
-                            </div>
-                          ))}
+                          // EMPTY STATE: Dot or "Select" logic could go here
+                          <div className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 group-hover:bg-cyan-500/50 transition-colors" />
+                      ) : claims.length === 1 ? (
+                        // SINGLE CLAIM (Strictly Centered)
+                        <div className={cn(
+                          "w-full h-full flex items-center justify-center p-0.5",
+                          classesForUid(claims[0].uid).bg
+                        )}>
+                           <span className={cn(
+                             "text-[10px] sm:text-xs font-black truncate max-w-full px-1",
+                             classesForUid(claims[0].uid).text
+                           )}>
+                             {claims[0].name}
+                           </span>
                         </div>
                       ) : (
-                        <div className="w-full h-full grid grid-cols-3 grid-rows-3 gap-[1px]">
-                          {claims.map((c) => (
-                             <div
-                              key={c.uid}
-                              className={cn(
-                                'flex items-center justify-center text-[6px] lg:text-[8px] font-white font-bold leading-none',
-                                classesForUid(c.uid).bg,
-                                classesForUid(c.uid).text
-                              )}
-                              title={c.name}
-                            >
-                              {c.name.charAt(0).toUpperCase()}
+                        // MULTI CLAIM (Grid Layout)
+                        <div className="w-full h-full grid grid-cols-2 grid-rows-2 content-center items-center">
+                          {claims.slice(0, 4).map((c) => (
+                            <div key={c.uid} className={cn(
+                              "flex items-center justify-center text-[7px] sm:text-[9px] font-bold h-full leading-none truncate px-0.5",
+                              classesForUid(c.uid).bg,
+                              classesForUid(c.uid).text
+                            )}>
+                              {c.name.substring(0, 3)}
                             </div>
                           ))}
                         </div>
@@ -218,8 +177,8 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                 })}
               </React.Fragment>
             ))}
-          </div>
         </div>
+      </div>
     </div>
   );
 }

@@ -19,7 +19,7 @@ export default function JoinPage() {
         Enter the game code provided by your host to jump into the grid.
       </p>
       
-      <JoinGameForm onSuccess={() => router.push('/?view=game')} />
+      <JoinGameForm onSuccess={(gameId) => router.push(`/game/${gameId}`)} />
       
     </main>
   );

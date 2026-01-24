@@ -8,8 +8,8 @@ export default function CreatePage() {
   const router = useRouter();
 
   // Redirect straight into the active game grid after creation
-  const handleSuccess = () => {
-    router.push('/?view=game');
+  const handleSuccess = (gameId: string) => {
+    router.push(`/game/${gameId}`);
   };
 
   return (

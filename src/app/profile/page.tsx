@@ -67,7 +67,7 @@ export default function ProfilePage() {
     await joinGame(gameId);
     setGameId(gameId);
     if (typeof window !== "undefined") localStorage.setItem("activeGameId", gameId);
-    router.push("/?view=game");
+    router.push(`/game/${gameId}`);
   };
 
   if (!user) {

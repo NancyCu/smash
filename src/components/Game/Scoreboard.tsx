@@ -1,14 +1,6 @@
-import React from 'react';
+"use client";
 
-export type SquareClaim = {
-  uid: string;
-  name: string;
-  claimedAt: number;
-  paidAt?: unknown;
-  displayName?: string;
-  userId?: string;
-  claimedBy?: string;
-};
+import React from "react";
 
 interface ScoreboardProps {
   scores: {
@@ -17,61 +9,55 @@ interface ScoreboardProps {
     q3: { home: number; away: number };
     final: { home: number; away: number };
   };
-  teamA: string; // Vertical Team
-  teamB: string; // Horizontal Team
+  teamA: string;
+  teamB: string;
 }
 
+// FIX: Define helper components OUTSIDE the main component
+const QStat = ({ label, h, a }: { label: string; h: number; a: number }) => (
+  <div className="flex flex-col items-center px-2 sm:px-3 border-r border-white/10 last:border-0">
+    <span className="text-[8px] sm:text-[9px] uppercase font-bold text-slate-500 tracking-widest leading-none mb-1">
+      {label}
+    </span>
+    <div className="text-[10px] sm:text-xs font-bold text-white font-mono leading-none">
+      <span className="text-cyan-400">{a}</span>
+      <span className="mx-0.5 text-slate-600">:</span>
+      <span className="text-pink-500">{h}</span>
+    </div>
+  </div>
+);
+
 export default function Scoreboard({ scores, teamA, teamB }: ScoreboardProps) {
-  
+  // Calculate distinct total if needed
+  const currentHome = scores.final.home;
+  const currentAway = scores.final.away;
+
   return (
-    <div className="w-full max-w-md mx-auto mb-2">
-      <div className="grid grid-cols-4 gap-1">
-        {/* Quarter 1 */}
-        <div className="bg-slate-900/50 border border-white/10 rounded-lg p-2 flex flex-col items-center justify-center">
-          <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-widest">Q1</span>
-          <div className="text-white font-mono leading-none text-sm mt-1">
-            <span className="text-pink-400">{scores?.q1?.home ?? '-'}</span>
-            <span className="mx-1 text-slate-500">:</span>
-            <span className="text-cyan-400">{scores?.q1?.away ?? '-'}</span>
-          </div>
-        </div>
-
-        {/* Quarter 2 */}
-        <div className="bg-slate-900/50 border border-white/10 rounded-lg p-2 flex flex-col items-center justify-center">
-          <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-widest">Q2</span>
-          <div className="text-white font-mono leading-none text-sm mt-1">
-            <span className="text-pink-400">{scores?.q2?.home ?? '-'}</span>
-            <span className="mx-1 text-slate-500">:</span>
-            <span className="text-cyan-400">{scores?.q2?.away ?? '-'}</span>
-          </div>
-        </div>
-
-        {/* Quarter 3 */}
-        <div className="bg-slate-900/50 border border-white/10 rounded-lg p-2 flex flex-col items-center justify-center">
-          <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-widest">Q3</span>
-          <div className="text-white font-mono leading-none text-sm mt-1">
-            <span className="text-pink-400">{scores?.q3?.home ?? '-'}</span>
-            <span className="mx-1 text-slate-500">:</span>
-            <span className="text-cyan-400">{scores?.q3?.away ?? '-'}</span>
-          </div>
-        </div>
-
-        {/* Final - Special Styling */}
-        <div className="bg-slate-900/80 border border-pink-500/50 rounded-lg p-2 flex flex-col items-center justify-center relative overflow-hidden">
-           <div className="absolute inset-0 bg-pink-500/10" />
-          <span className="text-[9px] text-pink-400 font-bold uppercase tracking-widest relative z-10">FINAL</span>
-          <div className="text-white font-mono leading-none text-sm mt-1 relative z-10">
-            <span className="text-pink-400">{scores?.final?.home ?? '-'}</span>
-            <span className="mx-1 text-slate-500">:</span>
-            <span className="text-cyan-400">{scores?.final?.away ?? '-'}</span>
-          </div>
-        </div>
-      </div>
+    <div className="w-full flex items-center justify-between bg-[#0B0C15]/90 border border-white/10 rounded-lg px-3 py-2 shadow-xl mb-4 backdrop-blur-md">
       
-      {/* Legend (Optional - Helps users know which color is which team) */}
-      <div className="flex justify-between px-2 mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">
-        <span className="text-pink-500">{teamA}</span>
-        <span className="text-cyan-500">{teamB}</span>
+      {/* 1. LEFT: Matchup Text */}
+      <div className="flex items-center gap-2 border-r border-white/10 pr-3 mr-3 shrink-0">
+        <span className="text-[10px] sm:text-xs font-black text-cyan-500 uppercase tracking-widest truncate max-w-[60px] sm:max-w-[100px] text-right">{teamB}</span>
+        <span className="text-[8px] text-slate-600 font-bold">VS</span>
+        <span className="text-[10px] sm:text-xs font-black text-pink-500 uppercase tracking-widest truncate max-w-[60px] sm:max-w-[100px] text-left">{teamA}</span>
+      </div>
+
+      {/* 2. CENTER: THE BIG SCORE */}
+      <div className="flex-1 flex items-center justify-center gap-3">
+         <span className="text-xl sm:text-2xl font-black text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">
+            {currentAway}
+         </span>
+         <span className="h-4 w-px bg-white/10"></span>
+         <span className="text-xl sm:text-2xl font-black text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]">
+            {currentHome}
+         </span>
+      </div>
+
+      {/* 3. RIGHT: Quarter Stats */}
+      <div className="flex items-center gap-0 shrink-0">
+        <QStat label="Q1" h={scores.q1.home} a={scores.q1.away} />
+        <QStat label="Q2" h={scores.q2.home} a={scores.q2.away} />
+        <QStat label="Q3" h={scores.q3.home} a={scores.q3.away} />
       </div>
     </div>
   );

@@ -87,7 +87,7 @@ interface GameContextType {
   deleteGame: () => Promise<void>;
   manualPayout: (gameId: string, status: boolean) => Promise<void>; 
   joinGame: (gameId: string) => Promise<void>;
-  createGame: (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => Promise<void>;
+  createGame: (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => Promise<string>;
   getUserGames: (userId: string) => Promise<GameData[]>;
 
   // -- Player Actions --
@@ -269,7 +269,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       };
 
       const docRef = await addDoc(collection(db, "games"), newGame);
-      setGameId(docRef.id);
+      return docRef.id;
   };
 
   const getUserGames = async (userId: string) => {

@@ -6,7 +6,7 @@ import { Loader2, Trophy, DollarSign, Users, Target, Calendar } from "lucide-rea
 import { useEspnScores } from "@/hooks/useEspnScores";
 
 interface Props {
-  onSuccess: () => void;
+  onSuccess: (gameId: string) => void;
 }
 
 export default function CreateGameForm({ onSuccess }: Props) {
@@ -55,7 +55,7 @@ export default function CreateGameForm({ onSuccess }: Props) {
     
     try {
       // The Fix: We now pass 8 separate arguments instead of 1 big object
-      await createGame(
+      const newGameId = await createGame(
         formData.name, 
         Number(formData.price), 
         formData.teamA, 
@@ -65,7 +65,7 @@ export default function CreateGameForm({ onSuccess }: Props) {
         formData.eventName,
         formData.espnLeague
       );
-      onSuccess();
+      if (newGameId) onSuccess(newGameId);
     } catch (err) {
       console.error("Creation failed", err);
       alert("Failed to create game. Please try again.");
