@@ -62,35 +62,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   const signIn = async (email: string, password: string) => {
-    try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-    } catch (error) {
-      console.error("Error signing in:", error);
-      alert("Error signing in. Check console for details.");
-    }
+    await signInWithEmailAndPassword(auth, email.trim(), password);
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
-    try {
-      const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      if (result.user) {
-        const safeName = (displayName ?? "").trim() || "Anonymous";
-        await updateProfile(result.user, { displayName: safeName });
-        setUser({ ...result.user, displayName: safeName });
-      }
-    } catch (error) {
-      console.error("Error signing up:", error);
-      alert("Error creating account. Check console for details.");
+    const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
+    if (result.user) {
+      const safeName = (displayName ?? "").trim() || "Anonymous";
+      await updateProfile(result.user, { displayName: safeName });
+      setUser({ ...result.user, displayName: safeName });
     }
   };
 
   const logout = async () => {
-    try {
-      await signOut(auth);
-      setUser(null);
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
+    await signOut(auth);
+    setUser(null);
   };
 
   return (
