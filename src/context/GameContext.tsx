@@ -9,7 +9,12 @@ import {
   updateDoc, 
   deleteDoc,
   serverTimestamp,
-  deleteField // Imported correctly at the top
+  deleteField,
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc
 } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext"; 
 
@@ -21,6 +26,21 @@ export interface SquareData {
   paidAt?: number | object | null;
 }
 
+export interface PayoutLog {
+  id?: string;
+  gameName?: string;
+  gameId?: string;
+  winnerName: string;
+  teamA?: string;
+  teamB?: string;
+  label: string;
+  period?: string | number;
+  timestamp: number | string;
+  amount: number;
+  teamAScore: number;
+  teamBScore: number;
+}
+
 export interface GameData {
   id: string;
   name: string;
@@ -30,6 +50,8 @@ export interface GameData {
   pot: number;
   teamA: string;
   teamB: string;
+  espnGameId?: string; // Added for ESPN integration
+  createdAt?: any; 
   scores: {
     q1: { home: number; away: number };
     q2: { home: number; away: number };
@@ -63,8 +85,10 @@ interface GameContextType {
   scrambleGrid: () => Promise<void>;
   resetGrid: () => Promise<void>;
   deleteGame: () => Promise<void>;
-  manualPayout: (gameId: string, status: boolean) => Promise<void>; // Fixed: Added to interface
+  manualPayout: (gameId: string, status: boolean) => Promise<void>; 
   joinGame: (gameId: string) => Promise<void>;
+  createGame: (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => Promise<void>;
+  getUserGames: (userId: string) => Promise<GameData[]>;
 
   // -- Player Actions --
   claimSquare: (index: number) => Promise<void>;
@@ -210,6 +234,64 @@ export function GameProvider({ children }: { children: ReactNode }) {
       throw new Error("Game not found");
     }
   };
+  const createGame = async (
+    name: string,
+    price: number,
+    teamA: string,
+    teamB: string,
+    espnGameId?: string,
+    eventDate?: string,
+    eventName?: string,
+    espnLeague?: string
+  ) => {
+      if (!user) throw new Error("Must be logged in");
+
+      // Basic game structure
+      const newGame = {
+          name,
+          price,
+          teamA,
+          teamB,
+          host: user.displayName || "Unknown",
+          hostId: user.uid,
+          createdAt: serverTimestamp(),
+          pot: 0,
+          scores: { 
+            q1:{home:0,away:0}, q2:{home:0,away:0}, q3:{home:0,away:0}, final:{home:0,away:0}, 
+            teamA:0, teamB:0 
+          },
+          payouts: [],
+          isScrambled: false,
+          axis: { q1:{row:[],col:[]}, q2:{row:[],col:[]}, q3:{row:[],col:[]}, final:{row:[],col:[]} },
+          squares: {},
+          espnGameId: espnGameId || null,
+          espnLeague: espnLeague || null,
+      };
+
+      const docRef = await addDoc(collection(db, "games"), newGame);
+      setGameId(docRef.id);
+  };
+
+  const getUserGames = async (userId: string) => {
+    try {
+      // Currently only fetching games hosted by user due to schema limitations
+      const q = query(collection(db, "games"), where("hostId", "==", userId));
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          scores: data.scores || { q1:{home:0,away:0}, q2:{home:0,away:0}, q3:{home:0,away:0}, final:{home:0,away:0}, teamA:0, teamB:0 },
+          axis: data.axis || { q1:{row:[],col:[]}, q2:{row:[],col:[]}, q3:{row:[],col:[]}, final:{row:[],col:[]} },
+          squares: data.squares || {},
+        } as GameData;
+      });
+    } catch (error) {
+      console.error("Error fetching user games:", error);
+      return [];
+    }
+  };
 
   // Fixed: manualPayout is now defined in the correct scope
   const manualPayout = async (gameId: string, status: boolean) => {
@@ -236,8 +318,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         scrambleGrid,
         resetGrid,
         deleteGame,
-        manualPayout, // This is now defined and won't crash
+        manualPayout, 
         joinGame,
+        getUserGames,
+        createGame,
         claimSquare,
         unclaimSquare,
         togglePaid

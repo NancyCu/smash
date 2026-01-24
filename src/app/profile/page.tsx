@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useGame, GameState } from "@/context/GameContext";
+import { useGame, GameData } from "@/context/GameContext";
 import { ArrowLeft, UserCircle, LayoutGrid, Trophy, Calendar, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { useEspnScores } from "@/hooks/useEspnScores";
@@ -13,10 +13,10 @@ import { useMemo } from "react";
 export default function ProfilePage() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { getUserGames, joinGame, activeGame } = useGame();
+  const { getUserGames, joinGame, setGameId, game: activeGame } = useGame();
   const { games: liveGames } = useEspnScores();
   
-  const [myGames, setMyGames] = useState<GameState[]>([]);
+  const [myGames, setMyGames] = useState<GameData[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
 
   useEffect(() => {
@@ -37,12 +37,12 @@ export default function ProfilePage() {
 
   const sortedGames = useMemo(() => {
     const list = myGames.map(game => {
-      const liveInfo = liveGames.find(lg => lg.id === game.settings.espnGameId);
+      const liveInfo = liveGames.find(lg => lg.id === game.espnGameId);
       return {
         ...game,
         isLive: liveInfo?.isLive ?? false,
         statusDetail: liveInfo?.statusDetail,
-        isStarted: game.settings.isScrambled,
+        isStarted: game.isScrambled,
         isPost: liveInfo?.status === "post"
       };
     });
@@ -64,7 +64,9 @@ export default function ProfilePage() {
   const handleEnterGame = async (gameId: string) => {
     if (!user) return;
     // We pass user.uid to bypass password since they are already in the list
-    await joinGame(gameId, undefined, user.uid);
+    await joinGame(gameId);
+    setGameId(gameId);
+    if (typeof window !== "undefined") localStorage.setItem("activeGameId", gameId);
     router.push("/?view=game");
   };
 
@@ -79,7 +81,7 @@ export default function ProfilePage() {
   }
 
   // Calculate owned games vs joined games
-  const ownedGames = myGames.filter(g => g.hostUserId === user.uid);
+  const ownedGames = myGames.filter(g => g.hostId === user.uid);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-24">
@@ -162,7 +164,7 @@ export default function ProfilePage() {
           ) : (
             <div className="grid gap-4">
               {sortedGames.map((game) => {
-                const isHost = game.hostUserId === user.uid;
+                const isHost = game.hostId === user.uid;
                 const isActive = activeGame?.id === game.id;
                 
                 return (
@@ -186,7 +188,7 @@ export default function ProfilePage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <h4 className="font-bold text-lg text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                              {game.settings.name}
+                              {game.name}
                             </h4>
                             {game.isLive && (
                               <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse uppercase tracking-wider">
@@ -206,7 +208,7 @@ export default function ProfilePage() {
                               </span>
                             )}
                             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                              {game.settings.teamA} vs {game.settings.teamB}
+                              {game.teamA} vs {game.teamB}
                             </span>
                             {game.statusDetail && (
                               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase hidden sm:inline">

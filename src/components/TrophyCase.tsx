@@ -3,12 +3,12 @@
 import React from 'react';
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { type PayoutEvent } from '@/context/GameContext'; // <-- IMPORT PayoutEvent
+import { type PayoutLog } from '@/context/GameContext'; // <-- IMPORT PayoutLog
 
 // Define the props for the TrophyCase component
 interface TrophyCaseProps {
   payouts: { label: string; amount: number }[];
-  history: PayoutEvent[]; // <-- USE PayoutEvent[] for history
+  history: PayoutLog[]; // <-- USE PayoutLog[] for history
   totalPot: number;
 }
 

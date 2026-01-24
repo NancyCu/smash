@@ -6,18 +6,18 @@ import { useGame } from "@/context/GameContext";
 
 export default function LiveRedirectPage() {
   const router = useRouter();
-  const { activeGame } = useGame();
+  const { game } = useGame();
 
   useEffect(() => {
     const storedGameId = typeof window !== "undefined" ? localStorage.getItem("activeGameId") : null;
-    const targetGameId = activeGame?.id || storedGameId;
+    const targetGameId = game?.id || storedGameId;
 
     if (targetGameId) {
       router.replace("/?view=game");
     } else {
       router.replace("/join");
     }
-  }, [activeGame?.id, router]);
+  }, [game?.id, router]);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#0B0C15]">

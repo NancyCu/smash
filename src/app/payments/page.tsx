@@ -7,21 +7,56 @@ import { ArrowLeft, Check, X, Calendar } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function PaymentsPage() {
-  const { activeGame, players, settings, togglePaid } = useGame();
+  const { game, togglePaid: contextTogglePaid } = useGame();
   const { isAdmin } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!activeGame) {
+    if (!game) {
       router.push("/");
       return;
     }
-    // Check if current user is host (simple client side check for UI, real security is Firestore rules)
-    // We actually don't have the current user ID easily available in this context without auth hook
-    // But GameContext has players.
-    // Let's just show it to everyone for transparency, or maybe restricting edits to host.
-    // The prompt implies a "page with all the users", transparency is usually good for pots.
-  }, [activeGame, router]);
+  }, [game, router]);
+
+  const activeGame = game ? { ...game, hostUserId: game.hostId } : null;
+  
+  const settings = game ? {
+    name: game.name,
+    pricePerSquare: game.price
+  } : { name: "", pricePerSquare: 0 };
+
+  const players = game ? Object.values(game.squares).reduce((acc: any[], sq: any) => {
+      const existing = acc.find((p: any) => p.id === sq.userId);
+      const isPaid = !!sq.paidAt;
+      if (existing) {
+          existing.squares += 1;
+          if (!isPaid) existing.paid = false;
+          return acc;
+      }
+      acc.push({
+          id: sq.userId,
+          name: sq.displayName,
+          squares: 1,
+          paid: isPaid,
+          paidAt: sq.paidAt
+      });
+      return acc;
+  }, []) : [];
+
+  const togglePaid = async (playerId: string) => {
+      if (!game) return;
+      const squaresIndices: number[] = [];
+      Object.entries(game.squares).forEach(([key, sq]) => {
+          if (sq.userId === playerId) squaresIndices.push(parseInt(key));
+      });
+      const anyUnpaid = squaresIndices.some(idx => !game.squares[idx.toString()].paidAt);
+      
+      await Promise.all(squaresIndices.map(async idx => {
+          const isPaid = !!game.squares[idx.toString()].paidAt;
+          if (anyUnpaid && !isPaid) await contextTogglePaid(idx);
+          else if (!anyUnpaid && isPaid) await contextTogglePaid(idx);
+      }));
+  };
 
   if (!activeGame) return null;
 

@@ -21,7 +21,7 @@ export default function WinnersPage() {
           limit(50)
         );
         const snapshot = await getDocs(q);
-        const data = snapshot.docs.map((d) => d.data() as PayoutLog);
+        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as PayoutLog);
         setWinners(data);
       } catch (error) {
         console.error("Error fetching winners:", error);
