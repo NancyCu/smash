@@ -31,10 +31,10 @@ export default function Scoreboard({ scores, teamA, teamB }: ScoreboardProps) {
   const currentAway = scores.final.away;
 
   return (
-    <div className="flex flex-col items-center gap-2 w-full">
+    <div className="flex flex-col items-center gap-1 w-full">
       
       {/* 1. MATCHUP & TOTAL SCORE CONTAINER */}
-      <div className="w-full max-w-sm bg-[#121421] border border-white/10 rounded-2xl p-3 shadow-lg flex flex-col items-center justify-center gap-1 relative overflow-hidden">
+      <div className="w-full max-w-sm bg-[#121421] border border-white/10 rounded-2xl p-2 shadow-lg flex flex-col items-center justify-center gap-1 relative overflow-hidden">
          {/* Glow effects */}
          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500/20 via-transparent to-pink-500/20"></div>
          
@@ -46,19 +46,19 @@ export default function Scoreboard({ scores, teamA, teamB }: ScoreboardProps) {
          </div>
 
          {/* BIG SCORES */}
-         <div className="flex items-center gap-6 mt-1">
-            <span className="text-4xl font-black text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.4)] leading-none">
+        <div className="flex items-center gap-5 mt-0">
+          <span className="text-3xl font-black text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.4)] leading-none">
               {currentAway}
             </span>
             <div className="h-8 w-px bg-white/5 rotate-12"></div>
-            <span className="text-4xl font-black text-pink-500 drop-shadow-[0_0_15px_rgba(236,72,153,0.4)] leading-none">
+          <span className="text-3xl font-black text-pink-500 drop-shadow-[0_0_15px_rgba(236,72,153,0.4)] leading-none">
               {currentHome}
             </span>
          </div>
       </div>
 
       {/* 2. QUARTER STATS CONTAINER */}
-      <div className="w-full max-w-xs bg-[#121421]/80 backdrop-blur-md border border-white/5 rounded-xl py-2 px-4 shadow-md flex items-center justify-center gap-1">
+      <div className="w-full max-w-xs bg-[#121421]/80 backdrop-blur-md border border-white/5 rounded-xl py-1.5 px-3 shadow-md flex items-center justify-center gap-1">
         <QStat label="Q1" h={scores.q1.home} a={scores.q1.away} />
         <QStat label="Q2" h={scores.q2.home} a={scores.q2.away} />
         <QStat label="Q3" h={scores.q3.home} a={scores.q3.away} />
