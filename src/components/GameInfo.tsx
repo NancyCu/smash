@@ -23,6 +23,8 @@ interface GameInfoProps {
   isScrambled?: boolean;
   availableGames?: EspnScoreData[];
   eventName?: string;
+  currentUserName?: string;
+  currentUserRole?: string;
 
   eventLeague?: string;
   eventDate?: string;
@@ -111,31 +113,13 @@ const LeagueIcon = ({ league }: { league?: string }) => {
   return <Trophy className="w-6 h-6 text-indigo-400" />;
 };
 
-export default function GameInfo({ gameId, gameName, host, pricePerSquare, totalPot, payouts, matchup, scores, isAdmin, onUpdateScores, onManualPayout, onDeleteGame, onScrambleGridDigits, onResetGridDigits, isScrambled, availableGames, eventName, eventLeague, eventDate, selectedEventId, onSelectEvent }: GameInfoProps) {
+export default function GameInfo({ gameId, gameName, host, pricePerSquare, totalPot, payouts, matchup, scores, isAdmin, onUpdateScores, onManualPayout, onDeleteGame, onScrambleGridDigits, onResetGridDigits, isScrambled, availableGames, eventName, eventLeague, eventDate, selectedEventId, onSelectEvent, currentUserName, currentUserRole }: GameInfoProps) {
   const [teamAScore, setTeamAScore] = useState(scores?.teamA ?? 0);
   const [teamBScore, setTeamBScore] = useState(scores?.teamB ?? 0);
-  const [timeUntilGame, setTimeUntilGame] = useState<number | null>(null);
-
   const [localEventId, setLocalEventId] = useState<string>(selectedEventId ?? "");
   
   // Is live sync active? (If selectedEventId is set to a specific game, we assume sync is ON)
   const isLiveSyncActive = !!selectedEventId;
-
-  // Timer for Scramble Logic
-  useEffect(() => {
-    if (!eventDate) {
-      setTimeUntilGame(null);
-      return;
-    }
-    const updateTime = () => {
-      const start = new Date(eventDate).getTime();
-      const now = Date.now();
-      setTimeUntilGame(start - now);
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 5000); // Check every 5s
-    return () => clearInterval(interval);
-  }, [eventDate]);
 
   useEffect(() => {
     if (!scores) return;
@@ -226,19 +210,26 @@ export default function GameInfo({ gameId, gameName, host, pricePerSquare, total
         <div>
           <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{gameName}</h2>
           <p className="text-slate-500 dark:text-slate-400">Hosted by <span className="font-bold text-cyan-600 dark:text-cyan-400">@{host}</span></p>
-          {gameId && (
+          {(currentUserName || gameId) && (
             <div className="flex items-center gap-2 mt-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30">
-                <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">Code</span>
-                <span className="font-mono font-bold text-white selection:bg-indigo-500">{gameId}</span>
-              </div>
-              <button 
-                onClick={handleShare}
-                className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 hover:text-white transition-colors"
-                aria-label="Share game"
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
+              {currentUserName && (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30">
+                  <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">User</span>
+                  <span className="font-semibold text-white selection:bg-indigo-500">{currentUserName}</span>
+                  {currentUserRole && (
+                    <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">{currentUserRole}</span>
+                  )}
+                </div>
+              )}
+              {gameId && (
+                <button 
+                  onClick={handleShare}
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 hover:text-white transition-colors"
+                  aria-label="Share game"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -371,15 +362,11 @@ export default function GameInfo({ gameId, gameName, host, pricePerSquare, total
       )}
 
       {isAdmin && onScrambleGridDigits && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-white/5 bg-slate-100/50 dark:bg-slate-800/50 px-4 py-3 text-xs uppercase tracking-widest text-slate-500">
-          <div className="flex flex-col">
-            <span>Randomize Grid</span>
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-white/5 bg-slate-100/50 dark:bg-slate-800/50 px-4 py-3 text-xs uppercase tracking-widest text-slate-500">
+            <div className="flex flex-col">
+              <span>Randomize Grid</span>
             {isScrambled ? (
               <span className="text-[10px] text-red-500 font-bold">Locked - Already Scrambled</span>
-            ) : timeUntilGame !== null && timeUntilGame > 10 * 60 * 1000 ? (
-               <span className="text-[10px] text-amber-500 font-bold">Unlocks 10m before game</span>
-            ) : timeUntilGame !== null && timeUntilGame <= 2 * 60 * 1000 ? (
-               <span className="text-[10px] text-red-500 font-bold">Locked - Auto Scramble Phase</span>
             ) : null}
           </div>
           <div className="flex gap-2">
@@ -387,11 +374,8 @@ export default function GameInfo({ gameId, gameName, host, pricePerSquare, total
               <button
                 type="button"
                 onClick={onResetGridDigits}
-                disabled={timeUntilGame !== null && timeUntilGame <= 2 * 60 * 1000}
                 className={`px-3 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-white font-black text-[10px] tracking-[0.2em] transition-colors border border-slate-300 dark:border-white/10 ${
-                  (timeUntilGame !== null && timeUntilGame <= 2 * 60 * 1000) 
-                  ? "opacity-50 cursor-not-allowed" 
-                  : "hover:bg-slate-50 dark:hover:bg-slate-600"
+                  "hover:bg-slate-50 dark:hover:bg-slate-600"
                 }`}
               >
                 123...
@@ -400,9 +384,9 @@ export default function GameInfo({ gameId, gameName, host, pricePerSquare, total
             <button
               type="button"
               onClick={onScrambleGridDigits}
-              disabled={isScrambled || (timeUntilGame !== null && (timeUntilGame > 10 * 60 * 1000 || timeUntilGame <= 2 * 60 * 1000))}
+              disabled={isScrambled}
               className={`px-3 py-1 rounded-lg font-black text-[10px] tracking-[0.2em] transition-colors border ${
-                isScrambled || (timeUntilGame !== null && (timeUntilGame > 10 * 60 * 1000 || timeUntilGame <= 2 * 60 * 1000))
+                isScrambled
                   ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
                   : "bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-md shadow-indigo-500/20"
               }`}
