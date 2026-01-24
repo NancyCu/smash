@@ -81,16 +81,22 @@ const LeagueIcon = ({ league }: { league?: string }) => {
 export default function GameInfo({ gameId, gameName, host, pricePerSquare, totalPot, payouts = [], matchup, scores, isAdmin, onUpdateScores, onManualPayout, onDeleteGame, onScrambleGridDigits, onResetGridDigits, isScrambled, availableGames, eventName, eventLeague, eventDate, selectedEventId, onSelectEvent }: GameInfoProps) {
   const [teamAScore, setTeamAScore] = useState(scores?.teamA ?? 0);
   const [teamBScore, setTeamBScore] = useState(scores?.teamB ?? 0);
+  
+  // Track synced scores to update state when props change
+  const [lastSynced, setLastSynced] = useState({ a: scores?.teamA, b: scores?.teamB });
+  
+  if (scores && (scores.teamA !== lastSynced.a || scores.teamB !== lastSynced.b)) {
+    setLastSynced({ a: scores.teamA, b: scores.teamB });
+    setTeamAScore(scores.teamA);
+    setTeamBScore(scores.teamB);
+  }
+
   const [timeUntilGame, setTimeUntilGame] = useState<number | null>(null);
-  const [localEventId, setLocalEventId] = useState<string>(selectedEventId ?? "");
   
   const isLiveSyncActive = !!selectedEventId;
 
   useEffect(() => {
-    if (!eventDate) {
-      setTimeUntilGame(null);
-      return;
-    }
+    if (!eventDate) return;
     const updateTime = () => {
       const start = new Date(eventDate).getTime();
       const now = Date.now();
@@ -101,15 +107,7 @@ export default function GameInfo({ gameId, gameName, host, pricePerSquare, total
     return () => clearInterval(interval);
   }, [eventDate]);
 
-  useEffect(() => {
-    if (!scores) return;
-    setTeamAScore(scores.teamA);
-    setTeamBScore(scores.teamB);
-  }, [scores?.teamA, scores?.teamB]);
 
-  useEffect(() => {
-    setLocalEventId(selectedEventId ?? "");
-  }, [selectedEventId]);
 
   const handleShare = async () => {
     if (!gameId) return;
@@ -146,7 +144,7 @@ export default function GameInfo({ gameId, gameName, host, pricePerSquare, total
 
     const sortByDate = (a: EspnScoreData, b: EspnScoreData) => new Date(a.date).getTime() - new Date(b.date).getTime();
     return { nflGames: nfl.sort(sortByDate), otherGames: other.sort(sortByDate) };
-  }, [availableGames, selectedEventId]);
+  }, [availableGames]);
 
   const allSelectableGames = [...nflGames, ...otherGames];
 
@@ -158,7 +156,6 @@ export default function GameInfo({ gameId, gameName, host, pricePerSquare, total
   };
 
   const handleEventChange = (gameId: string) => {
-    setLocalEventId(gameId);
     const selected = allSelectableGames.find((game) => game.id === gameId);
     onSelectEvent?.(selected ?? null);
   };
@@ -180,7 +177,7 @@ return (
                 <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">Code</span>
                 <span className="font-mono font-bold text-white selection:bg-indigo-500">{gameId}</span>
               </div>
-              <button onClick={handleShare} className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 hover:text-white transition-colors">
+              <button title="Share Game" onClick={handleShare} className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 hover:text-white transition-colors">
                 <Share2 className="w-4 h-4" />
               </button>
             </div>
@@ -213,11 +210,11 @@ return (
                <div className="grid grid-cols-2 gap-3">
                  <div>
                    <div className="text-[10px] font-black text-slate-500 uppercase">{matchup.teamA.split(" ").pop()}</div>
-                   <input type="number" min={0} className={`w-full mt-1 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-lg font-black text-pink-600 dark:text-pink-500 text-2xl focus:ring-2 focus:ring-pink-500/50 outline-none transition-all ${isLiveSyncActive ? "opacity-50 cursor-not-allowed" : ""}`} value={teamAScore} onChange={(e) => setTeamAScore(Number(e.target.value))} disabled={!isAdmin || isLiveSyncActive} />
+                   <input title="Team A Score" type="number" min={0} className={`w-full mt-1 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-lg font-black text-pink-600 dark:text-pink-500 text-2xl focus:ring-2 focus:ring-pink-500/50 outline-none transition-all ${isLiveSyncActive ? "opacity-50 cursor-not-allowed" : ""}`} value={teamAScore} onChange={(e) => setTeamAScore(Number(e.target.value))} disabled={!isAdmin || isLiveSyncActive} />
                  </div>
                  <div>
                    <div className="text-[10px] font-black text-slate-500 uppercase">{matchup.teamB.split(" ").pop()}</div>
-                   <input type="number" min={0} className={`w-full mt-1 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-lg font-black text-cyan-600 dark:text-cyan-500 text-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none transition-all ${isLiveSyncActive ? "opacity-50 cursor-not-allowed" : ""}`} value={teamBScore} onChange={(e) => setTeamBScore(Number(e.target.value))} disabled={!isAdmin || isLiveSyncActive} />
+                   <input title="Team B Score" type="number" min={0} className={`w-full mt-1 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-lg font-black text-cyan-600 dark:text-cyan-500 text-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none transition-all ${isLiveSyncActive ? "opacity-50 cursor-not-allowed" : ""}`} value={teamBScore} onChange={(e) => setTeamBScore(Number(e.target.value))} disabled={!isAdmin || isLiveSyncActive} />
                  </div>
                </div>
                {isAdmin && onUpdateScores && !isLiveSyncActive && (
@@ -237,7 +234,7 @@ return (
           {isAdmin && allSelectableGames.length > 0 && (
              <div className="space-y-2 rounded-2xl border border-slate-200 dark:border-white/5 bg-slate-100/50 dark:bg-slate-800/50 px-4 py-3">
                 {/* ... (Keep existing Selector logic) ... */}
-                <select value={localEventId} onChange={(e) => handleEventChange(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-900/20 outline-none">
+                <select title="Select Game" value={selectedEventId ?? ""} onChange={(e) => handleEventChange(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-900/20 outline-none">
                   <option value="">Manual matchup</option>
                   {nflGames.length > 0 && (
                     <optgroup label="🏈 NFL Games" className="font-bold text-amber-600 bg-amber-50 dark:bg-slate-800">

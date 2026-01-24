@@ -34,7 +34,7 @@ export default function GamePage() {
   // Find the ESPN game object if we have an ID
   const matchedGame = useMemo(() => 
     game?.espnGameId ? liveGames.find(g => g.id === game.espnGameId) : null, 
-    [game?.espnGameId, liveGames]
+    [game, liveGames]
   );
   
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
@@ -61,35 +61,42 @@ export default function GamePage() {
        return game?.scores || { q1:{home:0,away:0}, q2:{home:0,away:0}, q3:{home:0,away:0}, final:{home:0,away:0}, teamA:0, teamB:0 };
     }
 
-    // matchedGame is already derived above, reuse it? Or re-find (safe either way)
-    const match = liveGames.find(g => g.id === game.espnGameId);
+    const matchedGame = liveGames.find(g => g.id === game.espnGameId);
     
-    if (match && match.competitors) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const safeGame = matchedGame as any; 
+
+    if (safeGame && safeGame.competitors) {
       // Helper: Fuzzy match team names
       const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
       const targetA = normalize(game.teamA);
       const targetB = normalize(game.teamB);
       
-      let compA = match.competitors.find((c: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let compA = safeGame.competitors.find((c: any) => {
          const cName = normalize(c.team.name);
          const cAbbr = normalize(c.team.abbreviation);
          return cName.includes(targetA) || targetA.includes(cName) || cAbbr === targetA;
       });
-      let compB = match.competitors.find((c: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let compB = safeGame.competitors.find((c: any) => {
          const cName = normalize(c.team.name);
          const cAbbr = normalize(c.team.abbreviation);
          return cName.includes(targetB) || targetB.includes(cName) || cAbbr === targetB;
       });
 
       // Fallbacks if direct matching fails
-      if (!compA && compB) compA = match.competitors.find((c: any) => c.id !== compB.id);
-      if (!compB && compA) compB = match.competitors.find((c: any) => c.id !== compA.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (!compA && compB) compA = safeGame.competitors.find((c: any) => c.id !== compB.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (!compB && compA) compB = safeGame.competitors.find((c: any) => c.id !== compA.id);
       if (!compA && !compB) {
-         compA = match.competitors[0];
-         compB = match.competitors[1];
+         compA = safeGame.competitors[0];
+         compB = safeGame.competitors[1];
       }
 
       // Safe Extraction Helper
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const getScore = (comp: any, index: number) => {
         if (!comp || !comp.linescores || !comp.linescores[index]) return 0;
         return Number(comp.linescores[index].value || 0);
@@ -131,7 +138,7 @@ export default function GamePage() {
       }
     });
     return result;
-  }, [game?.squares]);
+  }, [game]);
 
   useEffect(() => {
     if (id && typeof id === 'string') {
