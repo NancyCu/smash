@@ -40,6 +40,18 @@
 			"command": "echo \"Grid Layout Restored to Star Image Spec\"",
 			"isBackground": false,
 			"group": "test"
+		},
+		{
+			"label": "Build Project",
+			"type": "shell",
+			"command": "npm run build",
+			"group": "build"
+		},
+		{
+			"label": "Build Project",
+			"type": "shell",
+			"command": "npm run build",
+			"group": "build"
 		}
 	]
 }
