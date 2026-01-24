@@ -1,5 +1,15 @@
 import React from 'react';
 
+export type SquareClaim = {
+  uid: string;
+  name: string;
+  claimedAt: number;
+  paidAt?: unknown;
+  displayName?: string;
+  userId?: string;
+  claimedBy?: string;
+};
+
 interface ScoreboardProps {
   scores: {
     q1: { home: number; away: number };
