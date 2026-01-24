@@ -144,7 +144,15 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                     teamALogo && (
                       <div className="absolute inset-0 flex items-center justify-center p-2">
                         <div
-                          className="relative w-full h-full [mask-image:radial-gradient(ellipse_at_center,black_0%,black_55%,transparent_100%)]"
+                          className="relative w-full h-full"
+                          style={{
+                            mask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
+                            WebkitMask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
+                          }}
+                        >
+                          <Image src={teamALogo} alt={teamA} fill className="object-contain opacity-80" />
+                        </div>
+                      </div>
                     )
                   )}
                 </div>

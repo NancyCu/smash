@@ -52,6 +52,22 @@ export default function GamePage() {
     };
   }, [game, activeQuarter]);
 
+  const gridSquares = useMemo(() => {
+    if (!game?.squares) return {} as Record<string, { initials: string; paid: boolean }[]>;
+
+    return Object.fromEntries(
+      Object.entries(game.squares).map(([key, val]) => {
+        const initials = val?.displayName
+          ? val.displayName.substring(0, 2).toUpperCase()
+          : "??";
+
+        const paid = !!val?.paidAt;
+
+        return [key, [{ initials, paid }]];
+      })
+    ) as Record<string, { initials: string; paid: boolean }[]>;
+  }, [game]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-cyan-400 animate-pulse">Loading Arena...</div>;
   if (!game) return <div className="min-h-screen flex items-center justify-center text-pink-500">Game Not Found</div>;
 
@@ -81,21 +97,11 @@ export default function GamePage() {
   <Grid 
   rows={currentAxis.rows}
   cols={currentAxis.cols}
-  squares={Object.fromEntries(
-  Object.entries(game.squares).map(([key, val]) => [
-    key, 
-    [{
-      ...val,
-      // Map the DB fields to what the UI likely expects
-      initials: val.displayName ? val.displayName.substring(0, 2).toUpperCase() : "??",
-      paid: !!val.paidAt
-    }]
-  ])
-) as unknown as Record<string, { initials: string; paid: boolean }[]>}
+  squares={gridSquares}
   teamA={game.teamA}
   teamB={game.teamB}
   isScrambled={game.isScrambled}
-  onSquareClick={() => {}} 
+  onSquareClick={(_row: number, _col: number) => {}} 
   winningCell={null}
   selectedCell={null}
 />
