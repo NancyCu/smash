@@ -23,6 +23,9 @@ interface GameInfoProps {
   isScrambled?: boolean;
   availableGames?: EspnScoreData[];
   eventName?: string;
+  currentUserName?: string;
+  currentUserRole?: string;
+
   eventLeague?: string;
   eventDate?: string;
   selectedEventId?: string;
@@ -77,10 +80,10 @@ const LeagueIcon = ({ league }: { league?: string }) => {
   return <Trophy className="w-6 h-6 text-indigo-400" />;
 };
 
-// FIX: Added "payouts = []" default value here to prevent crashing
-export default function GameInfo({ gameId, gameName, host, pricePerSquare, totalPot, payouts = [], matchup, scores, isAdmin, onUpdateScores, onManualPayout, onDeleteGame, onScrambleGridDigits, onResetGridDigits, isScrambled, availableGames, eventName, eventLeague, eventDate, selectedEventId, onSelectEvent }: GameInfoProps) {
+export default function GameInfo({ gameId, gameName, host, pricePerSquare, totalPot, payouts, matchup, scores, isAdmin, onUpdateScores, onManualPayout, onDeleteGame, onScrambleGridDigits, onResetGridDigits, isScrambled, availableGames, eventName, eventLeague, eventDate, selectedEventId, onSelectEvent, currentUserName, currentUserRole }: GameInfoProps) {
   const [teamAScore, setTeamAScore] = useState(scores?.teamA ?? 0);
   const [teamBScore, setTeamBScore] = useState(scores?.teamB ?? 0);
+  const [localEventId, setLocalEventId] = useState<string>(selectedEventId ?? "");
   
   // Track synced scores to update state when props change
   const [lastSynced, setLastSynced] = useState({ a: scores?.teamA, b: scores?.teamB });
@@ -96,17 +99,10 @@ export default function GameInfo({ gameId, gameName, host, pricePerSquare, total
   const isLiveSyncActive = !!selectedEventId;
 
   useEffect(() => {
-    if (!eventDate) return;
-    const updateTime = () => {
-      const start = new Date(eventDate).getTime();
-      const now = Date.now();
-      setTimeUntilGame(start - now);
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 5000);
-    return () => clearInterval(interval);
-  }, [eventDate]);
-
+    if (!scores) return;
+    setTeamAScore(scores.teamA);
+    setTeamBScore(scores.teamB);
+  }, [scores?.teamA, scores?.teamB]);
 
 
   const handleShare = async () => {
@@ -171,15 +167,26 @@ return (
         <div>
           <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{gameName}</h2>
           <p className="text-slate-500 dark:text-slate-400">Hosted by <span className="font-bold text-cyan-600 dark:text-cyan-400">@{host}</span></p>
-          {gameId && (
+          {(currentUserName || gameId) && (
             <div className="flex items-center gap-2 mt-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30">
-                <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">Code</span>
-                <span className="font-mono font-bold text-white selection:bg-indigo-500">{gameId}</span>
-              </div>
-              <button title="Share Game" onClick={handleShare} className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 hover:text-white transition-colors">
-                <Share2 className="w-4 h-4" />
-              </button>
+              {currentUserName && (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30">
+                  <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">User</span>
+                  <span className="font-semibold text-white selection:bg-indigo-500">{currentUserName}</span>
+                  {currentUserRole && (
+                    <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">{currentUserRole}</span>
+                  )}
+                </div>
+              )}
+              {gameId && (
+                <button 
+                  onClick={handleShare}
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 hover:text-white transition-colors"
+                  aria-label="Share game"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -290,13 +297,102 @@ return (
              </div>
           </div>
 
-          <Link href="/payments" className="flex items-center justify-between p-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-600/20 rounded-xl transition-all group cursor-pointer">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white"><DollarSign className="w-4 h-4" /></div>
-              <div className="flex flex-col">
-                <span className="text-xs font-black uppercase text-indigo-700 dark:text-indigo-300 tracking-wider">Payment Ledger</span>
-                <span className="text-[10px] text-slate-500">View Status & Details</span>
-              </div>
+            {otherGames.length > 0 && (
+              <optgroup label="Other Sports">
+                {otherGames.map((game) => (
+                  <option key={game.id} value={game.id}>
+                    [{game.league}] {game.awayTeam.name} @ {game.homeTeam.name} ({formatEventDate(game.date) || game.status})
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            
+          </select>
+          <p className="text-[10px] text-slate-600">Selecting an event updates the grid labels for everyone.</p>
+        </div>
+      )}
+
+      {isAdmin && onScrambleGridDigits && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-white/5 bg-slate-100/50 dark:bg-slate-800/50 px-4 py-3 text-xs uppercase tracking-widest text-slate-500">
+            <div className="flex flex-col">
+              <span>Randomize Grid</span>
+            {isScrambled ? (
+              <span className="text-[10px] text-red-500 font-bold">Locked - Already Scrambled</span>
+            ) : null}
+          </div>
+          <div className="flex gap-2">
+            {onResetGridDigits && !isScrambled && (
+              <button
+                type="button"
+                onClick={onResetGridDigits}
+                className={`px-3 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-white font-black text-[10px] tracking-[0.2em] transition-colors border border-slate-300 dark:border-white/10 ${
+                  "hover:bg-slate-50 dark:hover:bg-slate-600"
+                }`}
+              >
+                123...
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onScrambleGridDigits}
+              disabled={isScrambled}
+              className={`px-3 py-1 rounded-lg font-black text-[10px] tracking-[0.2em] transition-colors border ${
+                isScrambled
+                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                  : "bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-md shadow-indigo-500/20"
+              }`}
+            >
+              {isScrambled ? "LOCKED" : "Scramble"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-emerald-500/10 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-500/20 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition-colors"></div>
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1 relative z-10">
+            <DollarSign className="w-4 h-4" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Entry</span>
+          </div>
+          <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300 relative z-10 text-shadow-glow">${pricePerSquare}</div>
+        </div>
+        <div className="bg-cyan-500/10 dark:bg-cyan-900/20 p-4 rounded-xl border border-cyan-500/20 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-cyan-500/5 group-hover:bg-cyan-500/10 transition-colors"></div>
+          <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 mb-1 relative z-10">
+            <Users className="w-4 h-4" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Pot</span>
+          </div>
+          <div className="text-2xl font-black text-cyan-700 dark:text-cyan-300 relative z-10 text-shadow-glow">${totalPot}</div>
+        </div>
+      </div>
+
+      <Link 
+        href="/payments"
+        className="flex items-center justify-between p-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-600/20 rounded-xl transition-all group cursor-pointer"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+            <DollarSign className="w-4 h-4" />
+          </div>
+          <div className="flex flex-col">
+             <span className="text-xs font-black uppercase text-indigo-700 dark:text-indigo-300 tracking-wider">Payment Ledger</span>
+             <span className="text-[10px] text-slate-500">View Status & Details</span>
+          </div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-indigo-400 group-hover:translate-x-1 transition-transform" />
+      </Link>
+
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-wider">
+          <Info className="w-4 h-4" />
+          <h3>Payouts</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {payouts.map((payout, index) => (
+            <div key={index} className="flex flex-col p-3 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">{payout.label}</span>
+              <span className="text-lg font-black text-slate-800 dark:text-white">${payout.amount}</span>
             </div>
             <ChevronRight className="w-4 h-4 text-indigo-400 group-hover:translate-x-1 transition-transform" />
           </Link>

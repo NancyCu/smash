@@ -18,7 +18,7 @@ const QuarterTabs: React.FC<QuarterTabsProps> = ({ activeQuarter, setActiveQuart
   ] as const; // Use 'as const' to infer the strictest possible type
 
   return (
-    <div className="w-full max-w-md mx-auto mb-4 px-4">
+    <div className="w-full max-w-md mx-auto px-4">
       <div className="flex bg-[#0B0C15] p-1 rounded-xl border border-slate-200 dark:border-white/10 relative">
         {quarters.map((q) => (
           <button

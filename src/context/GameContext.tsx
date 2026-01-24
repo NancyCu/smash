@@ -5,16 +5,8 @@ import { db } from "@/lib/firebase";
 import { 
   doc, 
   getDoc,
-  onSnapshot, 
-  updateDoc, 
-  deleteDoc,
-  serverTimestamp,
-  deleteField,
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc
+  arrayUnion,
+  arrayRemove
 } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext"; 
 
@@ -76,11 +68,13 @@ export interface GameData {
 interface GameContextType {
   game: GameData | null;
   loading: boolean;
-  error: string | null;
-  setGameId: (id: string) => void;
-  isAdmin: boolean;
-  
-  // -- Admin Actions --
+  createGame: (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => Promise<string>;
+  joinGame: (gameId: string) => Promise<{ ok: boolean; error?: string }>;
+  leaveGame: () => void;
+  claimSquare: (row: number, col: number, user: { id: string; name: string }) => Promise<void>;
+  unclaimSquare: (row: number, col: number, userId: string) => Promise<void>;
+  togglePaid: (playerId: string) => Promise<void>;
+  deletePlayer: (playerId: string) => Promise<void>;
   updateScores: (teamA: number, teamB: number) => Promise<void>;
   scrambleGrid: () => Promise<void>;
   resetGrid: () => Promise<void>;
@@ -100,23 +94,47 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 
 // 3. The Provider
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [gameId, setGameId] = useState<string | null>(null);
-  const [game, setGame] = useState<GameData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  const { user } = useAuth(); 
+  const { user } = useAuth();
+  const initialGameId = typeof window === "undefined" ? null : localStorage.getItem("activeGameId");
+  const [activeGameId, setActiveGameIdState] = useState<string | null>(initialGameId);
+  const [activeGame, setActiveGame] = useState<GameState | null>(null);
+  const [loading, setLoading] = useState<boolean>(() => !!initialGameId);
 
-  // Listener
-  useEffect(() => {
-    if (!gameId) {
-      setGame(null);
+  const setActiveGameId = (id: string | null) => {
+    setActiveGameIdState(id);
+    if (id) {
+      setLoading(true);
+    } else {
       setLoading(false);
-      return;
+      setActiveGame(null);
     }
+  };
 
-    setLoading(true);
-    const unsub = onSnapshot(doc(db, "games", gameId), (docSnap) => {
+  // Save activeGameId to localStorage when it changes
+  useEffect(() => {
+    if (activeGameId) {
+      localStorage.setItem('activeGameId', activeGameId);
+    } else {
+      localStorage.removeItem('activeGameId');
+    }
+  }, [activeGameId]);
+
+  const defaultSettings: GameSettings = {
+    name: "",
+    teamA: "Team A",
+    teamB: "Team B",
+    pricePerSquare: 0,
+    rows: [],
+    cols: [],
+    isScrambled: false,
+    payouts: [],
+    payoutFrequency: "Standard"
+  };
+
+  useEffect(() => {
+    if (!activeGameId) return;
+
+    const unsub = onSnapshot(doc(db, "games", activeGameId), (docSnap) => {
       setLoading(false);
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -128,8 +146,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           squares: data.squares || {},
         } as GameData);
       } else {
-        setError("Game not found");
-        setGame(null);
+        setActiveGameId(null);
       }
     }, (err) => {
       console.error(err);
@@ -150,40 +167,103 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // Optimistic check
     if (game?.squares[key]) return; 
 
+  const joinGame = async (gameId: string) => {
     try {
-      await updateDoc(doc(db, "games", gameId), {
-        [`squares.${key}`]: {
-          userId: user.uid,
-          displayName: user.displayName || "Unknown",
-          photoURL: user.photoURL || "",
-          paidAt: null
+      const gameDoc = await getDoc(doc(db, "games", gameId));
+      if (gameDoc.exists()) {
+         setActiveGameId(gameId);
+         return { ok: true };
+      } else {
+         return { ok: false, error: "Game not found" };
+      }
+    } catch (error) {
+       console.error("Error joining game:", error);
+       return { ok: false, error: "Failed to join game" };
+    }
+  };
+
+  const leaveGame = () => {
+    setActiveGameId(null);
+    setActiveGame(null);
+  };
+
+  const updateSettings = async (newSettings: Partial<GameSettings>) => {
+    if (!activeGame) return;
+    const updates: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(newSettings)) {
+        updates[`settings.${key}`] = value;
+    }
+    await updateDoc(doc(db, "games", activeGame.id), updates);
+  };
+
+  const claimSquare = async (row: number, col: number, claimant: { id: string; name: string }) => {
+    if (!activeGame) return;
+    
+    const key = `${row}-${col}`;
+    const updates: Record<string, unknown> = {};
+    updates[`squares.${key}`] = arrayUnion({ 
+      uid: claimant.id, 
+      name: claimant.name, 
+      claimedAt: Date.now() 
+    }); 
+
+    const playerIndex = activeGame.players.findIndex(p => p.id === claimant.id);
+    if (playerIndex === -1) {
+        updates["players"] = arrayUnion({ id: claimant.id, name: claimant.name, squares: 1, paid: false });
+    } else {
+        const updatedPlayers = [...activeGame.players];
+        updatedPlayers[playerIndex].squares += 1;
+        updates["players"] = updatedPlayers;
+    }
+
+    await updateDoc(doc(db, "games", activeGame.id), updates);
+  };
+
+  const unclaimSquare = async (row: number, col: number, userId: string) => {
+    if (!activeGame) return;
+    const key = `${row}-${col}`;
+    const claims = activeGame.squares[key] || [];
+    const claimToRemove = claims.find(c => c.uid === userId);
+    
+    if (!claimToRemove) return;
+
+    const updates: Record<string, unknown> = {};
+    updates[`squares.${key}`] = arrayRemove(claimToRemove);
+
+    const playerIndex = activeGame.players.findIndex(p => p.id === userId);
+    if (playerIndex !== -1) {
+        const updatedPlayers = [...activeGame.players];
+        const newCount = Math.max(0, updatedPlayers[playerIndex].squares - 1);
+        if (newCount === 0) {
+            // Remove player if they have no squares left
+            updates["players"] = arrayRemove(updatedPlayers[playerIndex]);
+        } else {
+            updatedPlayers[playerIndex].squares = newCount;
+            updates["players"] = updatedPlayers;
         }
       });
     } catch (e) { console.error("Claim failed", e); }
   };
 
-  const unclaimSquare = async (index: number) => {
-    if (!gameId || !user) return;
-    const key = index.toString();
-    
-    // Only allow unclaim if user owns it OR is admin
-    const square = game?.squares[key];
-    if (!square) return;
-    if (square.userId !== user.uid && !isAdmin) return;
+  const togglePaid = async (playerId: string) => {
+    if (!activeGame) return;
+    const playerIndex = activeGame.players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) return;
 
-    try {
-      // Fixed: Using deleteField() directly from top-level import
-      await updateDoc(doc(db, "games", gameId), {
-        [`squares.${key}`]: deleteField() 
-      });
-    } catch (e) { console.error("Unclaim failed", e); }
+    const updatedPlayers = [...activeGame.players];
+    updatedPlayers[playerIndex].paid = !updatedPlayers[playerIndex].paid;
+    // ✅ CORRECT (Uses undefined instead of null)
+    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : undefined;
+    await updateDoc(doc(db, "games", activeGame.id), { players: updatedPlayers });
   };
 
-  const togglePaid = async (index: number) => {
-    if (!gameId || !isAdmin) return;
-    const key = index.toString();
-    const square = game?.squares[key];
-    if (!square) return;
+  const deletePlayer = async (playerId: string) => {
+      if (!activeGame) return;
+      const newSquares = { ...activeGame.squares };
+        Object.keys(newSquares).forEach(key => {
+          newSquares[key] = newSquares[key].filter(c => c.uid !== playerId);
+          if (newSquares[key].length === 0) delete newSquares[key];
+        });
 
     const newValue = square.paidAt ? null : serverTimestamp();
     try {

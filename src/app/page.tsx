@@ -18,26 +18,101 @@ function LobbyContent() {
   const { user, logout } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
 
-  // Simple "Host Game" Logic
-  const handleCreateGame = async () => {
-    if (!user) return;
-    setIsCreating(true);
-    try {
-      // 1. Create the Game Document in Firestore
-      const docRef = await addDoc(collection(db, "games"), {
-        name: `${user.displayName || "Host"}'s Bowl`,
-        host: user.displayName || "Anonymous",
-        hostId: user.uid,
-        price: 10, // Default, you can make a form for this later
-        pot: 0,
-        teamA: "Chiefs",
-        teamB: "Eagles",
-        isScrambled: false,
-        createdAt: serverTimestamp(),
-        // Initialize empty structures to prevent crashes
-        scores: { q1:{home:0,away:0}, q2:{home:0,away:0}, q3:{home:0,away:0}, final:{home:0,away:0}, teamA:0, teamB:0 },
-        squares: {},
-        axis: { q1:{row:[],col:[]}, q2:{row:[],col:[]}, q3:{row:[],col:[]}, final:{row:[],col:[]} }
+  const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
+  type QuarterKey = 'q1' | 'q2' | 'q3' | 'final';
+  const [viewQuarter, setViewQuarter] = useState<QuarterKey>('q1');
+
+  const matchedLiveGame = useMemo(() => {
+    if (!activeGame || liveGames.length === 0) return null;
+    return liveGames.find(g => g.id === settings.espnGameId) || null;
+  }, [liveGames, activeGame, settings.espnGameId]);
+
+  // Sync quarter view with live game period during render (React pattern for adjusting state based on props)
+  const [prevPeriod, setPrevPeriod] = useState<number | undefined>(matchedLiveGame?.period);
+  if (matchedLiveGame?.period !== prevPeriod) {
+    setPrevPeriod(matchedLiveGame?.period);
+    if (matchedLiveGame?.period) {
+      const p = matchedLiveGame.period;
+      setViewQuarter(p === 1 ? 'q1' : p === 2 ? 'q2' : p === 3 ? 'q3' : 'final');
+    }
+  }
+
+  const totalPot = useMemo(() => {
+    return players.reduce((acc, p) => acc + (p.squares * settings.pricePerSquare), 0);
+  }, [players, settings.pricePerSquare]);
+
+  const payouts = useMemo(() => {
+    const distribution = [0.20, 0.20, 0.20, 0.40];
+    const defaults = ["Q1 Winner", "Q2 Winner", "Q3 Winner", "Final Winner"];
+    return distribution.map((pct, i) => ({
+      label: settings.payouts?.[i]?.label || defaults[i],
+      amount: Math.floor(totalPot * pct)
+    }));
+  }, [totalPot, settings.payouts]);
+
+  const setView = (v: View) => {
+    router.push(`/?view=${v}`);
+  };
+
+  const canManage = isAdmin || (!!user && !!activeGame && user.uid === activeGame.hostUserId);
+  const currentUserName = user?.displayName || user?.email || 'Anonymous';
+  const currentUserRole = canManage ? 'Admin' : 'Player';
+
+  const currentAxis = useMemo(() => {
+    const axisData = settings.axisValues;
+    const defaultIndices = Array.from({ length: 10 }, (_, i) => i);
+    if (axisData?.[viewQuarter]) return axisData[viewQuarter];
+    if (!settings.rows || settings.rows.length === 0) return { rows: defaultIndices, cols: defaultIndices };
+    return { rows: settings.rows, cols: settings.cols };
+  }, [settings, viewQuarter]);
+
+  const winningCell = useMemo(() => {
+    const rowDigit = scores.teamA % 10;
+    const colDigit = scores.teamB % 10;
+    const rowIndex = currentAxis.rows.indexOf(rowDigit);
+    const colIndex = currentAxis.cols.indexOf(colDigit);
+    if (rowIndex < 0 || colIndex < 0) return null;
+    return { row: rowIndex, col: colIndex };
+  }, [scores, currentAxis]);
+
+  const logos = useMemo(() => {
+    if (!matchedLiveGame) return { teamA: undefined, teamB: undefined };
+    const { homeTeam, awayTeam } = matchedLiveGame;
+    const teamAName = settings.teamA.toLowerCase();
+    const teamBName = settings.teamB.toLowerCase();
+    let logoA, logoB;
+    if (teamAName.includes(homeTeam.name.toLowerCase())) logoA = homeTeam.logo; else if (teamAName.includes(awayTeam.name.toLowerCase())) logoA = awayTeam.logo;
+    if (teamBName.includes(homeTeam.name.toLowerCase())) logoB = homeTeam.logo; else if (teamBName.includes(awayTeam.name.toLowerCase())) logoB = awayTeam.logo;
+    return { teamA: logoA, teamB: logoB };
+  }, [matchedLiveGame, settings.teamA, settings.teamB]);
+
+  const isGameStarted = settings.isScrambled || (matchedLiveGame?.isLive ?? false);
+
+  const handleSquareClick = (row: number, col: number) => {
+    setSelectedCell({ row, col });
+    if (!user || isGameStarted) return;
+    const key = `${row}-${col}`;
+    const userClaim = squares[key]?.find(c => c.uid === user.uid);
+    if (userClaim) {
+      if (confirm('Remove your claim on this square?')) {
+        void unclaimSquare(row, col, user.uid);
+      }
+    } else {
+      void claimSquare(row, col, { id: user.uid, name: user.displayName || 'Anonymous' });
+    }
+  };
+  
+  // --- RESTORED HANDLER FUNCTIONS ---
+  const handleEventSelect = (game: EspnScoreData | null) => {
+    if (!canManage) return;
+    if (game) {
+      void updateSettings({
+        teamA: game.awayTeam.name,
+        teamB: game.homeTeam.name,
+        espnGameId: game.id,
+        eventName: game.name,
+        espnLeague: game.league,
+        eventDate: game.date,
       });
 
       // 2. Redirect to the new Game Room
@@ -73,49 +148,65 @@ function LobbyContent() {
         </div>
       </header>
 
-      {/* --- MAIN DASHBOARD --- */}
-      <main className='w-full px-4 max-w-md mx-auto py-8 space-y-6'>
-        
-        {/* Welcome Card */}
-        <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 text-white shadow-xl shadow-indigo-500/20">
-          <h2 className="text-2xl font-black uppercase tracking-tight mb-2">Welcome, {user.displayName?.split(' ')[0]}!</h2>
-          <p className="text-indigo-100 text-sm mb-6">Ready to dominate the grid?</p>
-          
-          <button 
-            onClick={handleCreateGame}
-            disabled={isCreating}
-            className="w-full py-3 bg-white text-indigo-700 font-black uppercase tracking-widest rounded-xl hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2 shadow-lg"
-          >
-            {isCreating ? (
-              <span className="animate-pulse">Creating Arena...</span>
-            ) : (
-              <>
-                <Plus className="w-5 h-5" />
-                Host New Game
-              </>
-            )}
-          </button>
-        </div>
-
-        <div className="flex items-center gap-4 py-2">
-            <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">OR</span>
-            <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
-        </div>
-
-        {/* Join Game Form */}
-        <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-white/5 shadow-lg">
-           <div className="flex items-center gap-2 mb-4 text-slate-500 dark:text-slate-400">
-             <Trophy className="w-5 h-5" />
-             <span className="text-xs font-black uppercase tracking-widest">Join Action</span>
-           </div>
-           {/* Pass a onSuccess callback that pushes to the new route */}
-           <JoinGameForm 
-              onSuccess={(gameId: string) => router.push(`/game/${gameId}`)} 
-              initialGameId="" 
-           />
-        </div>
-
+      <main className='w-full px-4 lg:px-8 max-w-7xl mx-auto py-6'>
+        {currentView === 'game' && activeGame ? (
+          <div className='flex flex-col lg:flex-row items-stretch lg:items-start gap-4 animate-in fade-in duration-500 max-w-[2200px] mx-auto w-full'>
+            <div className='flex-1 flex flex-col gap-2 w-full min-w-0'>
+              <div className='w-full relative rounded-2xl ring-1 ring-slate-200 dark:ring-white/10 shadow-xl bg-white/60 dark:bg-slate-800/50 backdrop-blur-md p-4'>
+                <TrophyCase payouts={payouts} history={payoutHistory} totalPot={totalPot} />
+                <QuarterTabs activeQuarter={viewQuarter} setActiveQuarter={setViewQuarter} isGameStarted={isGameStarted} />
+              </div>
+              <div className='w-full relative rounded-2xl ring-1 ring-slate-200 dark:ring-white/10 shadow-2xl bg-white/60 dark:bg-slate-800/50 backdrop-blur-md'>
+                <Grid 
+                  rows={currentAxis.rows} 
+                  cols={currentAxis.cols} 
+                  squares={squares}
+                  winningCell={winningCell}
+                  selectedCell={selectedCell}
+                  onSquareClick={handleSquareClick}
+                  teamA={settings.teamA}
+                  teamB={settings.teamB}
+                  teamALogo={logos.teamA}
+                  teamBLogo={logos.teamB}
+                  isScrambled={settings.isScrambled}
+                />
+              </div>
+              <SquareDetails cell={selectedCell || winningCell} squares={squares} settings={{...settings, rows: currentAxis.rows, cols: currentAxis.cols}} />
+            </div>
+            <div className='w-full lg:w-[480px] lg:shrink-0 flex flex-col gap-3'>
+               <GameInfo 
+                 gameId={activeGame.id}
+                 gameName={settings.name}
+                 host={activeGame.hostName}
+                 pricePerSquare={settings.pricePerSquare}
+                 totalPot={totalPot}
+                 payouts={payouts}
+                 matchup={{ teamA: settings.teamA, teamB: settings.teamB }}
+                 scores={scores}
+                 isAdmin={canManage}
+                 isScrambled={settings.isScrambled ?? false}
+                 onUpdateScores={updateScores}
+                 onScrambleGridDigits={scrambleGridDigits}
+                 onDeleteGame={handleDeleteGame} // <-- RESTORED
+                 onSelectEvent={handleEventSelect} // <-- RESTORED
+                 selectedEventId={settings.espnGameId ?? ''}
+                 eventDate={settings.eventDate ?? ''}
+                 eventName={settings.eventName ?? ''}
+                 eventLeague={settings.espnLeague ?? ''}
+                 availableGames={liveGames}
+                 onResetGridDigits={resetGridDigits}
+                 onManualPayout={handleManualPayout} // <-- RESTORED
+                 currentUserName={currentUserName}
+                 currentUserRole={currentUserRole}
+               />
+               <PlayerList players={players} pricePerSquare={settings.pricePerSquare} canManagePayments={isAdmin} canManagePlayers={canManage} onTogglePaid={togglePaid} onDeletePlayer={deletePlayer} />
+            </div>
+          </div>
+        ) : (
+            <div className='animate-in fade-in zoom-in-95 duration-300 max-w-lg mx-auto pt-8'>
+              <JoinGameForm onSuccess={() => setView('game')} initialGameId={initialGameCode} />
+            </div>
+        )}
       </main>
 
       <BottomNav />

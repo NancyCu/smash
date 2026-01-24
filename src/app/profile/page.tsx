@@ -63,11 +63,8 @@ export default function ProfilePage() {
 
   const handleEnterGame = async (gameId: string) => {
     if (!user) return;
-    // We pass user.uid to bypass password since they are already in the list
     await joinGame(gameId);
-    setGameId(gameId);
-    if (typeof window !== "undefined") localStorage.setItem("activeGameId", gameId);
-    router.push(`/game/${gameId}`);
+    router.push("/?view=game");
   };
 
   if (!user) {

@@ -22,16 +22,20 @@ export default function JoinGameForm({ onSuccess, initialGameId = "" }: JoinGame
     setIsJoining(true);
 
     try {
-      await joinGame(gameId);
-      onSuccess(gameId);
+      const result = await joinGame(gameId);
+      
+      if (!result.ok) {
+         setError(result.error || "Failed to join game. Please verify the code.");
+         setIsJoining(false);
+         return;
+      }
+
+      onSuccess();
     } catch (err: unknown) {
       console.error("Join failed", err);
+      const message = err instanceof Error ? err.message : "Failed to join game. Check the code and try again.";
       // Fallback error message if the error doesn't have a message
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Failed to join game. Check the code and try again.");
-      }
+      setError(message);
       setIsJoining(false);
     }
   };
