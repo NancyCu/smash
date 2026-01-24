@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 export interface EspnScoreData {
   id: string;
   name: string;
+  shortName?: string;
   date: string;
   league: string;
   homeTeam: { name: string; score: string; abbreviation: string; logo: string };
@@ -92,6 +93,7 @@ export function useEspnScores() {
             allGames.push({
               id: game.id,
               name: game.name,
+              shortName: game.shortName,
               date: game.date,
               league: key,
               homeTeam: {

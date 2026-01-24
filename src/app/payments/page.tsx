@@ -71,6 +71,7 @@ export default function PaymentsPage() {
         <div className="flex items-center gap-4">
           <button 
             onClick={() => router.push("/")}
+            aria-label="Go Back"
             className="p-2 hover:bg-slate-800 rounded-full transition-colors"
           >
             <ArrowLeft className="w-6 h-6" />
@@ -146,6 +147,7 @@ export default function PaymentsPage() {
                             {isAdmin ? (
                               <button
                                   onClick={() => togglePaid(player.id)}
+                                  title={player.paid ? "Mark Unpaid" : "Mark Paid"}
                                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                                     player.paid
                                       ? "bg-green-500/20 text-green-400 border border-green-500/30"

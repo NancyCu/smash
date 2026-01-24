@@ -91,6 +91,7 @@ export default function CreateGameForm({ onSuccess }: Props) {
           <div className="relative">
             <Calendar className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
             <select
+              aria-label="Select Live Game"
               onChange={handleGameSelect}
               className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none text-slate-900 dark:text-white"
               defaultValue=""
@@ -121,6 +122,7 @@ export default function CreateGameForm({ onSuccess }: Props) {
             <Target className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
             <input 
               required
+              aria-label="Game Name"
               type="text"
               placeholder="e.g. Mike's Super Bowl Bash"
               title="e.g. Mike's Super Bowl Bash"
@@ -136,6 +138,7 @@ export default function CreateGameForm({ onSuccess }: Props) {
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Team A (Vertical)</label>
             <input 
+              aria-label="Team A Name"
               required
               type="text"
               value={formData.teamA}
@@ -147,6 +150,7 @@ export default function CreateGameForm({ onSuccess }: Props) {
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Team B (Horizontal)</label>
             <input 
+              aria-label="Team B Name"
               required
               type="text"
               title="Team B (Horizontal)"
@@ -162,7 +166,8 @@ export default function CreateGameForm({ onSuccess }: Props) {
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Price Per Square</label>
           <div className="relative">
             <DollarSign className="absolute left-4 top-3.5 w-5 h-5 text-green-600" />
-            <input 
+            <input
+              aria-label="Price Per Square"
               required
               type="number"
               min="0"

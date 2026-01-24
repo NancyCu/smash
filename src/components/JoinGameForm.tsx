@@ -30,7 +30,7 @@ export default function JoinGameForm({ onSuccess, initialGameId = "" }: JoinGame
          return;
       }
 
-      onSuccess();
+      onSuccess(gameId);
     } catch (err: unknown) {
       console.error("Join failed", err);
       const message = err instanceof Error ? err.message : "Failed to join game. Check the code and try again.";
