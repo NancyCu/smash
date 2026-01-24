@@ -7,6 +7,7 @@ import {
   getDoc,
   onSnapshot, 
   updateDoc, 
+  arrayUnion,  // <--- ADD THIS WORD HERE
   deleteDoc,
   serverTimestamp,
   deleteField,
@@ -86,7 +87,7 @@ interface GameContextType {
   resetGrid: () => Promise<void>;
   deleteGame: () => Promise<void>;
   manualPayout: (gameId: string, status: boolean) => Promise<void>; 
-  joinGame: (gameId: string) => Promise<void>;
+  joinGame: (gameId: string) => Promise<{ ok: boolean; error?: string }>;
   createGame: (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => Promise<string>;
   getUserGames: (userId: string) => Promise<GameData[]>;
 
@@ -227,13 +228,54 @@ export function GameProvider({ children }: { children: ReactNode }) {
       await deleteDoc(doc(db, "games", gameId));
   };
   
-  const joinGame = async (gId: string) => {
-    const docRef = doc(db, "games", gId);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) {
-      throw new Error("Game not found");
+const joinGame = async (gameIdInput: string): Promise<{ ok: boolean; error?: string }> => {
+    if (!user) return { ok: false, error: "Must be logged in" };
+
+    try {
+      // 1. clean the input
+      const cleanId = gameIdInput.trim();
+      
+      // 2. check if game exists
+      const gameRef = doc(db, "games", cleanId);
+      const gameSnap = await getDoc(gameRef);
+
+      if (!gameSnap.exists()) {
+        return { ok: false, error: "Game not found. Check the code." };
+      }
+
+      // 3. check if already joined (optional optimization)
+      const gData = gameSnap.data();
+      const isAlreadyIn = gData.players?.some((p: any) => p.id === user.uid);
+
+      if (!isAlreadyIn) {
+        // 4. Add player to list
+        await updateDoc(gameRef, {
+          players: arrayUnion({
+            id: user.uid,
+            email: user.email,
+            displayName: user.displayName || "Anonymous",
+            paid: false,
+            joinedAt: Date.now()
+          })
+        });
+      }
+
+      // 5. Update Local State
+      if (typeof window !== "undefined") {
+        localStorage.setItem("activeGameId", cleanId);
+      }
+      setGameId(cleanId);
+
+      // --- THE IMPORTANT PART: RETURN SUCCESS ---
+      return { ok: true };
+
+    } catch (err: any) {
+      console.error("Join Error:", err);
+      // --- THE IMPORTANT PART: RETURN ERROR ---
+      return { ok: false, error: err.message || "Failed to join" };
     }
   };
+
   const createGame = async (
     name: string,
     price: number,
