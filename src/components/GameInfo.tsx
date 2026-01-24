@@ -131,7 +131,7 @@ export default function GameInfo({ gameId, gameName, host, pricePerSquare, total
 
   const { nflGames, otherGames } = useMemo(() => {
     const base = availableGames ?? [];
-    const filtered = base.filter((game) => game.status !== "post" || game.id === selectedEventId);
+    const filtered = base; // Show all games (including finished/post games)
     
     const nfl: EspnScoreData[] = [];
     const other: EspnScoreData[] = [];
