@@ -38,6 +38,7 @@ export default function GamePage() {
   
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
   const [copied, setCopied] = useState(false);
+  const [mobileView, setMobileView] = useState<'board' | 'info'>('board');
 
   // --- DYNAMIC LOGO HELPER ---
   const getTeamLogo = (teamName: string) => {
@@ -219,23 +220,40 @@ export default function GamePage() {
   const currentAxis = game.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
 
   return (
-    <main className="flex flex-col lg:flex-row h-screen w-full bg-[#0B0C15] overflow-hidden">
+
+      {/* MOBILE HEADER (Always Visible on Small Screens) */}
+      <div className="lg:hidden p-4 bg-[#0B0C15]/90 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5 shrink-0">
+         <div onClick={() => router.push('/')} className="flex items-center gap-2 cursor-pointer">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-black italic text-white text-sm">SR</div>
+         </div>
+         
+         {/* VIEW TOGGLE */}
+         <div className="flex bg-slate-800/50 p-1 rounded-lg border border-white/5">
+            <button 
+              onClick={() => setMobileView('board')}
+              className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${mobileView === 'board' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              Board
+            </button>
+            <button 
+              onClick={() => setMobileView('info')}
+              className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${mobileView === 'info' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              Info
+            </button>
+         </div>
+
+         <button onClick={copyCode} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
+            <span className="text-xs font-mono text-slate-400">{game.id.slice(0,4)}..</span>
+            {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-slate-500" />}
+         </button>
+      </div>
       
       {/* -------------------- */}
       {/* LEFT: ACTION AREA (Grid + Score) */}
       {/* -------------------- */}
-      <div className="flex-1 flex flex-col h-full relative overflow-y-auto lg:overflow-hidden no-scrollbar">
-        
-        {/* MOBILE HEADER (Only visible on small screens) */}
-        <div className="lg:hidden p-4 bg-[#0B0C15]/90 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5 shrink-0">
-            <div onClick={() => router.push('/')} className="flex items-center gap-2 cursor-pointer">
-                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-black italic text-white text-sm">SR</div>
-                 <span className="font-bold text-white tracking-widest text-xs uppercase">Squares Royale</span>
-            </div>
-             <button onClick={copyCode} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
-               <span className="text-xs font-mono text-slate-400">{game.id.slice(0,6)}...</span>
-               {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-slate-500" />}
-             </button>
+      <div className={`flex-1 flex-col h-full relative overflow-y-auto lg:overflow-hidden no-scrollbar ${mobileView === 'board' ? 'flex' : 'hidden'} lg:flex`}>
+/button>
         </div>
 
         {/* MAIN CONTENT AREA */}
@@ -329,7 +347,7 @@ export default function GamePage() {
 
             {/* 2. THE GRID */}
             <div className="relative w-full max-w-[85vh] aspect-square flex items-center justify-center bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 overflow-hidden shrink-0">
-                <Grid 
+                <Grid{`w-full lg:w-[420px] bg-[#0f111a] border-l border-white/5 overflow-y-auto z-20 shadow-2xl h-full lg:h-full ${mobileView === 'info' ? 'flex flex-col flex-1' : 'hidden'} lg:block`}
                   rows={currentAxis.row}
                   cols={currentAxis.col}
                   squares={formattedSquares}
