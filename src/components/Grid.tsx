@@ -4,37 +4,21 @@ import React from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
-// --- Types ---
-type SquareClaim = {
-  uid: string;
-  name: string;
-  claimedAt: number;
-};
-
+// ... (Types and helpers remain the same) ...
+type SquareClaim = { uid: string; name: string; claimedAt: number; };
 interface GridProps {
-  rows: number[];
-  cols: number[];
-  squares: Record<string, SquareClaim[]>;
+  rows: number[]; cols: number[]; squares: Record<string, SquareClaim[]>;
   onSquareClick: (row: number, col: number) => void;
-  teamA: string;
-  teamB: string;
-  teamALogo?: string;
-  teamBLogo?: string;
-  isScrambled?: boolean;
-  winningCell?: { row: number; col: number } | null;
-  selectedCell?: { row: number; col: number } | null;
+  teamA: string; teamB: string; teamALogo?: string; teamBLogo?: string;
+  isScrambled?: boolean; winningCell?: { row: number; col: number } | null; selectedCell?: { row: number; col: number } | null;
 }
 
-// --- Helpers ---
 function hashToHue(input: string): number {
   let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
-  }
+  for (let i = 0; i < input.length; i++) hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
   return hash % 360;
 }
 
-// Force dark mode colors for visibility on black background
 const USER_COLOR_CLASSES = [
   { bg: 'bg-rose-900/60', text: 'text-rose-100', border: 'border-rose-500/60' },
   { bg: 'bg-red-900/60', text: 'text-red-100', border: 'border-red-500/60' },
@@ -64,10 +48,11 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
   const showLogos = !isScrambled;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center pt-8 pl-8 md:pt-10 md:pl-12">
+    // FIX: Increased left padding (pl-16 md:pl-24) to make room for vertical text
+    <div className="relative w-full h-full flex flex-col items-center justify-center pt-10 pl-16 md:pt-12 md:pl-24">
 
-      {/* --- TEAM B HEADER (Top - Horizontal) --- */}
-      <div className="absolute top-2 left-0 right-0 pl-8 md:pl-12 flex items-center justify-center gap-3 z-30 pointer-events-none">
+      {/* TEAM B HEADER (Top) */}
+      <div className="absolute top-2 left-0 right-0 pl-16 md:pl-24 flex items-center justify-center gap-3 z-30 pointer-events-none">
         {showLogos && teamBLogo && (
           <div className="relative w-8 h-8 md:w-12 md:h-12 shrink-0">
             <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
@@ -78,13 +63,10 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
         </span>
       </div>
 
-      {/* --- TEAM A HEADER (Left - Vertical) --- */}
-      <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center z-30 pointer-events-none -translate-x-1/4">
-        {/* Parent container rotates -90 degrees */}
+      {/* TEAM A HEADER (Left) */}
+      {/* FIX: Centered this container within the new pl-24 gutter using 'w-24 -left-0' */}
+      <div className="absolute left-0 top-0 bottom-0 w-16 md:w-24 flex items-center justify-center z-30 pointer-events-none">
         <div className="transform -rotate-90 flex items-center gap-3 whitespace-nowrap origin-center">
-            {/* FIX: Removed 'transform rotate-90' 
-               Now the logo inherits the parent's -90 rotation so it matches the text orientation 
-            */}
             {showLogos && teamALogo && (
                 <div className="relative w-8 h-8 md:w-12 md:h-12 shrink-0">
                   <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]" />
@@ -96,29 +78,20 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
         </div>
       </div>
 
-      {/* --- THE GRID --- */}
+      {/* GRID */}
       <div className="relative w-full aspect-square rounded-xl shadow-2xl bg-slate-700/50 border border-slate-700/50 p-0.5 md:p-1">
         <div className="grid grid-cols-11 w-full h-full bg-slate-900">
-            
-            {/* Corner */}
             <div className="aspect-square bg-black shadow-md border-b border-r border-white/10"></div>
-
-            {/* Column Headers */}
             {cols.map((num) => (
               <div key={`col-${num}`} className="aspect-square flex items-center justify-center bg-black border-b border-r border-white/10 text-cyan-400 font-black text-lg sm:text-xl md:text-3xl shadow-sm">
                 {num}
               </div>
             ))}
-
-            {/* Rows Loop */}
             {rows.map((rowNum, rowIndex) => (
               <React.Fragment key={`row-${rowNum}`}>
-                {/* Row Header */}
                 <div className="aspect-square flex items-center justify-center bg-black border-r border-b border-white/10 text-pink-500 font-black text-lg sm:text-xl md:text-3xl shadow-sm">
                   {rowNum}
                 </div>
-
-                {/* CELLS */}
                 {cols.map((colNum, colIndex) => {
                   const key = `${rowIndex}-${colIndex}`;
                   const claims = (squares[key] ?? []).slice(0, 10);
@@ -141,25 +114,15 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                       {claims.length === 0 ? (
                           <div className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-cyan-500/50 transition-colors" />
                       ) : claims.length === 1 ? (
-                        <div className={cn(
-                          "w-full h-full flex items-center justify-center p-0.5",
-                          classesForUid(claims[0].uid).bg
-                        )}>
-                           <span className={cn(
-                             "text-[10px] sm:text-xs font-black truncate max-w-full px-1",
-                             classesForUid(claims[0].uid).text
-                           )}>
+                        <div className={cn("w-full h-full flex items-center justify-center p-0.5", classesForUid(claims[0].uid).bg)}>
+                           <span className={cn("text-[10px] sm:text-xs font-black truncate max-w-full px-1", classesForUid(claims[0].uid).text)}>
                              {claims[0].name}
                            </span>
                         </div>
                       ) : (
                         <div className="w-full h-full grid grid-cols-2 grid-rows-2 content-center items-center">
                           {claims.slice(0, 4).map((c) => (
-                            <div key={c.uid} className={cn(
-                              "flex items-center justify-center text-[7px] sm:text-[9px] font-bold h-full leading-none truncate px-0.5",
-                              classesForUid(c.uid).bg,
-                              classesForUid(c.uid).text
-                            )}>
+                            <div key={c.uid} className={cn("flex items-center justify-center text-[7px] sm:text-[9px] font-bold h-full leading-none truncate px-0.5", classesForUid(c.uid).bg, classesForUid(c.uid).text)}>
                               {c.name.substring(0, 3)}
                             </div>
                           ))}

@@ -207,7 +207,7 @@ export default function GamePage() {
   const defaultAxis = [0,1,2,3,4,5,6,7,8,9];
   const currentAxis = game.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
 
-  return (
+ return (
     <main className="min-h-screen bg-[#0B0C15] pb-24">
       {/* HEADER */}
       <div className="sticky top-0 z-40 bg-[#0B0C15]/90 backdrop-blur border-b border-white/5 px-4 py-3 flex items-center justify-between">
@@ -232,8 +232,8 @@ export default function GamePage() {
       </div>
 
       {/* --- RESPONSIVE CONTAINER --- */}
-      {/* Fix: Changed max-w-2xl to max-w-7xl, added flex-row on large screens */}
-      <div className="w-full max-w-md md:max-w-7xl mx-auto p-4 md:p-8">
+      {/* FIX APPLIED HERE: Removed 'max-w-md' and changed 'p-4' to 'p-1' for mobile edge-to-edge */}
+      <div className="w-full md:max-w-7xl mx-auto p-1 md:p-8">
         
         <div className="flex flex-col lg:flex-row gap-8 items-start">
 
@@ -279,7 +279,7 @@ export default function GamePage() {
                 isScrambled={game.isScrambled}
                 eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
                 onUpdateScores={updateScores}
-                onManualPayout={manualPayout} // Passed correctly now
+                onManualPayout={manualPayout}
                 onDeleteGame={handleDelete}
                 onScrambleGridDigits={scrambleGrid}
                 onResetGridDigits={resetGrid}
