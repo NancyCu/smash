@@ -25,8 +25,7 @@ export default function GamePage() {
     updateScores, 
     scrambleGrid, 
     resetGrid, 
-    deleteGame,
-    manualPayout // <--- Added this back so Admin buttons work
+    deleteGame
   } = useGame();
   
   const { user } = useAuth();
@@ -279,7 +278,6 @@ export default function GamePage() {
                 isScrambled={game.isScrambled}
                 eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
                 onUpdateScores={updateScores}
-                onManualPayout={manualPayout}
                 onDeleteGame={handleDelete}
                 onScrambleGridDigits={scrambleGrid}
                 onResetGridDigits={resetGrid}
