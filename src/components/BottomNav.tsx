@@ -20,19 +20,19 @@ export default function BottomNav() {
       <div className="flex justify-around items-center h-full px-2 max-w-md mx-auto">
         
         {/* 1. HOME */}
-        <Link href="/" className={getLinkClass('/')}>
+        <Link href="/" className={getLinkClass('/')} aria-label="Home" title="Home">
           <Home size={24} />
           <span className="text-[10px] font-bold mt-1">HOME</span>
         </Link>
 
         {/* 2. CREATE (The Plus Icon) -> MUST POINT TO /create */}
-        <Link href="/create" className={getLinkClass('/create')}>
+        <Link href="/create" className={getLinkClass('/create')} aria-label="Create" title="Create">
           <PlusSquare size={24} />
           <span className="text-[10px] font-bold mt-1">CREATE</span>
         </Link>
 
         {/* 3. LIVE (The Big Center Button) -> /live */}
-        <Link href="/live" className="relative -top-6 group">
+        <Link href="/live" className="relative -top-6 group" aria-label="Live Game" title="Live Game">
           <div className={`
             p-4 rounded-full border-4 border-[#0B0C15] shadow-lg transition-transform duration-200 group-hover:scale-105
             ${pathname === '/live' 
@@ -47,13 +47,13 @@ export default function BottomNav() {
         </Link>
 
         {/* 4. PROPS */}
-        <Link href="/props" className={getLinkClass('/props')}>
+        <Link href="/props" className={getLinkClass('/props')} aria-label="Props" title="Props">
           <Dices size={24} />
           <span className="text-[10px] font-bold mt-1">PROPS</span>
         </Link>
 
         {/* 5. PROFILE */}
-        <Link href="/profile" className={getLinkClass('/profile')}>
+        <Link href="/profile" className={getLinkClass('/profile')} aria-label="Profile" title="Profile">
           <User size={24} />
           <span className="text-[10px] font-bold mt-1">YOU</span>
         </Link>

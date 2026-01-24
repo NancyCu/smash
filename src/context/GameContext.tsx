@@ -1,426 +1,248 @@
-'use client';
+"use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { db } from "@/lib/firebase"; 
 import { 
-  collection, 
   doc, 
-  onSnapshot, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  getDocs,
   getDoc,
+  onSnapshot, 
+  updateDoc, 
+  deleteDoc,
   serverTimestamp,
-  arrayUnion,
-  arrayRemove
+  deleteField // Imported correctly at the top
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useAuth } from "./AuthContext";
-import { generateQuarterlyNumbers, type GameAxisData } from "@/lib/game-logic";
+import { useAuth } from "@/context/AuthContext"; 
 
-// --- Types ---
-
-export interface Player {
-  id: string;
-  name: string;
-  squares: number; // Count of squares owned
-  paid: boolean;
-  paidAt?: number; // Timestamp when payment was made
+// --- 1. DEFINITIONS ---
+export interface SquareData {
+  userId: string;
+  displayName: string;
+  photoURL?: string;
+  paidAt?: number | object | null;
 }
 
-export interface PayoutEvent {
+export interface GameData {
   id: string;
-  period: number | string; // 1, 2, 3, 4 or "Final"
-  label: string; // "Q1 Winner", "Touchdown", etc.
-  amount: number;
-  winnerUserId: string;
-  winnerName: string;
-  timestamp: number;
-  teamAScore: number;
-  teamBScore: number;
-  // Metadata for global history
-  gameId?: string;
-  gameName?: string;
-  teamA?: string;
-  teamB?: string;
-  eventDate?: string;
-  winners?: { uid: string; name: string }[]; // For shared pots
-}
-
-export type PayoutLog = PayoutEvent;
-
-export interface GameSettings {
   name: string;
+  host: string;
+  hostId: string;
+  price: number;
+  pot: number;
   teamA: string;
   teamB: string;
-  pricePerSquare: number;
-  rows: number[]; // The 0-9 digits for Team A (Vertical usually)
-  cols: number[]; // The 0-9 digits for Team B (Horizontal usually)
-  isScrambled: boolean; // Have the digits been randomized yet?
-  payouts: { label: string; amount: number }[]; // Custom payout structure (optional)
-  espnGameId?: string; // Linked Live Game ID
-  eventName?: string; // "Super Bowl LIX"
-  espnLeague?: string; // "nfl", "nba"
-  eventDate?: string; // ISO date string
-  payoutFrequency?: "Standard" | "NBA_Frequent" | "Manual";
-  
-  axisValues?: GameAxisData; 
+  scores: {
+    q1: { home: number; away: number };
+    q2: { home: number; away: number };
+    q3: { home: number; away: number };
+    final: { home: number; away: number };
+    teamA: number; 
+    teamB: number; 
+  };
+  payouts: Array<{ label: string; amount: number }>;
+  isScrambled: boolean;
+  isPaidOut?: boolean; // Added optional field for types
+  axis: {
+    q1: { row: number[]; col: number[] };
+    q2: { row: number[]; col: number[] };
+    q3: { row: number[]; col: number[] };
+    final: { row: number[]; col: number[] };
+  };
+  squares: Record<string, SquareData>; 
 }
 
-export interface SquareClaim {
-  uid: string;
-  name: string;
-  claimedAt: number; 
-}
-
-export interface GameState {
-  id: string;
-  hostUserId: string;
-  hostName: string;
-  createdAt: number;
-  settings: GameSettings;
-  squares: Record<string, SquareClaim[]>; // key: "rowIndex-colIndex" -> [{uid, name}]
-  players: Player[];
-  scores: { teamA: number; teamB: number }; // Manual score tracking
-  payoutHistory: PayoutEvent[];
-}
-
+// 2. The Context Interface (The Contract)
 interface GameContextType {
-  activeGame: GameState | null;
-  settings: GameSettings;
-  squares: Record<string, SquareClaim[]>;
-  players: Player[];
-  scores: { teamA: number; teamB: number };
-  payoutHistory: PayoutEvent[];
+  game: GameData | null;
   loading: boolean;
-  createGame: (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => Promise<string>;
-  joinGame: (gameId: string, password?: string, userId?: string) => Promise<{ ok: boolean; error?: string }>;
-  leaveGame: () => void;
-  claimSquare: (row: number, col: number, user: { id: string; name: string }) => Promise<void>;
-  unclaimSquare: (row: number, col: number, userId: string) => Promise<void>;
-  togglePaid: (playerId: string) => Promise<void>;
-  deletePlayer: (playerId: string) => Promise<void>;
+  error: string | null;
+  setGameId: (id: string) => void;
+  isAdmin: boolean;
+  
+  // -- Admin Actions --
   updateScores: (teamA: number, teamB: number) => Promise<void>;
-  scrambleGridDigits: () => Promise<void>;
-  resetGridDigits: () => Promise<void>;
-  resetGame: () => Promise<void>;
-  updateSettings: (newSettings: Partial<GameSettings>) => Promise<void>;
-  getUserGames: (userId: string) => Promise<GameState[]>;
-  logPayout: (event: PayoutEvent) => Promise<void>;
+  scrambleGrid: () => Promise<void>;
+  resetGrid: () => Promise<void>;
   deleteGame: () => Promise<void>;
+  manualPayout: (gameId: string, status: boolean) => Promise<void>; // Fixed: Added to interface
+  joinGame: (gameId: string) => Promise<void>;
+
+  // -- Player Actions --
+  claimSquare: (index: number) => Promise<void>;
+  unclaimSquare: (index: number) => Promise<void>;
+  togglePaid: (index: number) => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
+// 3. The Provider
 export function GameProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const [activeGameId, setActiveGameId] = useState<string | null>(null);
-  const [activeGame, setActiveGame] = useState<GameState | null>(null);
+  const [gameId, setGameId] = useState<string | null>(null);
+  const [game, setGame] = useState<GameData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { user } = useAuth(); 
 
-  // Restore activeGameId from localStorage on mount
+  // Listener
   useEffect(() => {
-    const saved = localStorage.getItem('activeGameId');
-    if (saved) setActiveGameId(saved);
-  }, []);
-
-  // Save activeGameId to localStorage when it changes
-  useEffect(() => {
-    if (activeGameId) {
-      localStorage.setItem('activeGameId', activeGameId);
-    } else {
-      localStorage.removeItem('activeGameId');
-    }
-  }, [activeGameId]);
-
-  const defaultSettings: GameSettings = {
-    name: "",
-    teamA: "Team A",
-    teamB: "Team B",
-    pricePerSquare: 0,
-    rows: [],
-    cols: [],
-    isScrambled: false,
-    payouts: [],
-    payoutFrequency: "Standard"
-  };
-
-  useEffect(() => {
-    if (!activeGameId) {
-      setActiveGame(null);
+    if (!gameId) {
+      setGame(null);
+      setLoading(false);
       return;
     }
 
     setLoading(true);
-    const unsub = onSnapshot(doc(db, "games", activeGameId), (docSnap) => {
+    const unsub = onSnapshot(doc(db, "games", gameId), (docSnap) => {
       setLoading(false);
       if (docSnap.exists()) {
-        const data = docSnap.data() as GameState;
-        if (!data.squares) data.squares = {};
-        if (!data.players) data.players = [];
-        if (!data.payoutHistory) data.payoutHistory = [];
-        data.payoutHistory.sort((a, b) => b.timestamp - a.timestamp);
-        
-        setActiveGame({ ...data, id: docSnap.id });
+        const data = docSnap.data();
+        setGame({
+          id: docSnap.id,
+          ...data,
+          scores: data.scores || { q1:{home:0,away:0}, q2:{home:0,away:0}, q3:{home:0,away:0}, final:{home:0,away:0}, teamA:0, teamB:0 },
+          axis: data.axis || { q1:{row:[],col:[]}, q2:{row:[],col:[]}, q3:{row:[],col:[]}, final:{row:[],col:[]} },
+          squares: data.squares || {},
+        } as GameData);
       } else {
-        setActiveGameId(null);
-        setActiveGame(null);
+        setError("Game not found");
+        setGame(null);
       }
     }, (err) => {
-      console.error("Game sync error:", err);
+      console.error(err);
+      setError(err.message);
       setLoading(false);
     });
 
     return () => unsub();
-  }, [activeGameId]);
+  }, [gameId]);
 
-  const createGame = async (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => {
-    if (!user) throw new Error("Must be logged in");
+  const isAdmin = user?.uid === game?.hostId;
 
-    const newGame: Omit<GameState, "id"> = {
-      hostUserId: user.uid,
-      hostName: user.displayName || "Host",
-      createdAt: Date.now(),
-      settings: {
-        name,
-        pricePerSquare: price,
-        teamA,
-        teamB,
-        rows: [], 
-        cols: [],
-        isScrambled: false,
-        payouts: [],
-        payoutFrequency: "Standard",
-        espnGameId,
-        eventDate,
-        eventName,
-        espnLeague
-      },
-      squares: {},
-      players: [],
-      scores: { teamA: 0, teamB: 0 },
-      payoutHistory: []
-    };
+  // -- IMPLEMENTATION OF ACTIONS --
 
-    const docRef = doc(collection(db, "games"));
-    await setDoc(docRef, newGame);
-    setActiveGameId(docRef.id);
-    return docRef.id;
-  };
+  const claimSquare = async (index: number) => {
+    if (!gameId || !user) return;
+    const key = index.toString();
+    // Optimistic check
+    if (game?.squares[key]) return; 
 
-  const joinGame = async (gameId: string, password?: string, userId?: string) => {
     try {
-      const gameDoc = await getDoc(doc(db, "games", gameId));
-      if (gameDoc.exists()) {
-         setActiveGameId(gameId);
-         return { ok: true };
-      } else {
-         return { ok: false, error: "Game not found" };
-      }
-    } catch (error) {
-       console.error("Error joining game:", error);
-       return { ok: false, error: "Failed to join game" };
-    }
-  };
-
-  const leaveGame = () => {
-    setActiveGameId(null);
-    setActiveGame(null);
-  };
-
-  const updateSettings = async (newSettings: Partial<GameSettings>) => {
-    if (!activeGame) return;
-    const updates: Record<string, any> = {};
-    for (const [key, value] of Object.entries(newSettings)) {
-        updates[`settings.${key}`] = value;
-    }
-    await updateDoc(doc(db, "games", activeGame.id), updates);
-  };
-
-  const claimSquare = async (row: number, col: number, claimant: { id: string; name: string }) => {
-    if (!activeGame) return;
-    
-    const key = `${row}-${col}`;
-    const updates: Record<string, any> = {};
-    updates[`squares.${key}`] = arrayUnion({ 
-      uid: claimant.id, 
-      name: claimant.name, 
-      claimedAt: Date.now() 
-    }); 
-
-    const playerIndex = activeGame.players.findIndex(p => p.id === claimant.id);
-    if (playerIndex === -1) {
-        updates["players"] = arrayUnion({ id: claimant.id, name: claimant.name, squares: 1, paid: false });
-    } else {
-        const updatedPlayers = [...activeGame.players];
-        updatedPlayers[playerIndex].squares += 1;
-        updates["players"] = updatedPlayers;
-    }
-
-    await updateDoc(doc(db, "games", activeGame.id), updates);
-  };
-
-  const unclaimSquare = async (row: number, col: number, userId: string) => {
-    if (!activeGame) return;
-    const key = `${row}-${col}`;
-    const claims = activeGame.squares[key] || [];
-    const claimToRemove = claims.find(c => c.uid === userId);
-    
-    if (!claimToRemove) return;
-
-    const updates: Record<string, any> = {};
-    updates[`squares.${key}`] = arrayRemove(claimToRemove);
-
-    const playerIndex = activeGame.players.findIndex(p => p.id === userId);
-    if (playerIndex !== -1) {
-        const updatedPlayers = [...activeGame.players];
-        const newCount = Math.max(0, updatedPlayers[playerIndex].squares - 1);
-        if (newCount === 0) {
-            // Remove player if they have no squares left
-            updates["players"] = arrayRemove(updatedPlayers[playerIndex]);
-        } else {
-            updatedPlayers[playerIndex].squares = newCount;
-            updates["players"] = updatedPlayers;
+      await updateDoc(doc(db, "games", gameId), {
+        [`squares.${key}`]: {
+          userId: user.uid,
+          displayName: user.displayName || "Unknown",
+          photoURL: user.photoURL || "",
+          paidAt: null
         }
-    }
-
-    await updateDoc(doc(db, "games", activeGame.id), updates);
+      });
+    } catch (e) { console.error("Claim failed", e); }
   };
 
-  const togglePaid = async (playerId: string) => {
-    if (!activeGame) return;
-    const playerIndex = activeGame.players.findIndex(p => p.id === playerId);
-    if (playerIndex === -1) return;
+  const unclaimSquare = async (index: number) => {
+    if (!gameId || !user) return;
+    const key = index.toString();
+    
+    // Only allow unclaim if user owns it OR is admin
+    const square = game?.squares[key];
+    if (!square) return;
+    if (square.userId !== user.uid && !isAdmin) return;
 
-    const updatedPlayers = [...activeGame.players];
-    updatedPlayers[playerIndex].paid = !updatedPlayers[playerIndex].paid;
-    updatedPlayers[playerIndex].paidAt = !updatedPlayers[playerIndex].paid ? Date.now() : undefined; 
-    await updateDoc(doc(db, "games", activeGame.id), { players: updatedPlayers });
+    try {
+      // Fixed: Using deleteField() directly from top-level import
+      await updateDoc(doc(db, "games", gameId), {
+        [`squares.${key}`]: deleteField() 
+      });
+    } catch (e) { console.error("Unclaim failed", e); }
   };
 
-  const deletePlayer = async (playerId: string) => {
-      if (!activeGame) return;
-      const newSquares = { ...activeGame.squares };
-      Object.keys(newSquares).forEach(key => {
-          const originalLen = newSquares[key].length;
-          newSquares[key] = newSquares[key].filter(c => c.uid !== playerId);
-          if (newSquares[key].length === 0) delete newSquares[key];
-      });
+  const togglePaid = async (index: number) => {
+    if (!gameId || !isAdmin) return;
+    const key = index.toString();
+    const square = game?.squares[key];
+    if (!square) return;
 
-      const newPlayers = activeGame.players.filter(p => p.id !== playerId);
-
-      await updateDoc(doc(db, "games", activeGame.id), {
-          players: newPlayers,
-          squares: newSquares
+    const newValue = square.paidAt ? null : serverTimestamp();
+    try {
+      await updateDoc(doc(db, "games", gameId), {
+        [`squares.${key}.paidAt`]: newValue
       });
+    } catch (e) { console.error("Toggle paid failed", e); }
   };
 
   const updateScores = async (teamA: number, teamB: number) => {
-    if (!activeGame) return;
-    await updateDoc(doc(db, "games", activeGame.id), {
-        scores: { teamA, teamB }
-    });
+      if (!gameId || !isAdmin) return;
+      await updateDoc(doc(db, "games", gameId), { "scores.teamA": teamA, "scores.teamB": teamB });
   };
 
-  const scrambleGridDigits = async () => {
-    if (!activeGame) return;
-    const newAxisData = generateQuarterlyNumbers();
-    const newRows = newAxisData.q1.rows;
-    const newCols = newAxisData.q1.cols;
-
-    const updates = {
-      "settings.isScrambled": true,
-      "settings.rows": newRows,
-      "settings.cols": newCols,
-      "settings.axisValues": newAxisData, 
-    };
-
-    await updateDoc(doc(db, "games", activeGame.id), updates);
-  };
-
-  const resetGridDigits = async () => {
-    if (!activeGame) return;
-    await updateDoc(doc(db, "games", activeGame.id), {
-        "settings.rows": [],
-        "settings.cols": [],
-        "settings.isScrambled": false,
-        "settings.axisValues": null
-    });
-  };
-  
-  const resetGame = async () => {
-      if (!activeGame) return;
-      await updateDoc(doc(db, "games", activeGame.id), {
-          "settings.rows": [],
-          "settings.cols": [],
-          "settings.isScrambled": false,
-          "settings.axisValues": null,
-          squares: {},
-          players: [],
-          scores: { teamA: 0, teamB: 0 },
-          payoutHistory: []
+  const scrambleGrid = async () => {
+      if (!gameId || !isAdmin) return;
+      // Simple shuffle generator
+      const shuffle = () => [0,1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+      
+      await updateDoc(doc(db, "games", gameId), {
+          isScrambled: true,
+          axis: { 
+            q1:{row:shuffle(),col:shuffle()}, 
+            q2:{row:shuffle(),col:shuffle()}, 
+            q3:{row:shuffle(),col:shuffle()}, 
+            final:{row:shuffle(),col:shuffle()} 
+          }
       });
   };
 
-  const getUserGames = async (userId: string): Promise<GameState[]> => {
-    const qHost = query(collection(db, "games"), where("hostUserId", "==", userId));
-    const snapHost = await getDocs(qHost);
-    return snapHost.docs.map(d => ({ ...d.data(), id: d.id } as GameState));
-  };
-
-  // --- MODIFIED: This function now writes to two places ---
-  const logPayout = async (event: PayoutEvent) => {
-    if (!activeGame) return;
-    if (!event.id) {
-        console.error("Payout event is missing a unique ID.");
-        return;
-    }
-
-    // 1. Add to the specific game's payoutHistory array (for in-game UI)
-    const gameDocRef = doc(db, "games", activeGame.id);
-    await updateDoc(gameDocRef, {
-        payoutHistory: arrayUnion(event)
-    });
-
-    // 2. Add to the top-level 'payouts' collection (for global winners page)
-    const payoutDocRef = doc(db, "payouts", event.id);
-    await setDoc(payoutDocRef, event);
+  const resetGrid = async () => {
+      if (!gameId || !isAdmin) return;
+      await updateDoc(doc(db, "games", gameId), { 
+        isScrambled: false, 
+        axis: { q1:{row:[],col:[]}, q2:{row:[],col:[]}, q3:{row:[],col:[]}, final:{row:[],col:[]} } 
+      });
   };
 
   const deleteGame = async () => {
-      if (!activeGame) return;
-      await deleteDoc(doc(db, "games", activeGame.id));
-      setActiveGameId(null);
-      setActiveGame(null);
+      if (!gameId || !isAdmin) return;
+      await deleteDoc(doc(db, "games", gameId));
+  };
+  
+  const joinGame = async (gId: string) => {
+    const docRef = doc(db, "games", gId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      throw new Error("Game not found");
+    }
+  };
+
+  // Fixed: manualPayout is now defined in the correct scope
+  const manualPayout = async (gameId: string, status: boolean) => {
+    try {
+      const gameRef = doc(db, "games", gameId);
+      await updateDoc(gameRef, {
+        isPaidOut: status,
+        paidAt: status ? serverTimestamp() : null 
+      });
+    } catch (err) {
+      console.error("Payout failed:", err);
+    }
   };
 
   return (
-    <GameContext.Provider value={{
-      activeGame,
-      settings: activeGame?.settings || defaultSettings,
-      squares: activeGame?.squares || {},
-      players: activeGame?.players || [],
-      scores: activeGame?.scores || { teamA: 0, teamB: 0 },
-      payoutHistory: activeGame?.payoutHistory || [],
-      loading,
-      createGame,
-      joinGame,
-      leaveGame,
-      claimSquare,
-      unclaimSquare,
-      togglePaid,
-      deletePlayer,
-      updateScores,
-      scrambleGridDigits,
-      resetGridDigits,
-      resetGame,
-      updateSettings,
-      getUserGames,
-      logPayout,
-      deleteGame
-    }}>
+    <GameContext.Provider
+      value={{
+        game,
+        loading,
+        error,
+        setGameId,
+        isAdmin,
+        updateScores,
+        scrambleGrid,
+        resetGrid,
+        deleteGame,
+        manualPayout, // This is now defined and won't crash
+        joinGame,
+        claimSquare,
+        unclaimSquare,
+        togglePaid
+      }}
+    >
       {children}
     </GameContext.Provider>
   );
@@ -428,6 +250,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
 export function useGame() {
   const context = useContext(GameContext);
-  if (!context) throw new Error("useGame must be used within GameProvider");
+  if (context === undefined) throw new Error("useGame must be used within a GameProvider");
   return context;
 }

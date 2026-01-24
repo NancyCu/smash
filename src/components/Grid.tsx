@@ -144,15 +144,7 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                     teamALogo && (
                       <div className="absolute inset-0 flex items-center justify-center p-2">
                         <div
-                          className="relative w-full h-full"
-                          style={{
-                            mask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
-                            WebkitMask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
-                          }}
-                        >
-                          <Image src={teamALogo} alt={teamA} fill className="object-contain opacity-80" />
-                        </div>
-                      </div>
+                          className="relative w-full h-full [mask-image:radial-gradient(ellipse_at_center,black_0%,black_55%,transparent_100%)]"
                     )
                   )}
                 </div>
@@ -186,7 +178,7 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                             <div
                               key={c.uid}
                               className={cn(
-                                'flex-1 flex items-center justify-center text-[8px] lg:text-[10px] leading-none font-bold truncate px-0.5',
+                                'flex-1 items-center justify-center text-[8px] lg:text-[10px] leading-none font-bold truncate px-0.5',
                                 classesForUid(c.uid).bg,
                                 classesForUid(c.uid).text
                               )}

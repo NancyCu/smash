@@ -4,15 +4,15 @@ import React, { useState } from "react";
 import { useGame } from "@/context/GameContext";
 import { Loader2, ArrowRight, Hash } from "lucide-react";
 
-interface Props {
-  onSuccess: () => void;
+interface JoinGameFormProps {
+  // Update this line to allow a string argument
+  onSuccess: (gameId: string) => void; 
   initialGameId?: string;
 }
 
-export default function JoinGameForm({ onSuccess, initialGameId = "" }: Props) {
+export default function JoinGameForm({ onSuccess, initialGameId = "" }: JoinGameFormProps) {
   const { joinGame } = useGame();
   const [gameId, setGameId] = useState(initialGameId);
-  const [password, setPassword] = useState(""); // Kept for UI compatibility, even if unused
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -22,19 +22,16 @@ export default function JoinGameForm({ onSuccess, initialGameId = "" }: Props) {
     setIsJoining(true);
 
     try {
-      const result = await joinGame(gameId, password);
-      
-      if (!result.ok) {
-         setError(result.error || "Failed to join game. Please verify the code.");
-         setIsJoining(false);
-         return;
-      }
-
-      onSuccess();
-    } catch (err: any) {
+      await joinGame(gameId);
+      onSuccess(gameId);
+    } catch (err: unknown) {
       console.error("Join failed", err);
       // Fallback error message if the error doesn't have a message
-      setError(err.message || "Failed to join game. Check the code and try again.");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to join game. Check the code and try again.");
+      }
       setIsJoining(false);
     }
   };
@@ -68,19 +65,7 @@ export default function JoinGameForm({ onSuccess, initialGameId = "" }: Props) {
         {/* Password field - Optional in UI, but kept for future-proofing 
            or if your backend requires it later.
         */}
-        {/* <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password (Optional)</label>
-          <div className="relative">
-            <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
-            <input 
-              type="password"
-              placeholder="••••••"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-            />
-          </div>
-        </div> 
+        {/* 
         */}
 
         {error && (

@@ -18,8 +18,8 @@ body {
 /* We use standard CSS here to prevent Tailwind parsing errors */
 .glass-panel {
   background-color: rgba(17, 24, 39, 0.7); /* Dark Blue-Grey with opacity */
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(75, 85, 99, 0.4);
 }
 

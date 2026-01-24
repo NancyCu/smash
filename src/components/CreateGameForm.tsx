@@ -123,6 +123,7 @@ export default function CreateGameForm({ onSuccess }: Props) {
               required
               type="text"
               placeholder="e.g. Mike's Super Bowl Bash"
+              title="e.g. Mike's Super Bowl Bash"
               value={formData.name}
               onChange={e => setFormData({...formData, name: e.target.value})}
               className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -138,6 +139,7 @@ export default function CreateGameForm({ onSuccess }: Props) {
               required
               type="text"
               value={formData.teamA}
+              title="Team A (Vertical)"
               onChange={e => setFormData({...formData, teamA: e.target.value})}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl font-bold outline-none focus:border-indigo-500 transition-all"
             />
@@ -147,6 +149,7 @@ export default function CreateGameForm({ onSuccess }: Props) {
             <input 
               required
               type="text"
+              title="Team B (Horizontal)"
               value={formData.teamB}
               onChange={e => setFormData({...formData, teamB: e.target.value})}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl font-bold outline-none focus:border-indigo-500 transition-all"
