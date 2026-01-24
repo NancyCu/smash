@@ -70,6 +70,8 @@ function SquaresApp() {
   };
 
   const canManage = isAdmin || (!!user && !!activeGame && user.uid === activeGame.hostUserId);
+  const currentUserName = user?.displayName || user?.email || 'Anonymous';
+  const currentUserRole = canManage ? 'Admin' : 'Player';
 
   const currentAxis = useMemo(() => {
     const axisData = settings.axisValues;
@@ -216,7 +218,7 @@ function SquaresApp() {
       <main className='w-full px-4 lg:px-8 max-w-7xl mx-auto py-6'>
         {currentView === 'game' && activeGame ? (
           <div className='flex flex-col lg:flex-row items-stretch lg:items-start gap-4 animate-in fade-in duration-500 max-w-[2200px] mx-auto w-full'>
-            <div className='flex-1 flex flex-col gap-4 w-full min-w-0'>
+            <div className='flex-1 flex flex-col gap-2 w-full min-w-0'>
               <div className='w-full relative rounded-2xl ring-1 ring-slate-200 dark:ring-white/10 shadow-xl bg-white/60 dark:bg-slate-800/50 backdrop-blur-md p-4'>
                 <TrophyCase payouts={payouts} history={payoutHistory} totalPot={totalPot} />
                 <QuarterTabs activeQuarter={viewQuarter} setActiveQuarter={setViewQuarter} isGameStarted={isGameStarted} />
@@ -261,6 +263,8 @@ function SquaresApp() {
                  availableGames={liveGames}
                  onResetGridDigits={resetGridDigits}
                  onManualPayout={handleManualPayout} // <-- RESTORED
+                 currentUserName={currentUserName}
+                 currentUserRole={currentUserRole}
                />
                <PlayerList players={players} pricePerSquare={settings.pricePerSquare} canManagePayments={isAdmin} canManagePlayers={canManage} onTogglePaid={togglePaid} onDeletePlayer={deletePlayer} />
             </div>
