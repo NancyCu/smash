@@ -14,9 +14,10 @@ export interface EspnScoreData {
   status: string; // e.g., "in", "pre", "post"
   statusDetail: string; // e.g., "1/25 - 3:00 PM EST"
   isLive: boolean;
+  competitors?: any[]; // Raw competitors array for line scores
 }
 
-const DATE_OFFSETS = [0, 1];
+const DATE_OFFSETS = [-1, 0, 1];
 
 function formatDateKey(offsetDays: number): string {
   const target = new Date();
@@ -109,6 +110,7 @@ export function useEspnScores() {
               clock: status.displayClock ?? "",
               status: state,
               statusDetail: detail,
+              competitors: competitors, // Pass raw competitors for linescore parsing
               isLive: state === "in",
             });
           }

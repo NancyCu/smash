@@ -25,13 +25,18 @@ export default function GamePage() {
     updateScores, 
     scrambleGrid, 
     resetGrid, 
-    deleteGame,
-    manualPayout 
+    deleteGame
   } = useGame();
   
   const { user } = useAuth();
   const { games: liveGames } = useEspnScores();
 
+  // Find the ESPN game object if we have an ID
+  const matchedGame = useMemo(() => 
+    game?.espnGameId ? liveGames.find(g => g.id === game.espnGameId) : null, 
+    [game?.espnGameId, liveGames]
+  );
+  
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
   const [copied, setCopied] = useState(false);
 
@@ -237,9 +242,8 @@ export default function GamePage() {
           scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
           isAdmin={isAdmin}
           isScrambled={game.isScrambled}
-          eventDate={game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
+          eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
           onUpdateScores={updateScores}
-          onManualPayout={manualPayout}
           onDeleteGame={handleDelete}
           onScrambleGridDigits={scrambleGrid}
           onResetGridDigits={resetGrid}
