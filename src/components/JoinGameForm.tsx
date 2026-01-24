@@ -12,7 +12,6 @@ interface Props {
 export default function JoinGameForm({ onSuccess, initialGameId = "" }: Props) {
   const { joinGame } = useGame();
   const [gameId, setGameId] = useState(initialGameId);
-  const [password, setPassword] = useState(""); // Kept for UI compatibility, even if unused
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -22,7 +21,7 @@ export default function JoinGameForm({ onSuccess, initialGameId = "" }: Props) {
     setIsJoining(true);
 
     try {
-      const result = await joinGame(gameId, password);
+      const result = await joinGame(gameId);
       
       if (!result.ok) {
          setError(result.error || "Failed to join game. Please verify the code.");
@@ -31,10 +30,11 @@ export default function JoinGameForm({ onSuccess, initialGameId = "" }: Props) {
       }
 
       onSuccess();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Join failed", err);
+      const message = err instanceof Error ? err.message : "Failed to join game. Check the code and try again.";
       // Fallback error message if the error doesn't have a message
-      setError(err.message || "Failed to join game. Check the code and try again.");
+      setError(message);
       setIsJoining(false);
     }
   };

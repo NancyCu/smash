@@ -12,7 +12,6 @@ import {
   where, 
   getDocs,
   getDoc,
-  serverTimestamp,
   arrayUnion,
   arrayRemove
 } from "firebase/firestore";
@@ -96,7 +95,7 @@ interface GameContextType {
   payoutHistory: PayoutEvent[];
   loading: boolean;
   createGame: (name: string, price: number, teamA: string, teamB: string, espnGameId?: string, eventDate?: string, eventName?: string, espnLeague?: string) => Promise<string>;
-  joinGame: (gameId: string, password?: string, userId?: string) => Promise<{ ok: boolean; error?: string }>;
+  joinGame: (gameId: string) => Promise<{ ok: boolean; error?: string }>;
   leaveGame: () => void;
   claimSquare: (row: number, col: number, user: { id: string; name: string }) => Promise<void>;
   unclaimSquare: (row: number, col: number, userId: string) => Promise<void>;
@@ -116,15 +115,20 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [activeGameId, setActiveGameId] = useState<string | null>(null);
+  const initialGameId = typeof window === "undefined" ? null : localStorage.getItem("activeGameId");
+  const [activeGameId, setActiveGameIdState] = useState<string | null>(initialGameId);
   const [activeGame, setActiveGame] = useState<GameState | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(() => !!initialGameId);
 
-  // Restore activeGameId from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('activeGameId');
-    if (saved) setActiveGameId(saved);
-  }, []);
+  const setActiveGameId = (id: string | null) => {
+    setActiveGameIdState(id);
+    if (id) {
+      setLoading(true);
+    } else {
+      setLoading(false);
+      setActiveGame(null);
+    }
+  };
 
   // Save activeGameId to localStorage when it changes
   useEffect(() => {
@@ -148,12 +152,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (!activeGameId) {
-      setActiveGame(null);
-      return;
-    }
+    if (!activeGameId) return;
 
-    setLoading(true);
     const unsub = onSnapshot(doc(db, "games", activeGameId), (docSnap) => {
       setLoading(false);
       if (docSnap.exists()) {
@@ -166,7 +166,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setActiveGame({ ...data, id: docSnap.id });
       } else {
         setActiveGameId(null);
-        setActiveGame(null);
       }
     }, (err) => {
       console.error("Game sync error:", err);
@@ -210,7 +209,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return docRef.id;
   };
 
-  const joinGame = async (gameId: string, password?: string, userId?: string) => {
+  const joinGame = async (gameId: string) => {
     try {
       const gameDoc = await getDoc(doc(db, "games", gameId));
       if (gameDoc.exists()) {
@@ -232,7 +231,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const updateSettings = async (newSettings: Partial<GameSettings>) => {
     if (!activeGame) return;
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(newSettings)) {
         updates[`settings.${key}`] = value;
     }
@@ -243,7 +242,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (!activeGame) return;
     
     const key = `${row}-${col}`;
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
     updates[`squares.${key}`] = arrayUnion({ 
       uid: claimant.id, 
       name: claimant.name, 
@@ -270,7 +269,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     
     if (!claimToRemove) return;
 
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
     updates[`squares.${key}`] = arrayRemove(claimToRemove);
 
     const playerIndex = activeGame.players.findIndex(p => p.id === userId);
@@ -296,19 +295,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const updatedPlayers = [...activeGame.players];
     updatedPlayers[playerIndex].paid = !updatedPlayers[playerIndex].paid;
-    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : null;
-    
+    // ✅ CORRECT (Uses undefined instead of null)
+    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : undefined;
     await updateDoc(doc(db, "games", activeGame.id), { players: updatedPlayers });
   };
 
   const deletePlayer = async (playerId: string) => {
       if (!activeGame) return;
       const newSquares = { ...activeGame.squares };
-      Object.keys(newSquares).forEach(key => {
-          const originalLen = newSquares[key].length;
+        Object.keys(newSquares).forEach(key => {
           newSquares[key] = newSquares[key].filter(c => c.uid !== playerId);
           if (newSquares[key].length === 0) delete newSquares[key];
-      });
+        });
 
       const newPlayers = activeGame.players.filter(p => p.id !== playerId);
 
