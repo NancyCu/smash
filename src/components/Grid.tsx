@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React from 'react';
 import Image from 'next/image';
@@ -14,7 +14,7 @@ type SquareClaim = {
 interface GridProps {
   rows: number[];
   cols: number[];
-  squares: Record<string, SquareClaim[]>; // cellKey => claims
+  squares: Record<string, SquareClaim[]>;
   onSquareClick: (row: number, col: number) => void;
   teamA: string;
   teamB: string;
@@ -34,28 +34,25 @@ function hashToHue(input: string): number {
   return hash % 360;
 }
 
+// Force dark mode colors for visibility on black background
 const USER_COLOR_CLASSES = [
-  { bg: 'bg-rose-200 dark:bg-rose-900/60', text: 'text-rose-900 dark:text-rose-100', border: 'border-rose-300 dark:border-rose-500/60' },
-  { bg: 'bg-red-200 dark:bg-red-900/60', text: 'text-red-900 dark:text-red-100', border: 'border-red-300 dark:border-red-500/60' },
-  { bg: 'bg-orange-200 dark:bg-orange-900/60', text: 'text-orange-900 dark:text-orange-100', border: 'border-orange-300 dark:border-orange-500/60' },
-  { bg: 'bg-amber-200 dark:bg-amber-900/60', text: 'text-amber-900 dark:text-amber-100', border: 'border-amber-300 dark:border-amber-500/60' },
-  { bg: 'bg-yellow-200 dark:bg-yellow-900/60', text: 'text-yellow-900 dark:text-yellow-100', border: 'border-yellow-300 dark:border-yellow-500/60' },
-  { bg: 'bg-lime-200 dark:bg-lime-900/60', text: 'text-lime-900 dark:text-lime-100', border: 'border-lime-300 dark:border-lime-500/60' },
-  { bg: 'bg-green-200 dark:bg-green-900/60', text: 'text-green-900 dark:text-green-100', border: 'border-green-300 dark:border-green-500/60' },
-  { bg: 'bg-emerald-200 dark:bg-emerald-900/60', text: 'text-emerald-900 dark:text-emerald-100', border: 'border-emerald-300 dark:border-emerald-500/60' },
-  { bg: 'bg-teal-200 dark:bg-teal-900/60', text: 'text-teal-900 dark:text-teal-100', border: 'border-teal-300 dark:border-teal-500/60' },
-  { bg: 'bg-cyan-200 dark:bg-cyan-900/60', text: 'text-cyan-900 dark:text-cyan-100', border: 'border-cyan-300 dark:border-cyan-500/60' },
-  { bg: 'bg-sky-200 dark:bg-sky-900/60', text: 'text-sky-900 dark:text-sky-100', border: 'border-sky-300 dark:border-sky-500/60' },
-  { bg: 'bg-blue-200 dark:bg-blue-900/60', text: 'text-blue-900 dark:text-blue-100', border: 'border-blue-300 dark:border-blue-500/60' },
-  { bg: 'bg-indigo-200 dark:bg-indigo-900/60', text: 'text-indigo-900 dark:text-indigo-100', border: 'border-indigo-300 dark:border-indigo-500/60' },
-  { bg: 'bg-violet-200 dark:bg-violet-900/60', text: 'text-violet-900 dark:text-violet-100', border: 'border-violet-300 dark:border-violet-500/60' },
-  { bg: 'bg-purple-200 dark:bg-purple-900/60', text: 'text-purple-900 dark:text-purple-100', border: 'border-purple-300 dark:border-purple-500/60' },
-  { bg: 'bg-fuchsia-200 dark:bg-fuchsia-900/60', text: 'text-fuchsia-900 dark:text-fuchsia-100', border: 'border-fuchsia-300 dark:border-fuchsia-500/60' },
-  { bg: 'bg-pink-200 dark:bg-pink-900/60', text: 'text-pink-900 dark:text-pink-100', border: 'border-pink-300 dark:border-pink-500/60' },
-  { bg: 'bg-rose-300 dark:bg-rose-800/70', text: 'text-rose-950 dark:text-rose-100', border: 'border-rose-400 dark:border-rose-500/70' },
-  { bg: 'bg-cyan-300 dark:bg-cyan-800/70', text: 'text-cyan-950 dark:text-cyan-100', border: 'border-cyan-400 dark:border-cyan-500/70' },
-  { bg: 'bg-emerald-300 dark:bg-emerald-800/70', text: 'text-emerald-950 dark:text-emerald-100', border: 'border-emerald-400 dark:border-emerald-500/70' },
-  { bg: 'bg-indigo-300 dark:bg-indigo-800/70', text: 'text-indigo-950 dark:text-indigo-100', border: 'border-indigo-400 dark:border-indigo-500/70' },
+  { bg: 'bg-rose-900/60', text: 'text-rose-100', border: 'border-rose-500/60' },
+  { bg: 'bg-red-900/60', text: 'text-red-100', border: 'border-red-500/60' },
+  { bg: 'bg-orange-900/60', text: 'text-orange-100', border: 'border-orange-500/60' },
+  { bg: 'bg-amber-900/60', text: 'text-amber-100', border: 'border-amber-500/60' },
+  { bg: 'bg-yellow-900/60', text: 'text-yellow-100', border: 'border-yellow-500/60' },
+  { bg: 'bg-lime-900/60', text: 'text-lime-100', border: 'border-lime-500/60' },
+  { bg: 'bg-green-900/60', text: 'text-green-100', border: 'border-green-500/60' },
+  { bg: 'bg-emerald-900/60', text: 'text-emerald-100', border: 'border-emerald-500/60' },
+  { bg: 'bg-teal-900/60', text: 'text-teal-100', border: 'border-teal-500/60' },
+  { bg: 'bg-cyan-900/60', text: 'text-cyan-100', border: 'border-cyan-500/60' },
+  { bg: 'bg-sky-900/60', text: 'text-sky-100', border: 'border-sky-500/60' },
+  { bg: 'bg-blue-900/60', text: 'text-blue-100', border: 'border-blue-500/60' },
+  { bg: 'bg-indigo-900/60', text: 'text-indigo-100', border: 'border-indigo-500/60' },
+  { bg: 'bg-violet-900/60', text: 'text-violet-100', border: 'border-violet-500/60' },
+  { bg: 'bg-purple-900/60', text: 'text-purple-100', border: 'border-purple-500/60' },
+  { bg: 'bg-fuchsia-900/60', text: 'text-fuchsia-100', border: 'border-fuchsia-500/60' },
+  { bg: 'bg-pink-900/60', text: 'text-pink-100', border: 'border-pink-500/60' },
 ];
 
 function classesForUid(uid: string) {
@@ -63,53 +60,52 @@ function classesForUid(uid: string) {
   return USER_COLOR_CLASSES[idx];
 }
 
-// --- Component ---
-// ... imports and helpers stay the same ...
-
 export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB, teamALogo, teamBLogo, isScrambled, winningCell, selectedCell }: GridProps) {
   const showLogos = !isScrambled;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center pt-2 pl-6 md:pt-4 md:pl-10">
+    <div className="relative w-full h-full flex flex-col items-center justify-center pt-8 pl-8 md:pt-10 md:pl-12">
 
-      {/* --- TEAM B HEADER (Top) --- */}
-      <div className="absolute top-0 left-0 right-0 pl-6 md:pl-10 flex items-center justify-center gap-3 z-30 pointer-events-none -translate-y-3/4">
-        {/* LOGO FIRST for Horizontal */}
+      {/* --- TEAM B HEADER (Top - Horizontal) --- */}
+      <div className="absolute top-2 left-0 right-0 pl-8 md:pl-12 flex items-center justify-center gap-3 z-30 pointer-events-none">
         {showLogos && teamBLogo && (
-          <div className="relative w-6 h-6 md:w-10 md:h-10 shrink-0">
-            <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-md" />
+          <div className="relative w-8 h-8 md:w-12 md:h-12 shrink-0">
+            <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
           </div>
         )}
-        <span className="text-center font-black text-xl md:text-3xl text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
+        <span className="text-center font-black text-2xl md:text-4xl text-cyan-400 uppercase tracking-[0.2em] drop-shadow-[0_0_15px_rgba(34,211,238,0.6)]">
           {teamB}
         </span>
       </div>
 
-      {/* --- TEAM A HEADER (Left/Vertical) --- */}
-      <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center z-30 pointer-events-none -translate-x-1/3">
+      {/* --- TEAM A HEADER (Left - Vertical) --- */}
+      <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center z-30 pointer-events-none -translate-x-1/4">
+        {/* Parent container rotates -90 degrees */}
         <div className="transform -rotate-90 flex items-center gap-3 whitespace-nowrap origin-center">
-            {/* LOGO FIRST (Visual Top) */}
+            {/* FIX: Removed 'transform rotate-90' 
+               Now the logo inherits the parent's -90 rotation so it matches the text orientation 
+            */}
             {showLogos && teamALogo && (
-                <div className="relative w-6 h-6 md:w-8 md:h-8 shrink-0">
-                  <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-md" />
+                <div className="relative w-8 h-8 md:w-12 md:h-12 shrink-0">
+                  <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]" />
                 </div>
             )}
-            <span className="font-black text-xl md:text-3xl text-pink-600 dark:text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">
+            <span className="font-black text-2xl md:text-4xl text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_15px_rgba(236,72,153,0.6)]">
               {teamA}
             </span>
         </div>
       </div>
 
       {/* --- THE GRID --- */}
-      <div className="relative w-full aspect-square rounded-xl shadow-2xl bg-slate-300 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-700/50 p-0.5 md:p-1">
-        <div className="grid grid-cols-11 w-full h-full bg-slate-100 dark:bg-slate-900">
+      <div className="relative w-full aspect-square rounded-xl shadow-2xl bg-slate-700/50 border border-slate-700/50 p-0.5 md:p-1">
+        <div className="grid grid-cols-11 w-full h-full bg-slate-900">
             
             {/* Corner */}
-            <div className="aspect-square bg-black dark:bg-black shadow-md border-b border-r border-slate-300 dark:border-white/10"></div>
+            <div className="aspect-square bg-black shadow-md border-b border-r border-white/10"></div>
 
             {/* Column Headers */}
             {cols.map((num) => (
-              <div key={`col-${num}`} className="aspect-square flex items-center justify-center bg-black dark:bg-black border-b border-r border-slate-200 dark:border-white/10 text-cyan-400 font-black text-sm sm:text-base md:text-2xl shadow-sm">
+              <div key={`col-${num}`} className="aspect-square flex items-center justify-center bg-black border-b border-r border-white/10 text-cyan-400 font-black text-lg sm:text-xl md:text-3xl shadow-sm">
                 {num}
               </div>
             ))}
@@ -118,7 +114,7 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
             {rows.map((rowNum, rowIndex) => (
               <React.Fragment key={`row-${rowNum}`}>
                 {/* Row Header */}
-                <div className="aspect-square flex items-center justify-center bg-black dark:bg-black border-r border-b border-slate-200 dark:border-white/10 text-pink-500 font-black text-sm sm:text-base md:text-2xl shadow-sm">
+                <div className="aspect-square flex items-center justify-center bg-black border-r border-b border-white/10 text-pink-500 font-black text-lg sm:text-xl md:text-3xl shadow-sm">
                   {rowNum}
                 </div>
 
@@ -135,18 +131,16 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                       key={key}
                       onClick={() => onSquareClick(rowIndex, colIndex)}
                       className={cn(
-                        'aspect-square relative w-full h-full border-[0.5px] border-slate-200/50 dark:border-white/5 overflow-hidden group',
-                        claims.length > 0 ? 'bg-slate-50 dark:bg-slate-800/60' : 'bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/80',
+                        'aspect-square relative w-full h-full border-[0.5px] border-white/5 overflow-hidden group',
+                        claims.length > 0 ? 'bg-slate-800/60' : 'bg-slate-900/40 hover:bg-slate-800/80',
                         isFull ? 'cursor-not-allowed' : 'cursor-pointer',
                         isWinner && 'ring-2 ring-yellow-400 bg-yellow-400/20 animate-pulse z-20',
                         isSelected && !isWinner && 'ring-2 ring-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.4)] z-20'
                       )}
                     >
                       {claims.length === 0 ? (
-                          // EMPTY STATE: Dot or "Select" logic could go here
-                          <div className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 group-hover:bg-cyan-500/50 transition-colors" />
+                          <div className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-cyan-500/50 transition-colors" />
                       ) : claims.length === 1 ? (
-                        // SINGLE CLAIM (Strictly Centered)
                         <div className={cn(
                           "w-full h-full flex items-center justify-center p-0.5",
                           classesForUid(claims[0].uid).bg
@@ -159,7 +153,6 @@ export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB,
                            </span>
                         </div>
                       ) : (
-                        // MULTI CLAIM (Grid Layout)
                         <div className="w-full h-full grid grid-cols-2 grid-rows-2 content-center items-center">
                           {claims.slice(0, 4).map((c) => (
                             <div key={c.uid} className={cn(

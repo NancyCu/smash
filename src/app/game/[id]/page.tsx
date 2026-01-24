@@ -25,7 +25,8 @@ export default function GamePage() {
     updateScores, 
     scrambleGrid, 
     resetGrid, 
-    deleteGame
+    deleteGame,
+    manualPayout // <--- Added this back so Admin buttons work
   } = useGame();
   
   const { user } = useAuth();
@@ -49,43 +50,69 @@ export default function GamePage() {
     if (cleanName.includes("ravens")) return "https://upload.wikimedia.org/wikipedia/en/1/16/Baltimore_Ravens_logo.svg";
     if (cleanName.includes("patriots")) return "https://upload.wikimedia.org/wikipedia/en/b/b9/New_England_Patriots_logo.svg";
     if (cleanName.includes("broncos")) return "https://upload.wikimedia.org/wikipedia/en/4/44/Denver_Broncos_logo.svg";
+    if (cleanName.includes("hawks")) return "https://upload.wikimedia.org/wikipedia/en/2/24/Atlanta_Hawks_logo.svg";
+    if (cleanName.includes("suns")) return "https://upload.wikimedia.org/wikipedia/en/d/dc/Phoenix_Suns_logo.svg";
     return undefined;
   };
 
-  // --- 2. LIVE SCORES (HOISTED TO TOP) ---
+  // --- 2. LIVE SCORES ---
   const currentScores = useMemo(() => {
     // If no ESPN Game ID, return DB scores immediately
     if (!game?.espnGameId) {
        return game?.scores || { q1:{home:0,away:0}, q2:{home:0,away:0}, q3:{home:0,away:0}, final:{home:0,away:0}, teamA:0, teamB:0 };
     }
 
-    const matchedGame = liveGames.find(g => g.id === game.espnGameId);
-    // FIX: Cast to 'any' to silence 'competitors' error
-    const safeGame = matchedGame as any; 
-
-    if (safeGame && safeGame.competitors) {
-      const competitor1 = safeGame.competitors[0]; // Home
-      const competitor2 = safeGame.competitors[1]; // Away
+    // matchedGame is already derived above, reuse it? Or re-find (safe either way)
+    const match = liveGames.find(g => g.id === game.espnGameId);
+    
+    if (match && match.competitors) {
+      // Helper: Fuzzy match team names
+      const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const targetA = normalize(game.teamA);
+      const targetB = normalize(game.teamB);
       
+      let compA = match.competitors.find((c: any) => {
+         const cName = normalize(c.team.name);
+         const cAbbr = normalize(c.team.abbreviation);
+         return cName.includes(targetA) || targetA.includes(cName) || cAbbr === targetA;
+      });
+      let compB = match.competitors.find((c: any) => {
+         const cName = normalize(c.team.name);
+         const cAbbr = normalize(c.team.abbreviation);
+         return cName.includes(targetB) || targetB.includes(cName) || cAbbr === targetB;
+      });
+
+      // Fallbacks if direct matching fails
+      if (!compA && compB) compA = match.competitors.find((c: any) => c.id !== compB.id);
+      if (!compB && compA) compB = match.competitors.find((c: any) => c.id !== compA.id);
+      if (!compA && !compB) {
+         compA = match.competitors[0];
+         compB = match.competitors[1];
+      }
+
+      // Safe Extraction Helper
       const getScore = (comp: any, index: number) => {
-        const linescore = comp.linescores?.[index];
-        return linescore ? Number(linescore.value) : 0;
+        if (!comp || !comp.linescores || !comp.linescores[index]) return 0;
+        return Number(comp.linescores[index].value || 0);
       };
+      
+      const scoreA = Number(compA?.score || 0);
+      const scoreB = Number(compB?.score || 0);
 
       return {
-        q1: { home: getScore(competitor1, 0), away: getScore(competitor2, 0) },
-        q2: { home: getScore(competitor1, 1), away: getScore(competitor2, 1) },
-        q3: { home: getScore(competitor1, 2), away: getScore(competitor2, 2) },
-        final: { home: Number(competitor1.score), away: Number(competitor2.score) },
-        teamA: Number(competitor1.score),
-        teamB: Number(competitor2.score)
+        q1: { home: getScore(compA, 0), away: getScore(compB, 0) },
+        q2: { home: getScore(compA, 1), away: getScore(compB, 1) },
+        q3: { home: getScore(compA, 2), away: getScore(compB, 2) },
+        final: { home: scoreA, away: scoreB },
+        teamA: scoreA,
+        teamB: scoreB
       };
     }
 
     return game?.scores || { q1:{home:0,away:0}, q2:{home:0,away:0}, q3:{home:0,away:0}, final:{home:0,away:0}, teamA:0, teamB:0 };
   }, [game, liveGames]);
 
-  // --- 3. GRID SQUARES (EXTRACTED) ---
+  // --- 3. GRID SQUARES ---
   const formattedSquares = useMemo(() => {
     if (!game?.squares) return {};
     const result: Record<string, { uid: string, name: string, claimedAt: number }[]> = {};
@@ -158,7 +185,6 @@ export default function GamePage() {
     }
   };
 
-  // --- LOADING / ERROR STATES ---
   if (loading && !game) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0C15] gap-4">
@@ -205,51 +231,64 @@ export default function GamePage() {
          </div>
       </div>
 
-      {/* MAIN LAYOUT */}
-      <div className="w-full max-w-2xl mx-auto p-4 space-y-6">
-        {/* SCOREBOARD */}
-        <Scoreboard scores={currentScores} teamA={game.teamA} teamB={game.teamB} />
+      {/* --- RESPONSIVE CONTAINER --- */}
+      {/* Fix: Changed max-w-2xl to max-w-7xl, added flex-row on large screens */}
+      <div className="w-full max-w-md md:max-w-7xl mx-auto p-4 md:p-8">
+        
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-        {/* TABS & GRID */}
-        <div className="space-y-2">
-           <div className="flex justify-center">
-             <QuarterTabs activeQuarter={activeQuarter} setActiveQuarter={setActiveQuarter} isGameStarted={game.isScrambled} />
-           </div>
-           <div className="w-full aspect-square">
-             <Grid 
-               rows={currentAxis.row}
-               cols={currentAxis.col}
-               squares={formattedSquares}
-               onSquareClick={handleSquareClick}
-               teamA={game.teamA}
-               teamB={game.teamB}
-               teamALogo={getTeamLogo(game.teamA)}
-               teamBLogo={getTeamLogo(game.teamB)}
-               isScrambled={game.isScrambled}
+          {/* LEFT COLUMN: THE ARENA (Grows to fill space) */}
+          <div className="w-full lg:flex-1 space-y-6">
+             {/* Scoreboard on top of grid */}
+             <Scoreboard scores={currentScores} teamA={game.teamA} teamB={game.teamB} />
+
+             {/* Tab + Grid */}
+             <div className="space-y-4">
+                <div className="flex justify-center">
+                  <QuarterTabs activeQuarter={activeQuarter} setActiveQuarter={setActiveQuarter} isGameStarted={game.isScrambled} />
+                </div>
+                {/* Grid Container */}
+                <div className="w-full max-w-[600px] mx-auto lg:max-w-full aspect-square bg-[#0f111a] rounded-2xl shadow-2xl overflow-hidden border border-white/5">
+                  <Grid 
+                    rows={currentAxis.row}
+                    cols={currentAxis.col}
+                    squares={formattedSquares}
+                    onSquareClick={handleSquareClick}
+                    teamA={game.teamA}
+                    teamB={game.teamB}
+                    teamALogo={getTeamLogo(game.teamA)}
+                    teamBLogo={getTeamLogo(game.teamB)}
+                    isScrambled={game.isScrambled}
+                  />
+                </div>
+             </div>
+          </div>
+
+          {/* RIGHT COLUMN: INFO & CONTROLS (Sticky Sidebar) */}
+          <div className="w-full lg:w-[400px] xl:w-[450px] shrink-0 lg:sticky lg:top-24 space-y-6">
+             <GameInfo 
+                gameId={game.id}
+                gameName={game.name}
+                host={game.host}
+                pricePerSquare={game.price}
+                totalPot={game.pot || (Object.keys(game.squares).length * game.price)} 
+                payouts={game.payouts}
+                matchup={{ teamA: game.teamA, teamB: game.teamB }}
+                scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
+                isAdmin={isAdmin}
+                isScrambled={game.isScrambled}
+                eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
+                onUpdateScores={updateScores}
+                onManualPayout={manualPayout} // Passed correctly now
+                onDeleteGame={handleDelete}
+                onScrambleGridDigits={scrambleGrid}
+                onResetGridDigits={resetGrid}
+                selectedEventId={game.espnGameId}
+                availableGames={liveGames}
              />
-           </div>
-        </div>
+          </div>
 
-        {/* GAME INFO */}
-        <GameInfo 
-          gameId={game.id}
-          gameName={game.name}
-          host={game.host}
-          pricePerSquare={game.price}
-          totalPot={game.pot || (Object.keys(game.squares).length * game.price)} 
-          payouts={game.payouts}
-          matchup={{ teamA: game.teamA, teamB: game.teamB }}
-          scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
-          isAdmin={isAdmin}
-          isScrambled={game.isScrambled}
-          eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
-          onUpdateScores={updateScores}
-          onDeleteGame={handleDelete}
-          onScrambleGridDigits={scrambleGrid}
-          onResetGridDigits={resetGrid}
-          selectedEventId={game.espnGameId}
-          availableGames={liveGames}
-        />
+        </div>
       </div>
     </main>
   );
