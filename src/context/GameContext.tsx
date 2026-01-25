@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { 
   doc, onSnapshot, updateDoc, deleteDoc, setDoc, 
   collection, addDoc, serverTimestamp, arrayUnion, deleteField,
-  query, where, getDocs // <--- ADDED THESE IMPORTS
+  query, where, getDocs 
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthContext";
@@ -40,6 +40,7 @@ type GameData = {
   createdAt: any;
   espnGameId?: string;
   axis?: any;
+  participants?: string[]; // <--- NEW FIELD: Tracks everyone in the game
 };
 
 interface GameContextType {
@@ -103,13 +104,22 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
         const currentSquare = game?.squares[index];
+        
+        // --- KEY FIX: Add user to 'participants' list automatically ---
+        const updatePayload: any = {
+            participants: arrayUnion(user.uid) 
+        };
+
         if (Array.isArray(currentSquare)) {
-            await updateDoc(ref, { [`squares.${index}`]: arrayUnion(newClaim) });
+            updatePayload[`squares.${index}`] = arrayUnion(newClaim);
         } else if (currentSquare) {
-            await updateDoc(ref, { [`squares.${index}`]: [currentSquare, newClaim] });
+            updatePayload[`squares.${index}`] = [currentSquare, newClaim];
         } else {
-            await updateDoc(ref, { [`squares.${index}`]: [newClaim] });
+            updatePayload[`squares.${index}`] = [newClaim];
         }
+
+        await updateDoc(ref, updatePayload);
+
     } catch (e) {
         console.error("Claim Error:", e);
         throw e;
@@ -159,6 +169,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       squares: {},
       scores: { teamA: 0, teamB: 0 },
       isScrambled: false,
+      participants: [user.uid], // Host is first participant
       createdAt: serverTimestamp(),
       pot: 0
     });
@@ -179,10 +190,22 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const getUserGames = async (uid: string) => {
      if (!uid) return [];
      try {
-         // Query games where YOU are the host
-         const q = query(collection(db, "games"), where("host", "==", uid));
-         const snapshot = await getDocs(q);
-         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+         // 1. Get games I Host
+         const hostedQuery = query(collection(db, "games"), where("host", "==", uid));
+         // 2. Get games I Joined (via participants array)
+         const joinedQuery = query(collection(db, "games"), where("participants", "array-contains", uid));
+         
+         const [hostedSnap, joinedSnap] = await Promise.all([
+             getDocs(hostedQuery),
+             getDocs(joinedQuery)
+         ]);
+
+         // Merge and remove duplicates (using a Map by ID)
+         const gamesMap = new Map();
+         hostedSnap.forEach(doc => gamesMap.set(doc.id, { id: doc.id, ...doc.data() }));
+         joinedSnap.forEach(doc => gamesMap.set(doc.id, { id: doc.id, ...doc.data() }));
+
+         return Array.from(gamesMap.values());
      } catch (e) {
          console.error("Error fetching user games:", e);
          return [];

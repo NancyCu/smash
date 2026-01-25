@@ -1,152 +1,139 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { useGame } from "@/context/GameContext";
-import { useEspnScores } from "@/hooks/useEspnScores";
-import Image from "next/image";
-import { LogOut, ExternalLink, Trophy, Calendar, ArrowRight, Home, Loader2 } from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useGame } from '@/context/GameContext';
+import { useRouter } from 'next/navigation';
+import { LogOut, Trophy, Crown, ArrowRight, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function ProfilePage() {
-  const router = useRouter();
-  // FIX: Changed 'logout' to 'logOut'
   const { user, logOut } = useAuth();
-  const { getUserGames } = useGame();
-  const { games: liveGames } = useEspnScores();
+  const { getUserGames } = useGame(); // <--- This now fetches Joined games too!
+  const router = useRouter();
   
-  const [myGames, setMyGames] = useState<any[]>([]);
+  const [games, setGames] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      router.push("/");
-      return;
-    }
-
-    const loadGames = async () => {
-      try {
-        const games = await getUserGames(user.uid);
+    async function fetchGames() {
+      if (user) {
+        const userGames = await getUserGames(user.uid);
         // Sort by newest first
-        const sorted = games.sort((a: any, b: any) => 
-            (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-        );
-        setMyGames(sorted);
-      } catch (e) {
-        console.error("Error loading games:", e);
-      } finally {
-        setLoading(false);
+        const sorted = userGames.sort((a,b) => b.createdAt?.seconds - a.createdAt?.seconds);
+        setGames(sorted);
       }
-    };
-
-    loadGames();
-  }, [user, getUserGames, router]);
-
-  const handleLogout = async () => {
-    await logOut();
-    router.push("/");
-  };
-
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return "Unknown Date";
-    // Handle Firebase Timestamp or standard date string
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+      setLoading(false);
+    }
+    fetchGames();
+  }, [user, getUserGames]);
 
   if (!user) return null;
 
   return (
-    <main className="min-h-screen bg-[#0B0C15] text-white p-4 lg:p-8 relative overflow-hidden">
-        
-        {/* BACKGROUND BLOBS */}
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none" />
+    <main className="min-h-screen bg-[#0B0C15] p-4 lg:p-8 relative overflow-hidden pb-24">
+       
+       {/* Background Ambience */}
+       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[100px]" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-600/10 rounded-full blur-[100px]" />
+       </div>
 
-        <div className="max-w-4xl mx-auto relative z-10">
-            
-            {/* HEADER */}
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push("/")}>
-                    <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 shadow-lg">
-                        <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-black uppercase tracking-wider leading-none">My Profile</h1>
-                        <span className="text-xs text-slate-500 font-mono">SOUPER BOWL SQUARES</span>
-                    </div>
-                </div>
-                <button 
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold uppercase hover:bg-slate-700 hover:text-white transition-colors"
-                >
-                    <LogOut className="w-4 h-4" /> Sign Out
-                </button>
-            </div>
+       <div className="max-w-md mx-auto relative z-10 space-y-6">
+           
+           {/* HEADER */}
+           <div className="flex justify-between items-center">
+               <div>
+                   <h1 className="text-xl font-black text-white uppercase tracking-widest">My Profile</h1>
+                   <p className="text-slate-500 text-xs tracking-wider">SOUPER BOWL SQUARES</p>
+               </div>
+               <button 
+                  onClick={logOut} 
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400 hover:text-white hover:bg-red-500/10 hover:border-red-500/50 transition-all"
+               >
+                  <LogOut className="w-3 h-3" /> SIGN OUT
+               </button>
+           </div>
 
-            {/* USER CARD */}
-            <div className="bg-[#151725] border border-white/10 rounded-2xl p-6 mb-8 flex flex-col md:flex-row items-center gap-6 shadow-xl">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-3xl font-black text-white shadow-lg">
-                    {user.displayName ? user.displayName[0].toUpperCase() : "U"}
-                </div>
-                <div className="text-center md:text-left flex-1">
-                    <h2 className="text-2xl font-bold text-white">{user.displayName || "User"}</h2>
-                    <p className="text-slate-400 text-sm">{user.email}</p>
-                </div>
-                <div className="flex gap-4">
-                    <div className="text-center bg-black/20 p-3 rounded-xl border border-white/5 min-w-[100px]">
-                        <span className="block text-2xl font-black text-indigo-400">{myGames.length}</span>
-                        <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Games</span>
-                    </div>
-                </div>
-            </div>
+           {/* PROFILE CARD */}
+           <div className="bg-[#151725] border border-white/10 rounded-3xl p-8 flex flex-col items-center shadow-2xl relative overflow-hidden group">
+               <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+               
+               <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 p-1 mb-4 shadow-lg shadow-indigo-500/30">
+                  <div className="w-full h-full rounded-full bg-[#151725] flex items-center justify-center overflow-hidden">
+                      {user.photoURL ? (
+                          <Image src={user.photoURL} alt="User" width={80} height={80} className="object-cover" />
+                      ) : (
+                          <span className="text-2xl font-black text-white">{user.displayName?.[0] || "U"}</span>
+                      )}
+                  </div>
+               </div>
+               
+               <h2 className="text-xl font-bold text-white mb-1">{user.displayName || "Player One"}</h2>
+               <p className="text-slate-500 text-sm mb-6">{user.email}</p>
 
-            {/* GAMES LIST */}
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-yellow-500" /> Your Games
-            </h3>
+               <div className="w-full grid grid-cols-1 gap-3">
+                   <div className="bg-black/20 rounded-xl p-3 border border-white/5 text-center">
+                       <span className="block text-2xl font-black text-white">{games.length}</span>
+                       <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Active Games</span>
+                   </div>
+               </div>
+           </div>
 
-            {loading ? (
-                <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>
-            ) : myGames.length === 0 ? (
-                <div className="text-center py-20 bg-[#151725] rounded-2xl border border-dashed border-white/10">
-                    <p className="text-slate-500 mb-4">You haven't joined any games yet.</p>
-                    <button onClick={() => router.push("/create")} className="px-6 py-2 bg-indigo-600 rounded-xl text-white font-bold text-sm uppercase">Host a Game</button>
-                </div>
-            ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                    {myGames.map((g) => (
-                        <div 
-                            key={g.id} 
-                            onClick={() => router.push(`/game/${g.id}`)}
-                            className="group bg-[#151725] border border-white/10 hover:border-indigo-500/50 rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <ExternalLink className="w-4 h-4 text-indigo-400" />
-                            </div>
-                            
-                            <div className="flex justify-between items-start mb-2">
-                                <span className="text-xs font-bold text-indigo-400 bg-indigo-400/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                    {g.price === 0 ? "Free" : `$${g.price}`}
-                                </span>
-                                <span className="text-xs text-slate-500 font-mono flex items-center gap-1">
-                                    <Calendar className="w-3 h-3" /> {formatDate(g.createdAt)}
-                                </span>
-                            </div>
+           {/* GAMES LIST */}
+           <div className="space-y-4">
+               <div className="flex items-center gap-2">
+                   <Trophy className="w-4 h-4 text-yellow-500" />
+                   <h3 className="text-sm font-bold text-white uppercase tracking-widest">Your Games</h3>
+               </div>
 
-                            <h4 className="text-lg font-bold text-white mb-1 truncate">{g.name}</h4>
-                            
-                            <div className="flex items-center justify-between mt-4 border-t border-white/5 pt-3">
-                                <div className="flex items-center gap-2 text-xs text-slate-400">
-                                    <span className="font-bold text-slate-300">{g.teamA}</span> vs <span className="font-bold text-slate-300">{g.teamB}</span>
-                                </div>
-                                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
+               {loading ? (
+                   <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-indigo-500"/></div>
+               ) : games.length > 0 ? (
+                   <div className="grid gap-3">
+                       {games.map((g) => (
+                           <button 
+                                key={g.id}
+                                onClick={() => router.push(`/game/${g.id}`)}
+                                className="w-full text-left bg-[#151725] hover:bg-[#1a1d2d] border border-white/5 rounded-2xl p-4 transition-all group relative overflow-hidden"
+                           >
+                               <div className="flex justify-between items-start mb-2 relative z-10">
+                                   <div>
+                                       <div className="flex items-center gap-2">
+                                           <h4 className="font-bold text-white text-sm">{g.name}</h4>
+                                           {g.host === user.uid && <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 border border-indigo-500/30 text-[9px] font-bold text-indigo-300 uppercase">Host</span>}
+                                       </div>
+                                       <p className="text-xs text-slate-500 font-mono mt-1">{g.teamA} vs {g.teamB}</p>
+                                   </div>
+                                   <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                                       <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-white" />
+                                   </div>
+                               </div>
+                               
+                               {/* Progress Bar (Fake Pot visualization) */}
+                               <div className="relative z-10 mt-2">
+                                   <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1">
+                                       <span>Price: ${g.price}</span>
+                                       <span>Pot: ${g.pot || (Object.keys(g.squares || {}).length * g.price)}</span>
+                                   </div>
+                                   <div className="h-1 w-full bg-black/40 rounded-full overflow-hidden">
+                                       <div className="h-full bg-gradient-to-r from-indigo-500 to-cyan-500 w-3/4" />
+                                   </div>
+                               </div>
+                           </button>
+                       ))}
+                   </div>
+               ) : (
+                   <div className="text-center py-12 bg-[#151725] rounded-3xl border border-dashed border-white/10">
+                       <p className="text-slate-500 text-sm mb-4">You haven't joined any games yet.</p>
+                       <button onClick={() => router.push('/create')} className="px-6 py-3 bg-indigo-600 rounded-xl text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-105 transition-transform">
+                           Host a Game
+                       </button>
+                   </div>
+               )}
+           </div>
+
+       </div>
     </main>
   );
 }
