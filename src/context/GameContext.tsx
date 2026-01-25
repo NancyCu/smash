@@ -17,6 +17,7 @@ export type SquareData = {
   paid?: boolean;
 };
 
+// --- RESTORED THIS MISSING EXPORT ---
 export type PayoutLog = {
   quarter: string;
   winnerUserId: string;
@@ -41,6 +42,7 @@ type GameData = {
   espnGameId?: string;
   axis?: any;
   participants?: string[];
+  currentPeriod?: string;
 };
 
 interface GameContextType {
@@ -58,6 +60,7 @@ interface GameContextType {
   deleteGame: () => Promise<void>;
   createGame: (data: any) => Promise<string>;
   getUserGames: (userId: string) => Promise<any[]>;
+  setGamePhase: (period: string) => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType>({} as GameContextType);
@@ -167,6 +170,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       scores: { teamA: 0, teamB: 0 },
       isScrambled: false,
       participants: [user.uid],
+      currentPeriod: 'q1',
       createdAt: serverTimestamp(),
       pot: 0
     });
@@ -175,25 +179,22 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   const updateScores = async (s: any) => { if(gameId) await updateDoc(doc(db,"games",gameId), { scores: s }); };
   
-  // --- FIXED SCRAMBLE LOGIC ---
+  // --- HOST CONTROL ---
+  const setGamePhase = async (period: string) => {
+      if(!gameId) return;
+      await updateDoc(doc(db, "games", gameId), { currentPeriod: period });
+  };
+
   const scrambleGrid = async () => { 
     if(!gameId) return; 
-    
-    // Helper to generate a unique random array [0..9]
     const generateAxis = () => [0,1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
-
-    // Generate 4 UNIQUE sets of axes
     const axis = {
         q1: { row: generateAxis(), col: generateAxis() },
         q2: { row: generateAxis(), col: generateAxis() },
         q3: { row: generateAxis(), col: generateAxis() },
         final: { row: generateAxis(), col: generateAxis() }
     };
-
-    await updateDoc(doc(db,"games",gameId), { 
-        isScrambled: true, 
-        axis: axis 
-    });
+    await updateDoc(doc(db,"games",gameId), { isScrambled: true, axis: axis });
   };
 
   const resetGrid = async () => { if(gameId) await updateDoc(doc(db,"games",gameId), { isScrambled: false }); };
@@ -204,16 +205,10 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
      try {
          const hostedQuery = query(collection(db, "games"), where("host", "==", uid));
          const joinedQuery = query(collection(db, "games"), where("participants", "array-contains", uid));
-         
-         const [hostedSnap, joinedSnap] = await Promise.all([
-             getDocs(hostedQuery),
-             getDocs(joinedQuery)
-         ]);
-
+         const [hostedSnap, joinedSnap] = await Promise.all([getDocs(hostedQuery), getDocs(joinedQuery)]);
          const gamesMap = new Map();
          hostedSnap.forEach(doc => gamesMap.set(doc.id, { id: doc.id, ...doc.data() }));
          joinedSnap.forEach(doc => gamesMap.set(doc.id, { id: doc.id, ...doc.data() }));
-
          return Array.from(gamesMap.values());
      } catch (e) {
          console.error("Error fetching user games:", e);
@@ -225,7 +220,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     <GameContext.Provider value={{ 
       game, loading, error, isAdmin, setGameId, 
       claimSquare, unclaimSquare, togglePaid, createGame, 
-      updateScores, scrambleGrid, resetGrid, deleteGame, getUserGames
+      updateScores, scrambleGrid, resetGrid, deleteGame, getUserGames,
+      setGamePhase
     }}>
       {children}
     </GameContext.Provider>
