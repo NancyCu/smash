@@ -17,7 +17,7 @@ export default function GamePage() {
   const { 
     game, setGameId, loading, error, isAdmin, 
     claimSquare, unclaimSquare, updateScores, 
-    scrambleGrid, resetGrid, deleteGame
+    scrambleGrid, resetGrid, deleteGame, setGamePhase
   } = useGame();
   
   const { user, logOut } = useAuth();
@@ -29,80 +29,31 @@ export default function GamePage() {
   );
   
   // --- STATE ---
-  // Default to Q1 to avoid "future spoilers"
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- 1. ROBUST AUTO-SWITCHER ---
-  // Fix: We wrap period in Number() to ensure "2" string equals 2 number
+  // --- HOST SYNC LOGIC (The "Remote Control") ---
   useEffect(() => {
-    if (matchedGame) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const status = (matchedGame as any).status;
-        
-        if (status?.type?.state === "in") {
-             const p = Number(status.period); // <--- FORCE NUMBER TYPE
-             
-             if (status.type?.name === "STATUS_HALFTIME") {
-                 if (activeQuarter !== 'q2') setActiveQuarter('q2');
-             }
-             else {
-                 if (p === 1 && activeQuarter !== 'q1') setActiveQuarter('q1');
-                 else if (p === 2 && activeQuarter !== 'q2') setActiveQuarter('q2');
-                 else if (p === 3 && activeQuarter !== 'q3') setActiveQuarter('q3');
-                 else if (p >= 4 && activeQuarter !== 'final') setActiveQuarter('final');
-             }
-        } else if (status?.type?.completed && activeQuarter !== 'final') {
-             setActiveQuarter('final');
-        }
-    }
-  }, [matchedGame, activeQuarter]); 
-
-  // --- 2. FINAL CLOCK FIX ---
-  // Fix: Checks multiple fields (shortDetail -> detail -> manual construction)
-  const gameClock = useMemo(() => {
-      if (!matchedGame) return "OFF AIR";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const status = (matchedGame as any).status;
-      
-      if (!status) return "OFF AIR";
-
-      // A. PREGAME
-      if (status.type?.state === "pre") {
-          return new Date((matchedGame as any).date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      // If the database says the game is in a specific period, FORCE the view to match.
+      if (game?.currentPeriod) {
+          // @ts-ignore
+          setActiveQuarter(game.currentPeriod);
       }
+  }, [game?.currentPeriod]);
+
+  // --- TAB HANDLER ---
+  const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
+      // 1. Update local view instantly
+      setActiveQuarter(q);
       
-      // B. HALFTIME / FINAL
-      if (status.type?.name === "STATUS_HALFTIME") return "HALF";
-      if (status.type?.completed) return "FINAL";
-
-      // C. LIVE CLOCK (Priority Order)
-      // 1. Try 'shortDetail' (e.g. "10:45 - 2nd")
-      if (status.type?.shortDetail) {
-          return status.type.shortDetail.replace(" - ", " ").toUpperCase();
+      // 2. If you are the Host, update the database to force everyone else to switch
+      if (isAdmin) {
+          setGamePhase(q);
       }
-      
-      // 2. Try 'detail' (Alternate field)
-      if (status.type?.detail) {
-           return status.type.detail.replace(" - ", " ").toUpperCase();
-      }
-
-      // 3. Fallback: Manually build it
-      const clock = status.displayClock;
-      const period = Number(status.period) || 1;
-
-      // If clock is literally "0:00" but game is live, hide the 0:00 and just show Quarter
-      if (status.type?.state === "in" && (clock === "0:00" || !clock)) {
-          return `Q${period} LIVE`;
-      }
-      
-      return `${clock || ""} Q${period}`;
-  }, [matchedGame]);
-
-  const isLive = matchedGame && (matchedGame as any).status?.type?.state === "in";
+  };
 
   // --- LOGO HELPER ---
   const getTeamLogo = (teamName: string) => {
@@ -164,7 +115,6 @@ export default function GamePage() {
     if (!game?.isScrambled) return null; 
     let scoreA = 0, scoreB = 0;
     
-    // Calculate logic based on ACTIVE TAB
     if (activeQuarter === 'q1') { scoreA = currentScores.q1.home; scoreB = currentScores.q1.away; }
     else if (activeQuarter === 'q2') { scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away; }
     else if (activeQuarter === 'q3') { scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home; scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away; }
@@ -206,7 +156,6 @@ export default function GamePage() {
     }
   }, [id, setGameId]);
 
-  // Auto-Select the winning cell if we have one (Highlighter)
   useEffect(() => {
     if (winningCoordinates) setSelectedCell(winningCoordinates);
   }, [winningCoordinates]);
@@ -295,33 +244,43 @@ export default function GamePage() {
 
           <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-6 gap-6">
               
-              {/* SCOREBOARD WITH TIMER */}
+              {/* SCOREBOARD (Clean - No Clock) */}
               <div className="w-full relative group z-20 shrink-0">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
                   <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-2xl">
                       
-                      {/* TIMER (Updated with Safety Check) */}
-                      <div className="mb-4 bg-black/40 rounded-full px-4 py-1 flex items-center gap-2 border border-white/5 shadow-inner">
-                          {isLive && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
-                          <span className={`text-xs font-mono font-bold tracking-widest ${isLive ? "text-red-400" : "text-slate-400"}`}>
-                              {gameClock}
-                          </span>
-                      </div>
-
                       <div className="flex w-full justify-between items-center mb-2">
+                          
+                          {/* TEAM A */}
                           <div className="flex flex-col items-center w-1/3 relative">
                               <span className="text-pink-500 font-teko text-xl md:text-3xl tracking-[0.2em] uppercase mb-1">{game.teamA}</span>
                               <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)]">
                                   {activeQuarter === 'final' ? currentScores.final.home : activeQuarter === 'q1' ? currentScores.q1.home : activeQuarter === 'q2' ? (currentScores.q1.home + currentScores.q2.home) : currentScores.teamA}
                               </span>
                           </div>
+                          
+                          {/* QUARTER CONTROLS */}
                           <div className="flex flex-col items-center w-1/3 z-10">
                               <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100">
                                   {(['q1', 'q2', 'q3', 'final'] as const).map((q) => (
-                                      <button key={q} onClick={() => setActiveQuarter(q)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${activeQuarter === q ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>{q.toUpperCase()}</button>
+                                      <button 
+                                        key={q} 
+                                        onClick={() => handleQuarterChange(q)} 
+                                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all
+                                            ${activeQuarter === q 
+                                              ? 'bg-indigo-600 text-white shadow-lg' 
+                                              : 'text-slate-500 hover:text-white'}
+                                        `}
+                                      >
+                                          {q.toUpperCase()}
+                                      </button>
                                   ))}
                               </div>
+                              {/* ONLY HOST SEES THIS "CONTROL" LABEL */}
+                              {isAdmin && <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest animate-pulse">Host Control</span>}
                           </div>
+
+                          {/* TEAM B */}
                           <div className="flex flex-col items-center w-1/3 relative">
                               <span className="text-cyan-400 font-teko text-xl md:text-3xl tracking-[0.2em] uppercase mb-1">{game.teamB}</span>
                               <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]">
