@@ -51,18 +51,33 @@ export default function GamePage() {
     }
   }, [matchedGame]);
 
-  // --- GET CLOCK DISPLAY ---
+  // --- FIXED CLOCK DISPLAY (No more "undefined") ---
   const gameClock = useMemo(() => {
       if (!matchedGame) return "OFF AIR";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const status = (matchedGame as any).status;
       
-      if (status.type?.state === "pre") return new Date((matchedGame as any).date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      if (!status) return "OFF AIR";
+
+      // 1. Pre-Game
+      if (status.type?.state === "pre") {
+          return new Date((matchedGame as any).date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      }
+      
+      // 2. Final / Complete
       if (status.type?.completed) return "FINAL";
+      
+      // 3. Halftime
       if (status.type?.name === "STATUS_HALFTIME") return "HALF";
       
-      // Return live clock (e.g. "12:45 1st")
-      return `${status.displayClock} Q${status.period}`;
+      // 4. Live Clock (Defensive Check)
+      const clock = status.displayClock || "0:00";
+      const period = status.period || "1";
+      
+      // If data is missing but state says "in", default to just the quarter
+      if (status.displayClock === undefined) return `Q${period}`;
+
+      return `${clock} Q${period}`;
   }, [matchedGame]);
 
   const isLive = matchedGame && (matchedGame as any).status?.type?.state === "in";
