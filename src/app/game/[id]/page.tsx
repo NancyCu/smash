@@ -29,38 +29,43 @@ export default function GamePage() {
   );
   
   // --- STATE ---
-  const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('final');
-  // Removed the "hasAutoSwitched" lock so it ALWAYS stays in sync with live game
+  // FIX 1: Default to 'q1' instead of 'final' to prevent "Future Grid" spoilers on load
+  const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
+  
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- AGGRESSIVE AUTO-SWITCHER ---
-  // This ensures if the game is in Q1, you are looking at Q1. Period.
+  // Forces the tab to match the live game period
   useEffect(() => {
     if (matchedGame) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const status = (matchedGame as any).status;
         
-        // Only auto-switch if the game is actually "in progress" (live)
         if (status?.type?.state === "in") {
              const p = status.period;
-             // Halftime check
+             
+             // Handle Halftime explicitly
              if (status.type?.name === "STATUS_HALFTIME") {
                  if (activeQuarter !== 'q2') setActiveQuarter('q2');
              }
              else {
+                 // Force switch if we are on the wrong tab
                  if (p === 1 && activeQuarter !== 'q1') setActiveQuarter('q1');
                  else if (p === 2 && activeQuarter !== 'q2') setActiveQuarter('q2');
                  else if (p === 3 && activeQuarter !== 'q3') setActiveQuarter('q3');
                  else if (p >= 4 && activeQuarter !== 'final') setActiveQuarter('final');
              }
+        } else if (status?.type?.completed && activeQuarter !== 'final') {
+             setActiveQuarter('final');
         }
     }
-  }, [matchedGame, activeQuarter]); // Run whenever game updates
+  }, [matchedGame, activeQuarter]); 
 
   // --- RESILIENT CLOCK DISPLAY ---
+  // Handles "undefined" and "0:00" errors gracefully
   const gameClock = useMemo(() => {
       if (!matchedGame) return "OFF AIR";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,8 +82,16 @@ export default function GamePage() {
       // 3. Final
       if (status.type?.completed) return "FINAL";
       
-      // 4. Live (Safe Fallback)
-      return `${status.displayClock || "0:00"} Q${status.period || 1}`;
+      // 4. Live
+      const clock = status.displayClock;
+      const period = status.period || 1;
+
+      // If API sends weird "0:00" during live play, just show "LIVE Q1"
+      if (status.type?.state === "in" && (clock === "0:00" || !clock)) {
+          return `LIVE Q${period}`;
+      }
+      
+      return `${clock || "0:00"} Q${period}`;
   }, [matchedGame]);
 
   const isLive = matchedGame && (matchedGame as any).status?.type?.state === "in";
@@ -279,7 +292,7 @@ export default function GamePage() {
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
                   <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-2xl">
                       
-                      {/* TIMER (Live) */}
+                      {/* TIMER (Updated with Safety Check) */}
                       <div className="mb-4 bg-black/40 rounded-full px-4 py-1 flex items-center gap-2 border border-white/5 shadow-inner">
                           {isLive && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
                           <span className={`text-xs font-mono font-bold tracking-widest ${isLive ? "text-red-400" : "text-slate-400"}`}>
