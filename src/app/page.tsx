@@ -1,83 +1,145 @@
 "use client";
 
-import React, { Suspense, useEffect } from 'react';
-import Image from 'next/image';
+import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useGame } from '@/context/GameContext';
+import Image from 'next/image';
+import { LogIn, LogOut, Plus, ArrowRight, Loader2, Mail, Lock } from 'lucide-react';
 
-// Components
-import AuthModal from '@/components/AuthModal';
-import JoinGameForm from '@/components/JoinGameForm';
-import BottomNav from '@/components/BottomNav';
-
-type View = 'home' | 'join' | 'game';
-
-function LobbyContent() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, logout } = useAuth();
-  const { game } = useGame();
+  const { user, signIn, signUp, logOut } = useAuth(); // Needs signIn/signUp from AuthContext
 
   const initialGameCode = searchParams.get('code') || '';
-  const currentView = (searchParams.get('view') as View) || (game ? 'game' : (initialGameCode ? 'join' : 'home'));
+  const [gameCode, setGameCode] = useState(initialGameCode);
+  const [isJoining, setIsJoining] = useState(false);
 
-  const setView = (v: View) => {
-    router.push(`/?view=${v}`);
+  // Auth State
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Check for ?action=login in URL
+  useEffect(() => {
+     if (searchParams.get('action') === 'login') {
+         const form = document.getElementById('auth-form');
+         if (form) form.scrollIntoView({ behavior: 'smooth' });
+     }
+  }, [searchParams]);
+
+  const handleJoin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!gameCode.trim()) return;
+    setIsJoining(true);
+    router.push(`/game/${gameCode.trim()}`);
   };
 
-  useEffect(() => {
-    if (currentView !== 'game') return;
-    const storedGameId = typeof window !== 'undefined' ? localStorage.getItem('activeGameId') : null;
-    const targetGameId = game?.id || storedGameId;
-    if (targetGameId) {
-      router.replace(`/game/${targetGameId}`);
-    }
-  }, [currentView, game?.id, router]);
-
-  if (!user) return <AuthModal />;
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!email || !password) return;
+      setAuthLoading(true);
+      try {
+          if (authMode === 'login') {
+              await signIn(email, password);
+          } else {
+              if (!name) { alert("Please enter a display name"); return; }
+              await signUp(email, password, name);
+          }
+      } catch (err) {
+          console.error(err);
+      } finally {
+          setAuthLoading(false);
+      }
+  };
 
   return (
-    <div className='min-h-screen bg-slate-50 dark:bg-slate-900 pb-24 text-slate-800 dark:text-slate-200 transition-colors duration-300'>
-      <header className="bg-white/80 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200 dark:border-white/5 sticky top-0 z-40 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-xl overflow-hidden shadow-md rotate-[-2deg]">
-              <Image src="/SouperBowlDark.png" alt="Logo" width={40} height={40} className="object-cover" priority />
-            </div>
-            <div className="flex flex-col leading-none">
-              <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Squares Royale</h1>
-              <div className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em]">Lobby</div>
-            </div>
-          </div>
-          <button onClick={logout} className="p-2 text-slate-400 hover:text-red-600 transition-colors" aria-label="Logout" title="Logout">
-            <LogOut className="w-5 h-5" />
-          </button>
+    <div className="w-full max-w-md flex flex-col items-center gap-8 relative z-10 pb-20">
+      
+      {/* LOGO SECTION */}
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative w-32 h-32 md:w-40 md:h-40 drop-shadow-2xl animate-in fade-in zoom-in duration-700">
+           <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-contain" />
         </div>
-      </header>
+        <div className="text-center">
+          <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-wider leading-none">Souper Bowl</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500 uppercase tracking-wider leading-none">Squares</h1>
+          <p className="text-slate-400 mt-3 text-sm font-medium tracking-wide">"Because with us, a Nguyen is always a Win"</p>
+        </div>
+      </div>
 
-      <main className='w-full px-4 lg:px-8 max-w-7xl mx-auto py-6'>
-        {currentView === 'game' ? (
-          <div className='min-h-[50vh] flex items-center justify-center text-cyan-500 font-bold uppercase tracking-widest'>
-            Loading game...
-          </div>
-        ) : (
-          <div className='animate-in fade-in zoom-in-95 duration-300 max-w-lg mx-auto pt-8'>
-            <JoinGameForm onSuccess={() => setView('game')} initialGameId={initialGameCode} />
-          </div>
-        )}
-      </main>
+      {/* MAIN CARD */}
+      <div className="w-full bg-[#151725] border border-white/10 p-6 rounded-3xl shadow-2xl flex flex-col gap-6">
+         
+         {/* JOIN SECTION */}
+         <form onSubmit={handleJoin} className="flex flex-col gap-3">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Join Existing Game</label>
+            <div className="flex gap-2">
+              <input 
+                type="text" value={gameCode} onChange={(e) => setGameCode(e.target.value)}
+                placeholder="Enter Game Code" 
+                className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+              <button type="submit" disabled={isJoining || !gameCode} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl px-4 flex items-center justify-center">
+                {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
+              </button>
+            </div>
+         </form>
 
-      <BottomNav />
+         <div className="h-px w-full bg-white/5" />
+
+         {/* AUTH SECTION (Replaces Google Button) */}
+         {user ? (
+             <div className="flex flex-col gap-3">
+                 <div className="bg-green-500/10 border border-green-500/20 p-3 rounded-xl flex items-center justify-center gap-2">
+                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/>
+                     <span className="text-green-400 text-sm font-bold">Logged in as {user.displayName}</span>
+                 </div>
+                 <button onClick={() => router.push('/create')} className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black text-sm uppercase tracking-widest hover:scale-[1.02] transition-transform flex items-center justify-center gap-2">
+                    <Plus className="w-5 h-5" /> Host New Game
+                 </button>
+                 <button onClick={() => logOut()} className="w-full py-3 rounded-xl bg-white/5 text-slate-400 font-bold text-xs uppercase tracking-widest hover:text-white transition-colors">Sign Out</button>
+             </div>
+         ) : (
+             <div id="auth-form" className="flex flex-col gap-4">
+                 <div className="flex gap-4 border-b border-white/10 pb-2">
+                     <button onClick={() => setAuthMode('login')} className={`flex-1 text-sm font-bold uppercase tracking-wider pb-2 transition-colors ${authMode === 'login' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500'}`}>Login</button>
+                     <button onClick={() => setAuthMode('signup')} className={`flex-1 text-sm font-bold uppercase tracking-wider pb-2 transition-colors ${authMode === 'signup' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500'}`}>Sign Up</button>
+                 </div>
+                 
+                 <form onSubmit={handleAuthSubmit} className="flex flex-col gap-3">
+                     {authMode === 'signup' && (
+                         <input type="text" placeholder="Display Name" value={name} onChange={e => setName(e.target.value)} className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500" />
+                     )}
+                     <div className="relative">
+                        <Mail className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+                        <input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500" />
+                     </div>
+                     <div className="relative">
+                        <Lock className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+                        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500" />
+                     </div>
+                     <button type="submit" disabled={authLoading} className="mt-2 w-full py-3 rounded-xl bg-white text-black font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
+                         {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (authMode === 'login' ? "Log In" : "Create Account")}
+                     </button>
+                 </form>
+             </div>
+         )}
+      </div>
     </div>
   );
 }
 
-export default function Page() {
+export default function Home() {
   return (
-    <Suspense fallback={<div className='min-h-screen flex items-center justify-center text-cyan-500'>Loading Lobby...</div>}>
-      <LobbyContent />
-    </Suspense>
+    <main className="min-h-screen bg-[#0B0C15] flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
+      <Suspense fallback={<div className="text-white animate-pulse">Loading...</div>}>
+        <HomeContent />
+      </Suspense>
+    </main>
   );
 }

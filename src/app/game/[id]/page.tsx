@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import Image from "next/image"; 
 import { useParams, useRouter } from "next/navigation";
 import { useGame } from "@/context/GameContext";
 import type { SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
-import { Copy, Check, UserPlus, Trash2, X, ExternalLink, Trophy, ShoppingCart } from "lucide-react";
+import { Copy, Check, UserPlus, Trash2, X, ExternalLink, Trophy, ShoppingCart, LogIn, LogOut, Loader2 } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 
 export default function GamePage() {
@@ -19,7 +20,7 @@ export default function GamePage() {
     scrambleGrid, resetGrid, deleteGame
   } = useGame();
   
-  const { user } = useAuth();
+  const { user, logOut } = useAuth();
   const { games: liveGames } = useEspnScores();
 
   const matchedGame = useMemo(() => 
@@ -30,10 +31,9 @@ export default function GamePage() {
   // --- STATE ---
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
   const [copied, setCopied] = useState(false);
-  
-  // CART STATE (Multi-Select)
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- LOGO HELPER ---
   const getTeamLogo = (teamName: string) => {
@@ -49,78 +49,104 @@ export default function GamePage() {
     return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/${teamName.toLowerCase().slice(0,3)}.png&h=200&w=200`;
   };
 
-  // --- LIVE SCORES ---
+  // --- SCORES (FIXED TYPESCRIPT ERROR) ---
   const currentScores = useMemo(() => {
-    if (!game?.espnGameId) return game?.scores || { q1:{home:0,away:0}, q2:{home:0,away:0}, q3:{home:0,away:0}, final:{home:0,away:0}, teamA:0, teamB:0 };
-    const matchedGame = liveGames.find(g => g.id === game.espnGameId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const safeGame = matchedGame as any; 
-    if (safeGame && safeGame.competitors) {
-      const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const targetA = normalize(game.teamA);
-      const targetB = normalize(game.teamB);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let compA = safeGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetA) || targetA.includes(n); });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let compB = safeGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetB) || targetB.includes(n); });
-      if (!compA && compB) compA = safeGame.competitors.find((c: any) => c.id !== compB.id);
-      if (!compB && compA) compB = safeGame.competitors.find((c: any) => c.id !== compA.id);
-      if (!compA && !compB) { compA = safeGame.competitors[0]; compB = safeGame.competitors[1]; }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const getScore = (c: any, i: number) => c?.linescores?.[i]?.value ? Number(c.linescores[i].value) : 0;
-      return {
-        q1: { home: getScore(compA, 0), away: getScore(compB, 0) },
-        q2: { home: getScore(compA, 1), away: getScore(compB, 1) },
-        q3: { home: getScore(compA, 2), away: getScore(compB, 2) },
-        final: { home: Number(compA?.score||0), away: Number(compB?.score||0) },
-        teamA: Number(compA?.score||0), teamB: Number(compB?.score||0)
-      };
+    // Define the default zero-state structure
+    const base = { 
+        q1: { home: 0, away: 0 }, 
+        q2: { home: 0, away: 0 }, 
+        q3: { home: 0, away: 0 }, 
+        final: { home: 0, away: 0 }, 
+        teamA: 0, 
+        teamB: 0 
+    };
+
+    if (!game) return base;
+
+    // 1. Try to parse live ESPN data
+    if (game.espnGameId) {
+        const matched = liveGames.find(g => g.id === game.espnGameId);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const safeGame = matched as any; 
+        if (safeGame && safeGame.competitors) {
+            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+            const targetA = normalize(game.teamA);
+            const targetB = normalize(game.teamB);
+            
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let compA = safeGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetA) || targetA.includes(n); });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let compB = safeGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetB) || targetB.includes(n); });
+            
+            if (!compA && compB) compA = safeGame.competitors.find((c: any) => c.id !== compB.id);
+            if (!compB && compA) compB = safeGame.competitors.find((c: any) => c.id !== compA.id);
+            if (!compA && !compB) { compA = safeGame.competitors[0]; compB = safeGame.competitors[1]; }
+            
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const getScore = (c: any, i: number) => c?.linescores?.[i]?.value ? Number(c.linescores[i].value) : 0;
+            
+            return {
+                q1: { home: getScore(compA, 0), away: getScore(compB, 0) },
+                q2: { home: getScore(compA, 1), away: getScore(compB, 1) },
+                q3: { home: getScore(compA, 2), away: getScore(compB, 2) },
+                final: { home: Number(compA?.score||0), away: Number(compB?.score||0) },
+                teamA: Number(compA?.score||0), teamB: Number(compB?.score||0)
+            };
+        }
     }
-    return game?.scores || { q1:{home:0,away:0}, q2:{home:0,away:0}, q3:{home:0,away:0}, final:{home:0,away:0}, teamA:0, teamB:0 };
+
+    // 2. Fallback: Ensure we ALWAYS return the full object structure
+    // (This fixes the TS error by not returning the simple game.scores directly)
+    return {
+        ...base,
+        final: { home: game.scores?.teamA || 0, away: game.scores?.teamB || 0 },
+        teamA: game.scores?.teamA || 0,
+        teamB: game.scores?.teamB || 0
+    };
   }, [game, liveGames]);
 
-  // --- WINNING CELL CALCULATION ---
+  // --- WINNER CALC ---
   const defaultAxis = [0,1,2,3,4,5,6,7,8,9];
   const currentAxis = game?.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
 
   const winningCoordinates = useMemo(() => {
-    if (!game?.isScrambled) return null; // Only show winner if grid is locked/scrambled
-
-    let scoreA = 0;
-    let scoreB = 0;
-
-    if (activeQuarter === 'q1') {
-        scoreA = currentScores.q1.home;
-        scoreB = currentScores.q1.away;
-    } else if (activeQuarter === 'q2') {
-        scoreA = currentScores.q1.home + currentScores.q2.home;
-        scoreB = currentScores.q1.away + currentScores.q2.away;
-    } else if (activeQuarter === 'q3') {
-        scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home;
-        scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away;
-    } else {
-        scoreA = currentScores.final.home;
-        scoreB = currentScores.final.away;
-    }
-
+    if (!game?.isScrambled) return null; 
+    let scoreA = 0, scoreB = 0;
+    
+    // Now safe to access q1/q2 etc because currentScores always has them
+    if (activeQuarter === 'q1') { scoreA = currentScores.q1.home; scoreB = currentScores.q1.away; }
+    else if (activeQuarter === 'q2') { scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away; }
+    else if (activeQuarter === 'q3') { scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home; scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away; }
+    else { scoreA = currentScores.final.home; scoreB = currentScores.final.away; }
+    
     const rowIndex = currentAxis.row.indexOf(scoreA % 10);
     const colIndex = currentAxis.col.indexOf(scoreB % 10);
-
     if (rowIndex === -1 || colIndex === -1) return null;
     return { row: rowIndex, col: colIndex };
   }, [currentScores, activeQuarter, currentAxis, game]);
 
-  // --- GRID SQUARES ---
+  // --- GRID DATA (FIXED FOR ARRAYS/STACKING) ---
   const formattedSquares = useMemo(() => {
     if (!game?.squares) return {};
     const result: Record<string, { uid: string, name: string, claimedAt: number }[]> = {};
-    Object.entries(game.squares).forEach(([key, sq]) => {
-      const square = sq as SquareData;
+    
+    Object.entries(game.squares).forEach(([key, value]) => {
       const index = parseInt(key);
-      if (!isNaN(index)) {
-        const gridKey = `${Math.floor(index / 10)}-${index % 10}`;
-        if (!result[gridKey]) result[gridKey] = [];
-        result[gridKey].push({ uid: square.userId, name: square.displayName, claimedAt: 0 });
+      if (isNaN(index)) return;
+      
+      const gridKey = `${Math.floor(index / 10)}-${index % 10}`;
+      if (!result[gridKey]) result[gridKey] = [];
+
+      // Handle Array (Multiple Users) OR Object (Legacy Single User)
+      if (Array.isArray(value)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        value.forEach((sq: any) => {
+            result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0 });
+        });
+      } else {
+        // Legacy fallback
+        const sq = value as SquareData;
+        result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0 });
       }
     });
     return result;
@@ -133,59 +159,67 @@ export default function GamePage() {
     }
   }, [id, setGameId]);
 
-  // Auto-Select Winning Cell
   useEffect(() => {
-    if (winningCoordinates) {
-        setSelectedCell(winningCoordinates);
-    }
+    if (winningCoordinates) setSelectedCell(winningCoordinates);
   }, [winningCoordinates]);
 
   // --- HANDLERS ---
   const handleSquareClick = (row: number, col: number) => {
     const index = row * 10 + col;
-
-    // 1. If Game is Locked (Scrambled) & User isn't Admin, just view details
     if (game?.isScrambled && !isAdmin) {
         setSelectedCell({ row, col });
         return;
     }
-
-    // 2. Toggle in Pending Cart (Add/Remove from shopping list)
     setPendingSquares(prev => {
-        if (prev.includes(index)) {
-            return prev.filter(i => i !== index); // Remove if already clicked
-        } else {
-            return [...prev, index]; // Add if new
-        }
+        if (prev.includes(index)) return prev.filter(i => i !== index); 
+        else return [...prev, index]; 
     });
-
-    // 3. Also Select the cell so the "Details Box" updates to show info
     setSelectedCell({ row, col });
   };
 
+  const handleAuth = async () => {
+      if (user) {
+          await logOut();
+      } else {
+          // FIX: Redirect to Home Page Login Form instead of Google Popup
+          router.push('/?action=login');
+      }
+  };
+
   const handleConfirmCart = async () => {
-    if (!user || pendingSquares.length === 0) return;
+    if (!user) { await handleAuth(); return; }
+    if (pendingSquares.length === 0) return;
     
-    // Process all pending squares
-    for (const index of pendingSquares) {
-        await claimSquare(index);
+    setIsSubmitting(true);
+    try {
+        for (const index of pendingSquares) {
+            await claimSquare(index);
+        }
+        setPendingSquares([]);
+        setSelectedCell(null);
+    } catch (err) {
+        console.error("Claim Error:", err);
+        alert("Could not claim square. It might be taken or locked.");
+    } finally {
+        setIsSubmitting(false);
     }
-    
-    // Clear Cart after claiming
-    setPendingSquares([]);
-    setSelectedCell(null);
   };
 
-  const handleClearCart = () => {
-    setPendingSquares([]);
-  };
+  const handleClearCart = () => setPendingSquares([]);
 
-  // Keep single claim for the "details" view if they use that button, 
-  // but mostly they will use the cart now.
   const handleClaim = async () => {
-    if (!selectedCell || !game || !user) return;
+    if (!selectedCell || !game) return;
+    if (!user) { await handleAuth(); return; }
     if (game.isScrambled && !isAdmin) { alert("Game is locked!"); return; }
-    await claimSquare(selectedCell.row * 10 + selectedCell.col);
+    
+    setIsSubmitting(true);
+    try {
+        await claimSquare(selectedCell.row * 10 + selectedCell.col);
+    } catch (err) {
+        alert("Failed to claim square.");
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const handleUnclaim = async () => {
@@ -210,7 +244,6 @@ export default function GamePage() {
   const isWinningSquare = winningCoordinates && selectedCell && winningCoordinates.row === selectedCell.row && winningCoordinates.col === selectedCell.col;
   const cartTotal = pendingSquares.length * game.price;
 
-  // --- SHARED INFO PANEL ---
   const infoPanel = (
     <GameInfo 
         gameId={game.id} gameName={game.name} host={game.host} pricePerSquare={game.price}
@@ -228,19 +261,27 @@ export default function GamePage() {
   return (
     <main className="flex flex-col lg:flex-row h-screen w-full bg-[#0B0C15] overflow-hidden">
       
-      {/* 1. MAIN SCROLLABLE AREA */}
+      {/* 1. MAIN AREA */}
       <div className="flex-1 flex flex-col h-full overflow-y-auto no-scrollbar relative">
           
-          {/* Mobile Sticky Header */}
+          {/* MOBILE HEADER */}
           <div className="lg:hidden p-4 bg-[#0B0C15]/95 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5">
               <div onClick={() => router.push('/')} className="flex items-center gap-2 cursor-pointer">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-black italic text-white text-sm">SR</div>
-                  <span className="font-bold text-white tracking-widest text-xs uppercase">Squares Royale</span>
+                  {/* MOBILE LOGO */}
+                  <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-white/20">
+                    <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" />
+                  </div>
+                  <span className="font-bold text-white tracking-widest text-xs uppercase">Souper Bowl Squares</span>
               </div>
-              <button onClick={copyCode} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
-                  <span className="text-xs font-mono text-slate-400">{game.id.slice(0,6)}...</span>
-                  {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-slate-500" />}
-              </button>
+              <div className="flex items-center gap-2">
+                  <button onClick={handleAuth} className="p-2 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
+                      {user ? <LogOut className="w-4 h-4 text-red-400" /> : <LogIn className="w-4 h-4 text-green-400" />}
+                  </button>
+                  <button onClick={copyCode} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
+                      <span className="text-xs font-mono text-slate-400">{game.id.slice(0,6)}...</span>
+                      {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-slate-500" />}
+                  </button>
+              </div>
           </div>
 
           <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-6 gap-6">
@@ -273,7 +314,7 @@ export default function GamePage() {
                   </div>
               </div>
 
-              {/* THE GRID */}
+              {/* GRID */}
               <div className="w-full aspect-square shrink-0 relative z-10">
                   <div className="h-full w-full bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 overflow-hidden">
                       <Grid 
@@ -287,9 +328,8 @@ export default function GamePage() {
                   </div>
               </div>
 
-              {/* CART / DETAILS BOX (THE MISSING PART) */}
+              {/* CART / DETAILS BOX */}
               {pendingSquares.length > 0 ? (
-                  /* --- CART MODE --- */
                   <div className="w-full bg-[#151725] border border-indigo-500/50 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
                       <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
@@ -303,12 +343,11 @@ export default function GamePage() {
                           </div>
                           <button onClick={handleClearCart} className="text-xs text-slate-500 hover:text-white underline">Clear</button>
                       </div>
-                      <button onClick={handleConfirmCart} className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] transition-transform">
-                          Confirm & Claim (${cartTotal})
+                      <button onClick={handleConfirmCart} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] transition-transform disabled:opacity-50 flex items-center justify-center gap-2">
+                          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin"/> : (user ? `Confirm & Claim ($${cartTotal})` : "Sign In to Claim")}
                       </button>
                   </div>
               ) : (
-                  /* --- DETAILS MODE --- */
                   <div className={`w-full bg-[#151725] border ${isWinningSquare ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-4 shadow-xl shrink-0 transition-all`}>
                     <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
                         <div className="flex flex-col">
@@ -337,14 +376,15 @@ export default function GamePage() {
                             }
                             </div>
                             <div className="flex gap-3">
-                               <button onClick={handleClaim} disabled={game.isScrambled && !isAdmin} className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"><UserPlus className="w-4 h-4"/> Add Name (${game.price})</button>
+                               <button onClick={handleClaim} disabled={(game.isScrambled && !isAdmin) || isSubmitting} className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin"/> : <><UserPlus className="w-4 h-4"/> {user ? `Add Name ($${game.price})` : "Sign In to Play"}</>}
+                               </button>
                             </div>
                         </div>
                     ) : <div className="text-center py-6 text-slate-500 text-sm">Tap empty squares to build your cart.</div>}
                   </div>
               )}
 
-              {/* MOBILE INFO */}
               <div className="lg:hidden w-full pb-20">
                   {infoPanel}
               </div>
@@ -352,11 +392,51 @@ export default function GamePage() {
       </div>
 
       {/* DESKTOP SIDEBAR */}
-      <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-[#0f111a] border-l border-white/5 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl">
-          <div className="mb-6 flex items-center gap-3 cursor-pointer" onClick={() => router.push('/')}>
-               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg"><ExternalLink className="text-white w-5 h-5" /></div>
-               <div><h1 className="text-white font-black text-xl tracking-wider uppercase leading-none">Squares Royale</h1><p className="text-xs text-slate-500 font-mono mt-1">THE SOUPER BOWL</p></div>
+      <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-[#0f111a] border-l border-white/5 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl relative">
+          
+          {/* HEADER SECTION WITH BANNER */}
+          <div className="mb-6">
+               <div onClick={() => router.push('/')} className="cursor-pointer group">
+                  
+                  {/* HERO BANNER IMAGE */}
+                  <div className="relative w-full h-32 rounded-xl overflow-hidden border border-white/10 mb-4 shadow-xl group-hover:shadow-2xl transition-all">
+                      <Image src="/SouperBowlBanner.jpg" alt="Banner" fill className="object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0f111a] to-transparent/50" />
+                      
+                      {/* LOGO OVERLAY */}
+                      <div className="absolute bottom-3 left-3 flex items-center gap-3">
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg">
+                             <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" />
+                          </div>
+                          <div>
+                            <h1 className="text-white font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Souper Bowl</h1>
+                            <h1 className="text-indigo-400 font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Squares</h1>
+                          </div>
+                      </div>
+                  </div>
+
+                  <p className="text-slate-400 text-xs font-medium leading-relaxed border-l-2 border-indigo-500 pl-3 italic">
+                     "Go Big or Go Home. Connect, compete, and win big with the ultimate squares experience. Because with us, a Nguyen is always a Win"
+                  </p>
+               </div>
+
+               <div className="mt-6 flex justify-between items-center border-t border-white/5 pt-4">
+                  <button onClick={handleAuth} className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800 border border-slate-700 text-white font-bold text-xs uppercase hover:bg-slate-700 transition-colors">
+                      {user ? (
+                        <>
+                           <LogOut className="w-4 h-4 text-red-400" />
+                           <span>Log Out</span>
+                        </>
+                      ) : (
+                        <>
+                           <LogIn className="w-4 h-4 text-green-400" />
+                           <span>Log In</span>
+                        </>
+                      )}
+                  </button>
+               </div>
           </div>
+
           {infoPanel}
       </div>
 

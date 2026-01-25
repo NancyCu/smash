@@ -4,13 +4,13 @@ import {
   onAuthStateChanged, 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,      // <--- ADDED
+  GoogleAuthProvider,   // <--- ADDED
   updateProfile,
   signOut,
   User 
 } from "firebase/auth";
-// IMPORT THE ENGINE WE FIXED:
-import { auth } from "../lib/firebase"; 
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase"; // Cleaned up imports
 import { doc, onSnapshot } from "firebase/firestore";
 
 interface AuthContextType {
@@ -19,7 +19,8 @@ interface AuthContextType {
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logOut: () => Promise<void>;         // <--- RENAMED (was logout)
+  googleSignIn: () => Promise<void>;   // <--- ADDED
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,7 +29,8 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   signIn: async () => {},
   signUp: async () => {},
-  logout: async () => {},
+  logOut: async () => {},
+  googleSignIn: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -45,6 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
+  // Admin Check Logic
   useEffect(() => {
     if (!user) {
       setIsAdmin(false);
@@ -62,25 +65,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email.trim(), password);
-  };
-
-  const signUp = async (email: string, password: string, displayName: string) => {
-    const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
-    if (result.user) {
-      const safeName = (displayName ?? "").trim() || "Anonymous";
-      await updateProfile(result.user, { displayName: safeName });
-      setUser({ ...result.user, displayName: safeName });
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+    } catch (error) {
+      console.error("Error signing in:", error);
+      alert("Error signing in. Check console for details.");
     }
   };
 
-  const logout = async () => {
-    await signOut(auth);
-    setUser(null);
+  const signUp = async (email: string, password: string, displayName: string) => {
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      if (result.user) {
+        const safeName = (displayName ?? "").trim() || "Anonymous";
+        await updateProfile(result.user, { displayName: safeName });
+        setUser({ ...result.user, displayName: safeName });
+      }
+    } catch (error) {
+      console.error("Error signing up:", error);
+      alert("Error creating account. Check console for details.");
+    }
+  };
+
+  // --- NEW: GOOGLE SIGN IN ---
+  const googleSignIn = async () => {
+    try {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+    } catch (error) {
+        console.error("Google Sign In Error:", error);
+    }
+  };
+
+  // --- RENAMED: logout -> logOut ---
+  const logOut = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signUp, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signUp, logOut, googleSignIn }}>
       {children}
     </AuthContext.Provider>
   );

@@ -35,7 +35,6 @@ function hashToHue(input: string): number {
   return hash % 360;
 }
 
-// FIX: Added explicit 'ring' classes so Tailwind doesn't purge them
 const USER_COLOR_CLASSES = [
   { bg: 'bg-rose-500', text: 'text-rose-100', soft: 'bg-rose-500/20 text-rose-200', ring: 'ring-rose-400' },
   { bg: 'bg-cyan-500', text: 'text-cyan-100', soft: 'bg-cyan-500/20 text-cyan-200', ring: 'ring-cyan-400' },
@@ -85,19 +84,21 @@ export default function Grid({
 
             {/* HEADERS */}
             {cols.map((num, i) => {
-              const isWinningCol = winningCell && winningCell.col === i;
+              // FIX: Highlight if Winning OR Selected
+              const isHighlight = (winningCell && winningCell.col === i) || (selectedCell && selectedCell.col === i);
               return (
-                <div key={`col-${i}`} className={cn("col-span-1 row-span-1 flex items-center justify-center border-r border-b border-white/10 relative overflow-hidden transition-all", isWinningCol ? "bg-cyan-500/20 z-50 shadow-[inset_0_0_10px_rgba(34,211,238,0.5)]" : "bg-[#0B0C15]")}>
-                   <span className={cn("font-black text-sm md:text-2xl z-20 transition-all", isScrambled ? (isWinningCol ? "text-white scale-125 drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" : "text-cyan-400") : "text-slate-600 blur-[2px]")}>{isScrambled ? num : '?'}</span>
+                <div key={`col-${i}`} className={cn("col-span-1 row-span-1 flex items-center justify-center border-r border-b border-white/10 relative overflow-hidden transition-all", isHighlight ? "bg-cyan-500/20 z-50 shadow-[inset_0_0_10px_rgba(34,211,238,0.5)]" : "bg-[#0B0C15]")}>
+                   <span className={cn("font-black text-sm md:text-2xl z-20 transition-all", isScrambled ? (isHighlight ? "text-white scale-125 drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" : "text-cyan-400") : "text-slate-600 blur-[2px]")}>{isScrambled ? num : '?'}</span>
                 </div>
               );
             })}
             {rows.map((rowNum, rowIndex) => {
-              const isWinningRow = winningCell && winningCell.row === rowIndex;
+              // FIX: Highlight if Winning OR Selected
+              const isHighlight = (winningCell && winningCell.row === rowIndex) || (selectedCell && selectedCell.row === rowIndex);
               return (
                 <React.Fragment key={`row-${rowIndex}`}>
-                  <div className={cn("col-span-1 row-span-1 flex items-center justify-center border-r border-b border-white/10 relative overflow-hidden transition-all", isWinningRow ? "bg-pink-500/20 z-50 shadow-[inset_0_0_10px_rgba(236,72,153,0.5)]" : "bg-[#0B0C15]")}>
-                     <span className={cn("font-black text-sm md:text-2xl z-20 transition-all", isScrambled ? (isWinningRow ? "text-white scale-125 drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" : "text-pink-500") : "text-slate-600 blur-[2px]")}>{isScrambled ? rowNum : '?'}</span>
+                  <div className={cn("col-span-1 row-span-1 flex items-center justify-center border-r border-b border-white/10 relative overflow-hidden transition-all", isHighlight ? "bg-pink-500/20 z-50 shadow-[inset_0_0_10px_rgba(236,72,153,0.5)]" : "bg-[#0B0C15]")}>
+                     <span className={cn("font-black text-sm md:text-2xl z-20 transition-all", isScrambled ? (isHighlight ? "text-white scale-125 drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" : "text-pink-500") : "text-slate-600 blur-[2px]")}>{isScrambled ? rowNum : '?'}</span>
                   </div>
 
                   {/* GAME CELLS */}
@@ -108,8 +109,11 @@ export default function Grid({
                     
                     const isWinner = !!winningCell && winningCell.row === rowIndex && winningCell.col === colIndex;
                     const isSelected = !!selectedCell && selectedCell.row === rowIndex && selectedCell.col === colIndex;
-                    const isCrosshair = !!winningCell && (winningCell.row === rowIndex || winningCell.col === colIndex);
                     const isPending = pendingIndices.includes(cellIndex);
+                    
+                    // FIX: Activate Crosshair for BOTH Winning Cell and Selected Cell
+                    const isCrosshair = (!!winningCell && (winningCell.row === rowIndex || winningCell.col === colIndex)) || 
+                                        (!!selectedCell && (selectedCell.row === rowIndex || selectedCell.col === colIndex));
 
                     return (
                       <div
@@ -119,11 +123,15 @@ export default function Grid({
                           'col-span-1 row-span-1 relative border-r border-b border-white/5 overflow-hidden transition-all duration-75 cursor-pointer',
                           claims.length > 0 ? 'bg-slate-800/40' : 'bg-transparent hover:bg-white/5',
                           
-                          // FIX: Use the specific 'ring' class we defined, plus the soft background
                           isPending && `ring-inset ring-2 ${myColor.ring} ${myColor.soft} animate-pulse z-30`,
                           
-                          isCrosshair && !isWinner && "bg-white/5",
+                          // Crosshair Logic
+                          isCrosshair && !isWinner && !isSelected && "bg-white/5",
+
+                          // Winner Logic
                           isWinner && 'z-30 ring-2 ring-yellow-400 bg-yellow-400/20 shadow-[inset_0_0_20px_rgba(250,204,21,0.5)]',
+                          
+                          // Selected Logic (Blue Ring)
                           isSelected && !isWinner && !isPending && 'z-20 ring-1 ring-cyan-400 bg-cyan-400/10'
                         )}
                       >

@@ -1,91 +1,63 @@
 "use client";
 
 import React, { useState } from "react";
-import { useGame } from "@/context/GameContext";
-import { Loader2, ArrowRight, Hash } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Loader2, Search } from "lucide-react";
 
 interface JoinGameFormProps {
-  // Update this line to allow a string argument
-  onSuccess: (gameId: string) => void; 
+  onSuccess?: () => void;
   initialGameId?: string;
 }
 
 export default function JoinGameForm({ onSuccess, initialGameId = "" }: JoinGameFormProps) {
-  const { joinGame } = useGame();
+  const router = useRouter();
   const [gameId, setGameId] = useState(initialGameId);
-  const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    if (!gameId.trim()) return;
+
     setIsJoining(true);
-
-    try {
-      const result = await joinGame(gameId);
-      
-      if (!result.ok) {
-         setError(result.error || "Failed to join game. Please verify the code.");
-         setIsJoining(false);
-         return;
-      }
-
-      onSuccess(gameId);
-    } catch (err: unknown) {
-      console.error("Join failed", err);
-      const message = err instanceof Error ? err.message : "Failed to join game. Check the code and try again.";
-      // Fallback error message if the error doesn't have a message
-      setError(message);
-      setIsJoining(false);
-    }
+    
+    // In the new architecture, "Joining" simply means navigating to the page.
+    // The GamePage itself handles loading the data.
+    router.push(`/game/${gameId.trim()}`);
+    
+    if (onSuccess) onSuccess();
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-white/10">
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-600 dark:text-emerald-400">
-          <ArrowRight className="w-8 h-8" />
+    <form onSubmit={handleJoin} className="flex flex-col gap-4 w-full max-w-md">
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 mb-1 block">
+          Enter Game Code
+        </label>
+        <div className="relative">
+            <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
+            <input
+              type="text"
+              value={gameId}
+              onChange={(e) => setGameId(e.target.value)}
+              placeholder="e.g. 7f8a9b..."
+              className="w-full bg-black/40 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors"
+            />
         </div>
-        <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Join the Action</h2>
-        <p className="text-slate-500 dark:text-slate-400 font-medium">Enter the game code to get started.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Game Code</label>
-          <div className="relative">
-            <Hash className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
-            <input 
-              required
-              type="text"
-              placeholder="e.g. 8x92m..."
-              value={gameId}
-              onChange={e => setGameId(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all uppercase"
-            />
-          </div>
-        </div>
-
-        {/* Password field - Optional in UI, but kept for future-proofing 
-           or if your backend requires it later.
-        */}
-        {/* 
-        */}
-
-        {error && (
-          <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-sm font-bold rounded-xl text-center">
-            {error}
-          </div>
+      <button
+        type="submit"
+        disabled={isJoining || !gameId}
+        className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
+      >
+        {isJoining ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <>
+            Find Game <ArrowRight className="w-4 h-4" />
+          </>
         )}
-
-        <button 
-          type="submit" 
-          disabled={isJoining || !gameId}
-          className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl shadow-lg shadow-emerald-500/30 transform hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isJoining ? <Loader2 className="animate-spin" /> : "ENTER GAME"}
-        </button>
-      </form>
-    </div>
+      </button>
+    </form>
   );
 }

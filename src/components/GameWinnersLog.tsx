@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import { Trophy, Clock, Medal } from "lucide-react";
 import { PayoutLog } from "@/context/GameContext";
@@ -9,53 +7,55 @@ interface GameWinnersLogProps {
 }
 
 export default function GameWinnersLog({ history }: GameWinnersLogProps) {
-  if (!history || history.length === 0) return null;
+  if (!history || history.length === 0) {
+    return (
+      <div className="text-center py-8 px-4 bg-slate-50/50 dark:bg-white/5 rounded-2xl border border-dashed border-slate-200 dark:border-white/10">
+        <Trophy className="w-8 h-8 mx-auto text-slate-300 mb-2 opacity-50" />
+        <p className="text-sm text-slate-500 font-medium">No winners recorded yet.</p>
+      </div>
+    );
+  }
+
+  // Helper to format labels
+  const getQuarterLabel = (q: string) => {
+    switch(q) {
+      case 'q1': return '1st Quarter';
+      case 'q2': return 'Halftime';
+      case 'q3': return '3rd Quarter';
+      case 'final': return 'Final Score';
+      default: return q;
+    }
+  };
 
   return (
-    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-xl p-3 border border-slate-200 dark:border-white/10 space-y-2">
+    <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
-        <div className="p-2 bg-amber-100 dark:bg-amber-900/20 rounded-lg text-amber-600 dark:text-amber-400">
-          <Trophy className="w-5 h-5" />
-        </div>
-        <div>
-          <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">
-            Game Winners
-          </h3>
-          <p className="text-[10px] text-slate-500 font-medium">Record of payouts so far</p>
-        </div>
+        <Clock className="w-4 h-4 text-slate-400" />
+        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Winner History</h3>
       </div>
-
-      <div className="space-y-3">
-        {history.map((log) => (
+      
+      <div className="space-y-2">
+        {history.map((log, index) => (
           <div 
-            key={log.id} 
+            key={`${log.timestamp}-${index}`} 
             className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-white/5 hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors group"
           >
             <div className="flex items-center gap-3">
-              <div className="flex flex-col items-center justify-center w-10 h-10 bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
-                 <span className="text-[10px] font-black text-slate-400 uppercase">Q{log.period}</span>
-                 {log.label.includes("Final") ? (
-                   <Medal className="w-4 h-4 text-amber-500" />
-                 ) : (
-                   <Clock className="w-4 h-4 text-slate-400" />
-                 )}
+              <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
+                <Medal className="w-4 h-4" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-500 tracking-wider">
-                  {log.label}
-                </span>
-                <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-                  {log.winnerName}
-                </span>
+              <div>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{log.winnerName}</p>
+                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider group-hover:text-amber-500/70 transition-colors">
+                  {getQuarterLabel(log.quarter)}
+                </p>
               </div>
             </div>
             
-            <div className="flex flex-col items-end">
-              <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                ${log.amount}
-              </span>
-              <span className="text-[10px] font-mono text-slate-400 bg-slate-200 dark:bg-slate-800 px-1.5 rounded">
-                SCORE {log.teamAScore}-{log.teamBScore}
+            <div className="text-right">
+              <span className="block text-sm font-black text-slate-900 dark:text-white">${log.amount}</span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now'}
               </span>
             </div>
           </div>

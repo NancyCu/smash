@@ -1,64 +1,77 @@
-'use client';
-
 import React from 'react';
-import { Trophy } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { type PayoutLog } from '@/context/GameContext'; // <-- IMPORT PayoutLog
+import { Trophy, Medal, Crown } from 'lucide-react';
+import { PayoutLog } from '@/context/GameContext';
 
-// Define the props for the TrophyCase component
 interface TrophyCaseProps {
-  payouts: { label: string; amount: number }[];
-  history: PayoutLog[]; // <-- USE PayoutLog[] for history
+  payouts: any; // Using any for flexibility with your config object
+  history: PayoutLog[];
   totalPot: number;
 }
 
 const TrophyCase: React.FC<TrophyCaseProps> = ({ payouts, history, totalPot }) => {
-  // Create a map of historical winners for quick lookup by label
-  const historyMap = new Map(history.map(h => [h.label, h]));
+  
+  // Helper to map technical keys (q1) to readable labels
+  const getLabel = (key: string) => {
+      switch(key) {
+          case 'q1': return '1st Quarter';
+          case 'q2': return 'Halftime';
+          case 'q3': return '3rd Quarter';
+          case 'final': return 'Final Score';
+          default: return key;
+      }
+  };
 
-  // Determine the display data for each required payout period
-  const displayData = payouts.map(payout => {
-    const winner = historyMap.get(payout.label);
-    return {
-      key: payout.label.replace(/\s+/g, '').toLowerCase(),
-      label: payout.label.replace(' Winner', ''),
-      status: winner ? 'won' : 'pending',
-      name: winner ? winner.winnerName : 'Waiting...',
-      amount: `$${payout.amount}`,
-    };
-  });
+  // Define the standard order of trophies
+  const periods = ['q1', 'q2', 'q3', 'final'];
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-2 mt-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {displayData.map((data) => (
-          <div key={data.key} className={cn(
-            'flex flex-col items-center p-2.5 rounded-lg border text-center',
-            data.status === 'won' 
-              ? 'bg-slate-100/50 dark:bg-slate-800/80 border-green-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
-              : 'bg-slate-100/30 dark:bg-slate-900/50 border-slate-200 dark:border-white/10 opacity-70'
-          )}>
-            <span className="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold mb-1 tracking-widest">
-              {data.label}
-            </span>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+      {periods.map((period) => {
+        // Find if we have a winner in history for this period
+        const winnerLog = history.find(h => h.quarter === period);
+        const amount = payouts[period] || 0;
+        const isFinal = period === 'final';
+
+        return (
+          <div 
+            key={period} 
+            className={`relative flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+                winnerLog 
+                ? (isFinal ? "bg-yellow-500/10 border-yellow-500/50" : "bg-indigo-500/10 border-indigo-500/50") 
+                : "bg-black/20 border-white/5 opacity-70"
+            }`}
+          >
+            {/* ICON */}
+            <div className={`mb-3 p-3 rounded-full ${
+                winnerLog 
+                ? (isFinal ? "bg-yellow-500 text-black shadow-lg shadow-yellow-500/50" : "bg-indigo-500 text-white shadow-lg shadow-indigo-500/50") 
+                : "bg-white/5 text-slate-500"
+            }`}>
+               {isFinal ? <Crown className="w-5 h-5" /> : <Trophy className="w-4 h-4" />}
+            </div>
+
+            {/* LABEL & AMOUNT */}
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{getLabel(period)}</span>
+            <span className={`text-lg font-black ${winnerLog ? "text-white" : "text-slate-600"}`}>${amount}</span>
+
+            {/* WINNER NAME (If exists) */}
+            {winnerLog && (
+                <div className="mt-3 flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-white/10">
+                    <div className="w-4 h-4 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-[8px] font-bold text-white">
+                        {winnerLog.winnerName[0]}
+                    </div>
+                    <span className="text-xs font-bold text-white max-w-[80px] truncate">{winnerLog.winnerName}</span>
+                </div>
+            )}
             
-            {data.status === 'won' ? (
-              <>
-                <span className="text-xs font-bold text-slate-800 dark:text-white truncate max-w-full">
-                  {data.name}
-                </span>
-                <span className="text-xs text-green-600 dark:text-green-400 font-mono font-bold">
-                  {data.amount}
-                </span>
-              </>
-            ) : (
-              <span className="text-[10px] text-slate-500 dark:text-slate-500 italic">
-                --
-              </span>
+            {!winnerLog && (
+                <div className="mt-3 px-3 py-1.5 rounded-full border border-dashed border-white/10 text-[10px] text-slate-600">
+                    Pending
+                </div>
             )}
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 };
