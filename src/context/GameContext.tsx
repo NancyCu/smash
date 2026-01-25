@@ -2,8 +2,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { 
   doc, onSnapshot, updateDoc, deleteDoc, setDoc, 
-  collection, addDoc, serverTimestamp, arrayUnion, deleteField 
-} from "firebase/firestore"; // <--- Added deleteField
+  collection, addDoc, serverTimestamp, arrayUnion, deleteField,
+  query, where, getDocs // <--- ADDED THESE IMPORTS
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthContext";
 
@@ -123,13 +124,11 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     if (Array.isArray(currentSquare)) {
         const newArray = currentSquare.filter(c => c.userId !== user.uid);
         if (newArray.length === 0) {
-             // FIX: Used deleteField() instead of deleteDoc()
              await updateDoc(ref, { [`squares.${index}`]: deleteField() });
         } else {
              await updateDoc(ref, { [`squares.${index}`]: newArray });
         }
     } else {
-        // FIX: Used deleteField() instead of deleteDoc()
         await updateDoc(ref, { [`squares.${index}`]: deleteField() });
     }
   };
@@ -176,9 +175,18 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const resetGrid = async () => { if(gameId) await updateDoc(doc(db,"games",gameId), { isScrambled: false }); };
   const deleteGame = async () => { if(gameId) await deleteDoc(doc(db,"games",gameId)); };
   
+  // --- REAL QUERY IMPLEMENTATION ---
   const getUserGames = async (uid: string) => {
-     // Placeholder: This should be a real query in production
-     return []; 
+     if (!uid) return [];
+     try {
+         // Query games where YOU are the host
+         const q = query(collection(db, "games"), where("host", "==", uid));
+         const snapshot = await getDocs(q);
+         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+     } catch (e) {
+         console.error("Error fetching user games:", e);
+         return [];
+     }
   };
 
   return (
