@@ -8,7 +8,7 @@ import type { SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
-import { Copy, Check, UserPlus, Trash2, X, ExternalLink, Trophy, ShoppingCart, LogIn, LogOut, Loader2 } from "lucide-react";
+import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2 } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 
 export default function GamePage() {
@@ -29,11 +29,30 @@ export default function GamePage() {
   );
   
   // --- STATE ---
-  const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
+  // FIX: Default to 'final' so users see the TOTAL score first, not just Q1
+  const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('final');
+  
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // --- SMART AUTO-SWITCHER ---
+  // This watches the live game period and updates your view automatically
+  useEffect(() => {
+    if (matchedGame) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const status = (matchedGame as any).status;
+        if (status?.period) {
+            // If game is live (period 1, 2, 3), show that quarter. 
+            // If period > 3 (4th, OT) or complete, show Final.
+            if (status.period === 1) setActiveQuarter('q1');
+            else if (status.period === 2) setActiveQuarter('q2');
+            else if (status.period === 3) setActiveQuarter('q3');
+            else setActiveQuarter('final'); 
+        }
+    }
+  }, [matchedGame]);
 
   // --- LOGO HELPER ---
   const getTeamLogo = (teamName: string) => {
@@ -49,9 +68,8 @@ export default function GamePage() {
     return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/${teamName.toLowerCase().slice(0,3)}.png&h=200&w=200`;
   };
 
-  // --- SCORES (FIXED TYPESCRIPT ERROR) ---
+  // --- SCORES ---
   const currentScores = useMemo(() => {
-    // Define the default zero-state structure
     const base = { 
         q1: { home: 0, away: 0 }, 
         q2: { home: 0, away: 0 }, 
@@ -63,7 +81,6 @@ export default function GamePage() {
 
     if (!game) return base;
 
-    // 1. Try to parse live ESPN data
     if (game.espnGameId) {
         const matched = liveGames.find(g => g.id === game.espnGameId);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -95,8 +112,6 @@ export default function GamePage() {
         }
     }
 
-    // 2. Fallback: Ensure we ALWAYS return the full object structure
-    // (This fixes the TS error by not returning the simple game.scores directly)
     return {
         ...base,
         final: { home: game.scores?.teamA || 0, away: game.scores?.teamB || 0 },
@@ -113,7 +128,6 @@ export default function GamePage() {
     if (!game?.isScrambled) return null; 
     let scoreA = 0, scoreB = 0;
     
-    // Now safe to access q1/q2 etc because currentScores always has them
     if (activeQuarter === 'q1') { scoreA = currentScores.q1.home; scoreB = currentScores.q1.away; }
     else if (activeQuarter === 'q2') { scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away; }
     else if (activeQuarter === 'q3') { scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home; scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away; }
@@ -125,7 +139,7 @@ export default function GamePage() {
     return { row: rowIndex, col: colIndex };
   }, [currentScores, activeQuarter, currentAxis, game]);
 
-  // --- GRID DATA (FIXED FOR ARRAYS/STACKING) ---
+  // --- GRID DATA ---
   const formattedSquares = useMemo(() => {
     if (!game?.squares) return {};
     const result: Record<string, { uid: string, name: string, claimedAt: number }[]> = {};
@@ -137,14 +151,12 @@ export default function GamePage() {
       const gridKey = `${Math.floor(index / 10)}-${index % 10}`;
       if (!result[gridKey]) result[gridKey] = [];
 
-      // Handle Array (Multiple Users) OR Object (Legacy Single User)
       if (Array.isArray(value)) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         value.forEach((sq: any) => {
             result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0 });
         });
       } else {
-        // Legacy fallback
         const sq = value as SquareData;
         result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0 });
       }
@@ -181,7 +193,6 @@ export default function GamePage() {
       if (user) {
           await logOut();
       } else {
-          // FIX: Redirect to Home Page Login Form instead of Google Popup
           router.push('/?action=login');
       }
   };
