@@ -8,7 +8,7 @@ import type { SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
-import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2 } from "lucide-react";
+import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2, Clock } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 
 export default function GamePage() {
@@ -29,30 +29,43 @@ export default function GamePage() {
   );
   
   // --- STATE ---
-  // FIX: Default to 'final' so users see the TOTAL score first, not just Q1
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('final');
-  
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- SMART AUTO-SWITCHER ---
-  // This watches the live game period and updates your view automatically
+  // --- SMART AUTO-SWITCHER & CLOCK LOGIC ---
   useEffect(() => {
     if (matchedGame) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const status = (matchedGame as any).status;
         if (status?.period) {
-            // If game is live (period 1, 2, 3), show that quarter. 
-            // If period > 3 (4th, OT) or complete, show Final.
+            // Auto-Switch Tabs based on real-time status
             if (status.period === 1) setActiveQuarter('q1');
-            else if (status.period === 2) setActiveQuarter('q2');
+            else if (status.period === 2 && status.type?.name !== "STATUS_HALFTIME") setActiveQuarter('q2');
+            else if (status.type?.name === "STATUS_HALFTIME") setActiveQuarter('q2'); // Halftime shows Q2 scores usually
             else if (status.period === 3) setActiveQuarter('q3');
             else setActiveQuarter('final'); 
         }
     }
   }, [matchedGame]);
+
+  // --- GET CLOCK DISPLAY ---
+  const gameClock = useMemo(() => {
+      if (!matchedGame) return "OFF AIR";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const status = (matchedGame as any).status;
+      
+      if (status.type?.state === "pre") return new Date((matchedGame as any).date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      if (status.type?.completed) return "FINAL";
+      if (status.type?.name === "STATUS_HALFTIME") return "HALF";
+      
+      // Return live clock (e.g. "12:45 1st")
+      return `${status.displayClock} Q${status.period}`;
+  }, [matchedGame]);
+
+  const isLive = matchedGame && (matchedGame as any).status?.type?.state === "in";
 
   // --- LOGO HELPER ---
   const getTeamLogo = (teamName: string) => {
@@ -297,11 +310,20 @@ export default function GamePage() {
 
           <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-6 gap-6">
               
-              {/* SCOREBOARD */}
+              {/* SCOREBOARD WITH TIMER */}
               <div className="w-full relative group z-20 shrink-0">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
                   <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-2xl">
-                      <div className="flex w-full justify-between items-center mb-4">
+                      
+                      {/* TIMER */}
+                      <div className="mb-4 bg-black/40 rounded-full px-4 py-1 flex items-center gap-2 border border-white/5 shadow-inner">
+                          {isLive && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
+                          <span className={`text-xs font-mono font-bold tracking-widest ${isLive ? "text-red-400" : "text-slate-400"}`}>
+                              {gameClock}
+                          </span>
+                      </div>
+
+                      <div className="flex w-full justify-between items-center mb-2">
                           <div className="flex flex-col items-center w-1/3 relative">
                               <span className="text-pink-500 font-teko text-xl md:text-3xl tracking-[0.2em] uppercase mb-1">{game.teamA}</span>
                               <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)]">
