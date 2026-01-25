@@ -8,7 +8,7 @@ import type { SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
-import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2, Clock } from "lucide-react";
+import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2 } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 
 export default function GamePage() {
@@ -30,54 +30,47 @@ export default function GamePage() {
   
   // --- STATE ---
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('final');
+  const [hasAutoSwitched, setHasAutoSwitched] = useState(false); // Prevents fighting the user
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- SMART AUTO-SWITCHER & CLOCK LOGIC ---
+  // --- AGGRESSIVE AUTO-SWITCHER ---
   useEffect(() => {
-    if (matchedGame) {
+    if (matchedGame && !hasAutoSwitched) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const status = (matchedGame as any).status;
-        if (status?.period) {
-            // Auto-Switch Tabs based on real-time status
-            if (status.period === 1) setActiveQuarter('q1');
-            else if (status.period === 2 && status.type?.name !== "STATUS_HALFTIME") setActiveQuarter('q2');
-            else if (status.type?.name === "STATUS_HALFTIME") setActiveQuarter('q2'); // Halftime shows Q2 scores usually
-            else if (status.period === 3) setActiveQuarter('q3');
-            else setActiveQuarter('final'); 
+        
+        if (status?.type?.state === "in") {
+             const p = status.period;
+             if (p === 1 && activeQuarter !== 'q1') { setActiveQuarter('q1'); setHasAutoSwitched(true); }
+             else if (p === 2 && activeQuarter !== 'q2') { setActiveQuarter('q2'); setHasAutoSwitched(true); }
+             else if (p === 3 && activeQuarter !== 'q3') { setActiveQuarter('q3'); setHasAutoSwitched(true); }
+             else if (p >= 4 && activeQuarter !== 'final') { setActiveQuarter('final'); setHasAutoSwitched(true); }
         }
     }
-  }, [matchedGame]);
+  }, [matchedGame, hasAutoSwitched, activeQuarter]);
 
-  // --- FIXED CLOCK DISPLAY (No more "undefined") ---
+  // --- RESILIENT CLOCK DISPLAY ---
   const gameClock = useMemo(() => {
       if (!matchedGame) return "OFF AIR";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const status = (matchedGame as any).status;
       
       if (!status) return "OFF AIR";
-
+      
       // 1. Pre-Game
       if (status.type?.state === "pre") {
           return new Date((matchedGame as any).date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       }
-      
-      // 2. Final / Complete
+      // 2. Halftime
+      if (status.type?.name === "STATUS_HALFTIME") return "HALF";
+      // 3. Final
       if (status.type?.completed) return "FINAL";
       
-      // 3. Halftime
-      if (status.type?.name === "STATUS_HALFTIME") return "HALF";
-      
-      // 4. Live Clock (Defensive Check)
-      const clock = status.displayClock || "0:00";
-      const period = status.period || "1";
-      
-      // If data is missing but state says "in", default to just the quarter
-      if (status.displayClock === undefined) return `Q${period}`;
-
-      return `${clock} Q${period}`;
+      // 4. Live (Safe Fallback)
+      return `${status.displayClock || "0:00"} Q${status.period || 1}`;
   }, [matchedGame]);
 
   const isLive = matchedGame && (matchedGame as any).status?.type?.state === "in";
@@ -96,17 +89,9 @@ export default function GamePage() {
     return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/${teamName.toLowerCase().slice(0,3)}.png&h=200&w=200`;
   };
 
-  // --- SCORES ---
+  // --- SCORES (Safe Parsing) ---
   const currentScores = useMemo(() => {
-    const base = { 
-        q1: { home: 0, away: 0 }, 
-        q2: { home: 0, away: 0 }, 
-        q3: { home: 0, away: 0 }, 
-        final: { home: 0, away: 0 }, 
-        teamA: 0, 
-        teamB: 0 
-    };
-
+    const base = { q1: { home: 0, away: 0 }, q2: { home: 0, away: 0 }, q3: { home: 0, away: 0 }, final: { home: 0, away: 0 }, teamA: 0, teamB: 0 };
     if (!game) return base;
 
     if (game.espnGameId) {
@@ -139,16 +124,10 @@ export default function GamePage() {
             };
         }
     }
-
-    return {
-        ...base,
-        final: { home: game.scores?.teamA || 0, away: game.scores?.teamB || 0 },
-        teamA: game.scores?.teamA || 0,
-        teamB: game.scores?.teamB || 0
-    };
+    return { ...base, final: { home: game.scores?.teamA || 0, away: game.scores?.teamB || 0 }, teamA: game.scores?.teamA || 0, teamB: game.scores?.teamB || 0 };
   }, [game, liveGames]);
 
-  // --- WINNER CALC ---
+  // --- WINNING CELL CALCULATION ---
   const defaultAxis = [0,1,2,3,4,5,6,7,8,9];
   const currentAxis = game?.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
 
@@ -156,6 +135,7 @@ export default function GamePage() {
     if (!game?.isScrambled) return null; 
     let scoreA = 0, scoreB = 0;
     
+    // Calculate logic based on ACTIVE TAB
     if (activeQuarter === 'q1') { scoreA = currentScores.q1.home; scoreB = currentScores.q1.away; }
     else if (activeQuarter === 'q2') { scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away; }
     else if (activeQuarter === 'q3') { scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home; scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away; }
@@ -163,6 +143,7 @@ export default function GamePage() {
     
     const rowIndex = currentAxis.row.indexOf(scoreA % 10);
     const colIndex = currentAxis.col.indexOf(scoreB % 10);
+    
     if (rowIndex === -1 || colIndex === -1) return null;
     return { row: rowIndex, col: colIndex };
   }, [currentScores, activeQuarter, currentAxis, game]);
@@ -175,15 +156,12 @@ export default function GamePage() {
     Object.entries(game.squares).forEach(([key, value]) => {
       const index = parseInt(key);
       if (isNaN(index)) return;
-      
       const gridKey = `${Math.floor(index / 10)}-${index % 10}`;
       if (!result[gridKey]) result[gridKey] = [];
 
       if (Array.isArray(value)) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        value.forEach((sq: any) => {
-            result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0 });
-        });
+        value.forEach((sq: any) => { result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0 }); });
       } else {
         const sq = value as SquareData;
         result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0 });
@@ -199,6 +177,7 @@ export default function GamePage() {
     }
   }, [id, setGameId]);
 
+  // Auto-Select the winning cell if we have one (Highlighter)
   useEffect(() => {
     if (winningCoordinates) setSelectedCell(winningCoordinates);
   }, [winningCoordinates]);
@@ -206,75 +185,38 @@ export default function GamePage() {
   // --- HANDLERS ---
   const handleSquareClick = (row: number, col: number) => {
     const index = row * 10 + col;
-    if (game?.isScrambled && !isAdmin) {
-        setSelectedCell({ row, col });
-        return;
-    }
-    setPendingSquares(prev => {
-        if (prev.includes(index)) return prev.filter(i => i !== index); 
-        else return [...prev, index]; 
-    });
+    if (game?.isScrambled && !isAdmin) { setSelectedCell({ row, col }); return; }
+    setPendingSquares(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]);
     setSelectedCell({ row, col });
   };
 
-  const handleAuth = async () => {
-      if (user) {
-          await logOut();
-      } else {
-          router.push('/?action=login');
-      }
-  };
+  const handleAuth = async () => { if (user) await logOut(); else router.push('/?action=login'); };
 
   const handleConfirmCart = async () => {
     if (!user) { await handleAuth(); return; }
     if (pendingSquares.length === 0) return;
-    
     setIsSubmitting(true);
     try {
-        for (const index of pendingSquares) {
-            await claimSquare(index);
-        }
-        setPendingSquares([]);
-        setSelectedCell(null);
-    } catch (err) {
-        console.error("Claim Error:", err);
-        alert("Could not claim square. It might be taken or locked.");
-    } finally {
-        setIsSubmitting(false);
-    }
+        for (const index of pendingSquares) await claimSquare(index);
+        setPendingSquares([]); setSelectedCell(null);
+    } catch (err) { alert("Could not claim square."); } finally { setIsSubmitting(false); }
   };
 
   const handleClearCart = () => setPendingSquares([]);
-
   const handleClaim = async () => {
     if (!selectedCell || !game) return;
     if (!user) { await handleAuth(); return; }
     if (game.isScrambled && !isAdmin) { alert("Game is locked!"); return; }
-    
     setIsSubmitting(true);
-    try {
-        await claimSquare(selectedCell.row * 10 + selectedCell.col);
-    } catch (err) {
-        alert("Failed to claim square.");
-    } finally {
-        setIsSubmitting(false);
-    }
+    try { await claimSquare(selectedCell.row * 10 + selectedCell.col); } 
+    catch (err) { alert("Failed."); } finally { setIsSubmitting(false); }
   };
-
   const handleUnclaim = async () => {
     if (!selectedCell || !game) return;
     await unclaimSquare(selectedCell.row * 10 + selectedCell.col);
   };
-
-  const copyCode = () => {
-    if (!game) return;
-    navigator.clipboard.writeText(game.id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  const handleDelete = async () => {
-    if (confirm("Are you sure? This cannot be undone.")) { await deleteGame(); router.push("/"); }
-  };
+  const copyCode = () => { if(game) { navigator.clipboard.writeText(game.id); setCopied(true); setTimeout(() => setCopied(false), 2000); }};
+  const handleDelete = async () => { if (confirm("Are you sure?")) { await deleteGame(); router.push("/"); }};
 
   if (loading && !game) return <div className="min-h-screen flex items-center justify-center bg-[#0B0C15]"><div className="animate-spin h-12 w-12 border-4 border-indigo-500 rounded-full border-t-transparent"/></div>;
   if (error || !game) return <div className="min-h-screen flex items-center justify-center bg-[#0B0C15] text-white">Game Not Found</div>;
@@ -306,7 +248,6 @@ export default function GamePage() {
           {/* MOBILE HEADER */}
           <div className="lg:hidden p-4 bg-[#0B0C15]/95 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5">
               <div onClick={() => router.push('/')} className="flex items-center gap-2 cursor-pointer">
-                  {/* MOBILE LOGO */}
                   <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-white/20">
                     <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" />
                   </div>
@@ -325,12 +266,12 @@ export default function GamePage() {
 
           <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-6 gap-6">
               
-              {/* SCOREBOARD WITH TIMER */}
+              {/* SCOREBOARD */}
               <div className="w-full relative group z-20 shrink-0">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
                   <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-2xl">
                       
-                      {/* TIMER */}
+                      {/* TIMER (Live) */}
                       <div className="mb-4 bg-black/40 rounded-full px-4 py-1 flex items-center gap-2 border border-white/5 shadow-inner">
                           {isLive && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
                           <span className={`text-xs font-mono font-bold tracking-widest ${isLive ? "text-red-400" : "text-slate-400"}`}>
@@ -348,7 +289,7 @@ export default function GamePage() {
                           <div className="flex flex-col items-center w-1/3 z-10">
                               <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100">
                                   {(['q1', 'q2', 'q3', 'final'] as const).map((q) => (
-                                      <button key={q} onClick={() => setActiveQuarter(q)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${activeQuarter === q ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>{q.toUpperCase()}</button>
+                                      <button key={q} onClick={() => { setActiveQuarter(q); setHasAutoSwitched(true); }} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${activeQuarter === q ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>{q.toUpperCase()}</button>
                                   ))}
                               </div>
                           </div>
@@ -400,7 +341,7 @@ export default function GamePage() {
                     <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
                         <div className="flex flex-col">
                             <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-2">
-                                Square Details {isWinningSquare && <span className="text-yellow-400 flex items-center gap-1"><Trophy className="w-3 h-3" /> Winning Square</span>}
+                                Square Details {isWinningSquare && <span className="text-yellow-400 flex items-center gap-1 animate-pulse"><Trophy className="w-3 h-3" /> Winning Square</span>}
                             </span>
                             <span className="text-lg font-black text-white">{selectedCell ? `Row ${currentAxis.row[selectedCell.row]} • Col ${currentAxis.col[selectedCell.col]}` : "Select a Square"}</span>
                         </div>
@@ -441,17 +382,11 @@ export default function GamePage() {
 
       {/* DESKTOP SIDEBAR */}
       <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-[#0f111a] border-l border-white/5 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl relative">
-          
-          {/* HEADER SECTION WITH BANNER */}
           <div className="mb-6">
                <div onClick={() => router.push('/')} className="cursor-pointer group">
-                  
-                  {/* HERO BANNER IMAGE */}
                   <div className="relative w-full h-32 rounded-xl overflow-hidden border border-white/10 mb-4 shadow-xl group-hover:shadow-2xl transition-all">
                       <Image src="/SouperBowlBanner.jpg" alt="Banner" fill className="object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0f111a] to-transparent/50" />
-                      
-                      {/* LOGO OVERLAY */}
                       <div className="absolute bottom-3 left-3 flex items-center gap-3">
                           <div className="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg">
                              <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" />
@@ -462,32 +397,18 @@ export default function GamePage() {
                           </div>
                       </div>
                   </div>
-
                   <p className="text-slate-400 text-xs font-medium leading-relaxed border-l-2 border-indigo-500 pl-3 italic">
                      "Go Big or Go Home. Connect, compete, and win big with the ultimate squares experience. Because with us, a Nguyen is always a Win"
                   </p>
                </div>
-
                <div className="mt-6 flex justify-between items-center border-t border-white/5 pt-4">
                   <button onClick={handleAuth} className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800 border border-slate-700 text-white font-bold text-xs uppercase hover:bg-slate-700 transition-colors">
-                      {user ? (
-                        <>
-                           <LogOut className="w-4 h-4 text-red-400" />
-                           <span>Log Out</span>
-                        </>
-                      ) : (
-                        <>
-                           <LogIn className="w-4 h-4 text-green-400" />
-                           <span>Log In</span>
-                        </>
-                      )}
+                      {user ? <><LogOut className="w-4 h-4 text-red-400" /><span>Log Out</span></> : <><LogIn className="w-4 h-4 text-green-400" /><span>Log In</span></>}
                   </button>
                </div>
           </div>
-
           {infoPanel}
       </div>
-
     </main>
   );
 }
