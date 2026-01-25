@@ -7,7 +7,7 @@ import type { SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
-import { Copy, Check, UserPlus, Trash2, X, ExternalLink } from "lucide-react";
+import { Copy, Check, UserPlus, Trash2, X, ExternalLink, Trophy, ShoppingCart } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 
 export default function GamePage() {
@@ -27,8 +27,12 @@ export default function GamePage() {
     [game, liveGames]
   );
   
+  // --- STATE ---
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
   const [copied, setCopied] = useState(false);
+  
+  // CART STATE (Multi-Select)
+  const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
 
   // --- LOGO HELPER ---
@@ -82,7 +86,6 @@ export default function GamePage() {
   const winningCoordinates = useMemo(() => {
     if (!game?.isScrambled) return null; // Only show winner if grid is locked/scrambled
 
-    // Calculate Cumulative Score for the active view
     let scoreA = 0;
     let scoreB = 0;
 
@@ -100,16 +103,10 @@ export default function GamePage() {
         scoreB = currentScores.final.away;
     }
 
-    const lastDigitA = scoreA % 10;
-    const lastDigitB = scoreB % 10;
-
-    // Find which ROW index has lastDigitA
-    const rowIndex = currentAxis.row.indexOf(lastDigitA);
-    // Find which COL index has lastDigitB
-    const colIndex = currentAxis.col.indexOf(lastDigitB);
+    const rowIndex = currentAxis.row.indexOf(scoreA % 10);
+    const colIndex = currentAxis.col.indexOf(scoreB % 10);
 
     if (rowIndex === -1 || colIndex === -1) return null;
-
     return { row: rowIndex, col: colIndex };
   }, [currentScores, activeQuarter, currentAxis, game]);
 
@@ -136,17 +133,66 @@ export default function GamePage() {
     }
   }, [id, setGameId]);
 
+  // Auto-Select Winning Cell
+  useEffect(() => {
+    if (winningCoordinates) {
+        setSelectedCell(winningCoordinates);
+    }
+  }, [winningCoordinates]);
+
   // --- HANDLERS ---
-  const handleSquareClick = (row: number, col: number) => setSelectedCell({ row, col });
+  const handleSquareClick = (row: number, col: number) => {
+    const index = row * 10 + col;
+
+    // 1. If Game is Locked (Scrambled) & User isn't Admin, just view details
+    if (game?.isScrambled && !isAdmin) {
+        setSelectedCell({ row, col });
+        return;
+    }
+
+    // 2. Toggle in Pending Cart (Add/Remove from shopping list)
+    setPendingSquares(prev => {
+        if (prev.includes(index)) {
+            return prev.filter(i => i !== index); // Remove if already clicked
+        } else {
+            return [...prev, index]; // Add if new
+        }
+    });
+
+    // 3. Also Select the cell so the "Details Box" updates to show info
+    setSelectedCell({ row, col });
+  };
+
+  const handleConfirmCart = async () => {
+    if (!user || pendingSquares.length === 0) return;
+    
+    // Process all pending squares
+    for (const index of pendingSquares) {
+        await claimSquare(index);
+    }
+    
+    // Clear Cart after claiming
+    setPendingSquares([]);
+    setSelectedCell(null);
+  };
+
+  const handleClearCart = () => {
+    setPendingSquares([]);
+  };
+
+  // Keep single claim for the "details" view if they use that button, 
+  // but mostly they will use the cart now.
   const handleClaim = async () => {
     if (!selectedCell || !game || !user) return;
     if (game.isScrambled && !isAdmin) { alert("Game is locked!"); return; }
     await claimSquare(selectedCell.row * 10 + selectedCell.col);
   };
+
   const handleUnclaim = async () => {
     if (!selectedCell || !game) return;
     await unclaimSquare(selectedCell.row * 10 + selectedCell.col);
   };
+
   const copyCode = () => {
     if (!game) return;
     navigator.clipboard.writeText(game.id);
@@ -161,10 +207,11 @@ export default function GamePage() {
   if (error || !game) return <div className="min-h-screen flex items-center justify-center bg-[#0B0C15] text-white">Game Not Found</div>;
 
   const selectedSquareData = selectedCell ? formattedSquares[`${selectedCell.row}-${selectedCell.col}`] || [] : [];
-  const isSelectedOwnedByMe = selectedSquareData.some(p => p.uid === user?.uid);
+  const isWinningSquare = winningCoordinates && selectedCell && winningCoordinates.row === selectedCell.row && winningCoordinates.col === selectedCell.col;
+  const cartTotal = pendingSquares.length * game.price;
 
-  // --- INFO PANEL COMPONENT ---
-  const InfoPanel = () => (
+  // --- SHARED INFO PANEL ---
+  const infoPanel = (
     <GameInfo 
         gameId={game.id} gameName={game.name} host={game.host} pricePerSquare={game.price}
         totalPot={game.pot || (Object.keys(game.squares).length * game.price)} 
@@ -235,41 +282,71 @@ export default function GamePage() {
                           teamALogo={getTeamLogo(game.teamA)} teamBLogo={getTeamLogo(game.teamB)}
                           isScrambled={game.isScrambled} selectedCell={selectedCell}
                           winningCell={winningCoordinates}
+                          pendingIndices={pendingSquares} currentUserId={user?.uid}
                       />
                   </div>
               </div>
 
-              {/* SQUARE DETAILS */}
-              <div className="w-full bg-[#151725] border border-white/10 rounded-2xl p-4 shadow-xl shrink-0">
-                 <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Square Details</span>
-                        <span className="text-lg font-black text-white">{selectedCell ? `Row ${currentAxis.row[selectedCell.row]} • Col ${currentAxis.col[selectedCell.col]}` : "Select a Square"}</span>
-                    </div>
-                    {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/10 text-slate-500"><X className="w-4 h-4" /></button>}
-                 </div>
-                 {selectedCell ? (
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                           {selectedSquareData.length === 0 ? <div className="p-3 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg">Empty Square</div> : 
-                              selectedSquareData.map((p, i) => (
-                                  <div key={i} className="flex justify-between p-2 rounded-lg bg-black/40 border border-white/5">
-                                      <span className="text-sm font-bold text-slate-200">{p.name}</span>
-                                      {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="text-red-400"><Trash2 className="w-3 h-3" /></button>}
-                                  </div>
-                              ))
-                           }
+              {/* CART / DETAILS BOX (THE MISSING PART) */}
+              {pendingSquares.length > 0 ? (
+                  /* --- CART MODE --- */
+                  <div className="w-full bg-[#151725] border border-indigo-500/50 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
+                      <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                                  <ShoppingCart className="w-5 h-5 text-white" />
+                              </div>
+                              <div className="flex flex-col">
+                                  <span className="text-xs text-indigo-300 font-bold uppercase tracking-widest">Selected Squares</span>
+                                  <span className="text-xl font-black text-white">{pendingSquares.length} <span className="text-sm font-medium text-slate-400">Total: ${cartTotal}</span></span>
+                              </div>
+                          </div>
+                          <button onClick={handleClearCart} className="text-xs text-slate-500 hover:text-white underline">Clear</button>
+                      </div>
+                      <button onClick={handleConfirmCart} className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] transition-transform">
+                          Confirm & Claim (${cartTotal})
+                      </button>
+                  </div>
+              ) : (
+                  /* --- DETAILS MODE --- */
+                  <div className={`w-full bg-[#151725] border ${isWinningSquare ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-4 shadow-xl shrink-0 transition-all`}>
+                    <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-2">
+                                Square Details {isWinningSquare && <span className="text-yellow-400 flex items-center gap-1"><Trophy className="w-3 h-3" /> Winning Square</span>}
+                            </span>
+                            <span className="text-lg font-black text-white">{selectedCell ? `Row ${currentAxis.row[selectedCell.row]} • Col ${currentAxis.col[selectedCell.col]}` : "Select a Square"}</span>
                         </div>
-                        <div className="flex gap-3">
-                           <button onClick={handleClaim} disabled={game.isScrambled && !isAdmin} className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs uppercase disabled:opacity-50 flex items-center justify-center gap-2"><UserPlus className="w-4 h-4"/> Add Name (${game.price})</button>
-                        </div>
+                        {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/10 text-slate-500"><X className="w-4 h-4" /></button>}
                     </div>
-                 ) : <div className="text-center py-4 text-slate-500 text-sm">Tap grid to edit.</div>}
-              </div>
+                    {selectedCell ? (
+                        <div className="space-y-4">
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {selectedSquareData.length === 0 ? <div className="p-3 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg">Empty Square</div> : 
+                                selectedSquareData.map((p, i) => (
+                                    <div key={i} className={`flex justify-between items-center p-3 rounded-lg border ${p.uid === user?.uid ? "bg-indigo-600/20 border-indigo-500/30" : "bg-black/40 border-white/5"}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold ${p.uid === user?.uid ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}>
+                                                {i+1}
+                                            </div>
+                                            <span className={`text-sm font-bold ${p.uid === user?.uid ? "text-indigo-200" : "text-slate-200"}`}>{p.name} {p.uid === user?.uid && "(You)"}</span>
+                                        </div>
+                                        {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"><Trash2 className="w-4 h-4" /></button>}
+                                    </div>
+                                ))
+                            }
+                            </div>
+                            <div className="flex gap-3">
+                               <button onClick={handleClaim} disabled={game.isScrambled && !isAdmin} className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"><UserPlus className="w-4 h-4"/> Add Name (${game.price})</button>
+                            </div>
+                        </div>
+                    ) : <div className="text-center py-6 text-slate-500 text-sm">Tap empty squares to build your cart.</div>}
+                  </div>
+              )}
 
               {/* MOBILE INFO */}
               <div className="lg:hidden w-full pb-20">
-                  <InfoPanel />
+                  {infoPanel}
               </div>
           </div>
       </div>
@@ -280,7 +357,7 @@ export default function GamePage() {
                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg"><ExternalLink className="text-white w-5 h-5" /></div>
                <div><h1 className="text-white font-black text-xl tracking-wider uppercase leading-none">Squares Royale</h1><p className="text-xs text-slate-500 font-mono mt-1">THE SOUPER BOWL</p></div>
           </div>
-          <InfoPanel />
+          {infoPanel}
       </div>
 
     </main>
