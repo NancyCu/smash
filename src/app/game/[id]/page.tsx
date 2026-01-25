@@ -30,27 +30,35 @@ export default function GamePage() {
   
   // --- STATE ---
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('final');
-  const [hasAutoSwitched, setHasAutoSwitched] = useState(false); // Prevents fighting the user
+  // Removed the "hasAutoSwitched" lock so it ALWAYS stays in sync with live game
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- AGGRESSIVE AUTO-SWITCHER ---
+  // This ensures if the game is in Q1, you are looking at Q1. Period.
   useEffect(() => {
-    if (matchedGame && !hasAutoSwitched) {
+    if (matchedGame) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const status = (matchedGame as any).status;
         
+        // Only auto-switch if the game is actually "in progress" (live)
         if (status?.type?.state === "in") {
              const p = status.period;
-             if (p === 1 && activeQuarter !== 'q1') { setActiveQuarter('q1'); setHasAutoSwitched(true); }
-             else if (p === 2 && activeQuarter !== 'q2') { setActiveQuarter('q2'); setHasAutoSwitched(true); }
-             else if (p === 3 && activeQuarter !== 'q3') { setActiveQuarter('q3'); setHasAutoSwitched(true); }
-             else if (p >= 4 && activeQuarter !== 'final') { setActiveQuarter('final'); setHasAutoSwitched(true); }
+             // Halftime check
+             if (status.type?.name === "STATUS_HALFTIME") {
+                 if (activeQuarter !== 'q2') setActiveQuarter('q2');
+             }
+             else {
+                 if (p === 1 && activeQuarter !== 'q1') setActiveQuarter('q1');
+                 else if (p === 2 && activeQuarter !== 'q2') setActiveQuarter('q2');
+                 else if (p === 3 && activeQuarter !== 'q3') setActiveQuarter('q3');
+                 else if (p >= 4 && activeQuarter !== 'final') setActiveQuarter('final');
+             }
         }
     }
-  }, [matchedGame, hasAutoSwitched, activeQuarter]);
+  }, [matchedGame, activeQuarter]); // Run whenever game updates
 
   // --- RESILIENT CLOCK DISPLAY ---
   const gameClock = useMemo(() => {
@@ -266,7 +274,7 @@ export default function GamePage() {
 
           <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-6 gap-6">
               
-              {/* SCOREBOARD */}
+              {/* SCOREBOARD WITH TIMER */}
               <div className="w-full relative group z-20 shrink-0">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
                   <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-2xl">
@@ -289,7 +297,7 @@ export default function GamePage() {
                           <div className="flex flex-col items-center w-1/3 z-10">
                               <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100">
                                   {(['q1', 'q2', 'q3', 'final'] as const).map((q) => (
-                                      <button key={q} onClick={() => { setActiveQuarter(q); setHasAutoSwitched(true); }} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${activeQuarter === q ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>{q.toUpperCase()}</button>
+                                      <button key={q} onClick={() => setActiveQuarter(q)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${activeQuarter === q ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>{q.toUpperCase()}</button>
                                   ))}
                               </div>
                           </div>
