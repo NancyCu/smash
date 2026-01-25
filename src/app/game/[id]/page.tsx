@@ -29,20 +29,22 @@ export default function GamePage() {
   );
   
   // --- STATE ---
+  // Default to Q1 to avoid "future spoilers"
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- AGGRESSIVE AUTO-SWITCHER ---
+  // --- 1. ROBUST AUTO-SWITCHER ---
+  // Fix: We wrap period in Number() to ensure "2" string equals 2 number
   useEffect(() => {
     if (matchedGame) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const status = (matchedGame as any).status;
         
         if (status?.type?.state === "in") {
-             const p = status.period;
+             const p = Number(status.period); // <--- FORCE NUMBER TYPE
              
              if (status.type?.name === "STATUS_HALFTIME") {
                  if (activeQuarter !== 'q2') setActiveQuarter('q2');
@@ -59,7 +61,8 @@ export default function GamePage() {
     }
   }, [matchedGame, activeQuarter]); 
 
-  // --- FINAL CLOCK FIX (Using shortDetail) ---
+  // --- 2. FINAL CLOCK FIX ---
+  // Fix: Checks multiple fields (shortDetail -> detail -> manual construction)
   const gameClock = useMemo(() => {
       if (!matchedGame) return "OFF AIR";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,21 +70,36 @@ export default function GamePage() {
       
       if (!status) return "OFF AIR";
 
-      // 1. USE THE PRE-FORMATTED STRING (The "Silver Bullet" Fix)
-      // This usually contains "13:45 - 1st" or "Halftime" or "Final"
+      // A. PREGAME
+      if (status.type?.state === "pre") {
+          return new Date((matchedGame as any).date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      }
+      
+      // B. HALFTIME / FINAL
+      if (status.type?.name === "STATUS_HALFTIME") return "HALF";
+      if (status.type?.completed) return "FINAL";
+
+      // C. LIVE CLOCK (Priority Order)
+      // 1. Try 'shortDetail' (e.g. "10:45 - 2nd")
       if (status.type?.shortDetail) {
           return status.type.shortDetail.replace(" - ", " ").toUpperCase();
       }
       
-      // 2. Fallbacks if shortDetail is missing
-      if (status.type?.state === "pre") {
-          return new Date((matchedGame as any).date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      // 2. Try 'detail' (Alternate field)
+      if (status.type?.detail) {
+           return status.type.detail.replace(" - ", " ").toUpperCase();
       }
-      if (status.type?.completed) return "FINAL";
+
+      // 3. Fallback: Manually build it
+      const clock = status.displayClock;
+      const period = Number(status.period) || 1;
+
+      // If clock is literally "0:00" but game is live, hide the 0:00 and just show Quarter
+      if (status.type?.state === "in" && (clock === "0:00" || !clock)) {
+          return `Q${period} LIVE`;
+      }
       
-      const clock = status.displayClock || "0:00";
-      const period = status.period || 1;
-      return `${clock} Q${period}`;
+      return `${clock || ""} Q${period}`;
   }, [matchedGame]);
 
   const isLive = matchedGame && (matchedGame as any).status?.type?.state === "in";
@@ -282,7 +300,7 @@ export default function GamePage() {
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
                   <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-2xl">
                       
-                      {/* TIMER (Live) */}
+                      {/* TIMER (Updated with Safety Check) */}
                       <div className="mb-4 bg-black/40 rounded-full px-4 py-1 flex items-center gap-2 border border-white/5 shadow-inner">
                           {isLive && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
                           <span className={`text-xs font-mono font-bold tracking-widest ${isLive ? "text-red-400" : "text-slate-400"}`}>
