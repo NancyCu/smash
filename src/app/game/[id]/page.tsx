@@ -29,16 +29,13 @@ export default function GamePage() {
   );
   
   // --- STATE ---
-  // FIX 1: Default to 'q1' instead of 'final' to prevent "Future Grid" spoilers on load
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
-  
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- AGGRESSIVE AUTO-SWITCHER ---
-  // Forces the tab to match the live game period
   useEffect(() => {
     if (matchedGame) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,12 +44,10 @@ export default function GamePage() {
         if (status?.type?.state === "in") {
              const p = status.period;
              
-             // Handle Halftime explicitly
              if (status.type?.name === "STATUS_HALFTIME") {
                  if (activeQuarter !== 'q2') setActiveQuarter('q2');
              }
              else {
-                 // Force switch if we are on the wrong tab
                  if (p === 1 && activeQuarter !== 'q1') setActiveQuarter('q1');
                  else if (p === 2 && activeQuarter !== 'q2') setActiveQuarter('q2');
                  else if (p === 3 && activeQuarter !== 'q3') setActiveQuarter('q3');
@@ -64,34 +59,29 @@ export default function GamePage() {
     }
   }, [matchedGame, activeQuarter]); 
 
-  // --- RESILIENT CLOCK DISPLAY ---
-  // Handles "undefined" and "0:00" errors gracefully
+  // --- FINAL CLOCK FIX (Using shortDetail) ---
   const gameClock = useMemo(() => {
       if (!matchedGame) return "OFF AIR";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const status = (matchedGame as any).status;
       
       if (!status) return "OFF AIR";
+
+      // 1. USE THE PRE-FORMATTED STRING (The "Silver Bullet" Fix)
+      // This usually contains "13:45 - 1st" or "Halftime" or "Final"
+      if (status.type?.shortDetail) {
+          return status.type.shortDetail.replace(" - ", " ").toUpperCase();
+      }
       
-      // 1. Pre-Game
+      // 2. Fallbacks if shortDetail is missing
       if (status.type?.state === "pre") {
           return new Date((matchedGame as any).date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       }
-      // 2. Halftime
-      if (status.type?.name === "STATUS_HALFTIME") return "HALF";
-      // 3. Final
       if (status.type?.completed) return "FINAL";
       
-      // 4. Live
-      const clock = status.displayClock;
+      const clock = status.displayClock || "0:00";
       const period = status.period || 1;
-
-      // If API sends weird "0:00" during live play, just show "LIVE Q1"
-      if (status.type?.state === "in" && (clock === "0:00" || !clock)) {
-          return `LIVE Q${period}`;
-      }
-      
-      return `${clock || "0:00"} Q${period}`;
+      return `${clock} Q${period}`;
   }, [matchedGame]);
 
   const isLive = matchedGame && (matchedGame as any).status?.type?.state === "in";
@@ -110,7 +100,7 @@ export default function GamePage() {
     return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/${teamName.toLowerCase().slice(0,3)}.png&h=200&w=200`;
   };
 
-  // --- SCORES (Safe Parsing) ---
+  // --- SCORES ---
   const currentScores = useMemo(() => {
     const base = { q1: { home: 0, away: 0 }, q2: { home: 0, away: 0 }, q3: { home: 0, away: 0 }, final: { home: 0, away: 0 }, teamA: 0, teamB: 0 };
     if (!game) return base;
@@ -292,7 +282,7 @@ export default function GamePage() {
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
                   <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-2xl">
                       
-                      {/* TIMER (Updated with Safety Check) */}
+                      {/* TIMER (Live) */}
                       <div className="mb-4 bg-black/40 rounded-full px-4 py-1 flex items-center gap-2 border border-white/5 shadow-inner">
                           {isLive && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
                           <span className={`text-xs font-mono font-bold tracking-widest ${isLive ? "text-red-400" : "text-slate-400"}`}>
