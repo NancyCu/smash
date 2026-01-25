@@ -5,19 +5,16 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useGame } from '@/context/GameContext';
 import type { SquareData } from '@/context/GameContext';
 import { useEspnScores } from '@/hooks/useEspnScores';
-import { ArrowLeft, Trophy, Medal, Crown } from 'lucide-react';
+import { ArrowLeft, Trophy, Crown } from 'lucide-react';
 import Image from 'next/image';
 
-// --- 1. The Content Component (Handles Logic) ---
+// --- 1. The Content Component ---
 function WinnersContent() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // usage of this hook requires Suspense
+  const searchParams = useSearchParams(); 
   const { game } = useGame();
   const { games: liveGames } = useEspnScores();
   
-  // Optional: Allow filtering by quarter via URL tabs (default to final)
-  const [activeTab, setActiveTab] = useState<'q1'|'q2'|'q3'|'final'>('final');
-
   // --- ROBUST SCORE PARSING ---
   const currentScores = useMemo(() => {
     const base = { 
@@ -70,6 +67,18 @@ function WinnersContent() {
     };
   }, [game, liveGames]);
 
+  // --- DYNAMIC PAYOUT CALCULATOR ---
+  const calculatePayouts = useMemo(() => {
+      if (!game) return { q1: 0, q2: 0, q3: 0, final: 0 };
+      const pot = game.pot || (Object.keys(game.squares).length * game.price);
+      
+      const q1 = Math.floor(pot * 0.10);
+      const q2 = Math.floor(pot * 0.20);
+      const q3 = Math.floor(pot * 0.20);
+      const final = pot - (q1 + q2 + q3);
+      
+      return { q1, q2, q3, final };
+  }, [game]);
 
   // --- CALCULATE WINNERS PER QUARTER ---
   const getWinnerForQuarter = (q: 'q1'|'q2'|'q3'|'final') => {
@@ -93,10 +102,8 @@ function WinnersContent() {
       if (rowIdx === -1 || colIdx === -1) return null;
 
       const cellIndex = rowIdx * 10 + colIdx;
-      
       const cellData = game.squares[cellIndex];
       
-      // Explicit typing to satisfy TypeScript
       let winners: SquareData[] = [];
       
       if (Array.isArray(cellData)) {
@@ -121,7 +128,7 @@ function WinnersContent() {
   const results = quarters.map(q => getWinnerForQuarter(q));
 
   return (
-    <div className="max-w-4xl mx-auto relative z-10">
+    <div className="max-w-4xl mx-auto relative z-10 pb-20">
         
         {/* HEADER */}
         <div className="flex items-center justify-between mb-8">
@@ -140,8 +147,7 @@ function WinnersContent() {
             {results.map((res, i) => {
                 if (!res) return null;
                 const labels = { q1: "1st Quarter", q2: "Halftime", q3: "3rd Quarter", final: "Final Score" };
-                const payouts = game.payouts || { q1: 0, q2: 0, q3: 0, final: 0 };
-                const amount = payouts[res.quarter];
+                const amount = calculatePayouts[res.quarter];
                 const isFinal = res.quarter === 'final';
 
                 return (
@@ -201,7 +207,7 @@ function WinnersContent() {
   );
 }
 
-// --- 2. The Main Page (Wraps Content in Suspense) ---
+// --- 2. The Main Page (Wrapper) ---
 export default function WinnersPage() {
   return (
     <main className="min-h-screen bg-[#0B0C15] p-4 lg:p-8 relative overflow-hidden">
@@ -211,7 +217,6 @@ export default function WinnersPage() {
             <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[100px]" />
         </div>
 
-        {/* Suspense Boundary fixes the build error */}
         <Suspense fallback={<div className="text-white text-center pt-20">Loading Winners...</div>}>
             <WinnersContent />
         </Suspense>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Copy, Check, Trophy, Trash2, Edit2, RotateCw, Shuffle, Save } from "lucide-react";
+import { Copy, Check, Trophy, Trash2, Edit2, Shuffle, Save } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -9,7 +9,7 @@ interface GameInfoProps {
   host: string;
   pricePerSquare: number;
   totalPot: number;
-  payouts: any; // Can be object or array
+  payouts: any; 
   matchup: { teamA: string; teamB: string };
   scores: any;
   isAdmin: boolean;
@@ -35,7 +35,6 @@ export default function GameInfo({
   const [copied, setCopied] = useState(false);
   const [isEditingScores, setIsEditingScores] = useState(false);
   
-  // Local state for score editing
   const [editScores, setEditScores] = useState({ 
      teamA: scores?.teamA || 0, 
      teamB: scores?.teamB || 0 
@@ -52,24 +51,30 @@ export default function GameInfo({
     setIsEditingScores(false);
   };
 
-  // Helper to safely render payouts (handles Object or Array)
+  // --- DYNAMIC PAYOUT CALCULATION ---
+  // This calculates values based on the live Pot size (10/20/20/50 split)
   const renderPayouts = () => {
-      if (!payouts) return <span className="text-slate-500 text-xs">No payouts set</span>;
-      
-      // If it's an object (q1: 10, q2: 20...), convert to array for display
-      const payoutList = Array.isArray(payouts) ? payouts : [
-          { label: "Q1", amount: payouts.q1 },
-          { label: "Half", amount: payouts.q2 },
-          { label: "Q3", amount: payouts.q3 },
-          { label: "Final", amount: payouts.final },
+      // Calculate split
+      const q1 = Math.floor(totalPot * 0.10);
+      const q2 = Math.floor(totalPot * 0.20);
+      const q3 = Math.floor(totalPot * 0.20);
+      const final = totalPot - (q1 + q2 + q3); // Ensure remainder goes to final
+
+      const dynamicPayouts = [
+          { label: "Q1", amount: q1, percent: "10%" },
+          { label: "Half", amount: q2, percent: "20%" },
+          { label: "Q3", amount: q3, percent: "20%" },
+          { label: "Final", amount: final, percent: "50%" },
       ];
 
       return (
         <div className="grid grid-cols-4 gap-2 mt-2">
-            {payoutList.map((p: any, i: number) => (
-                <div key={i} className="flex flex-col items-center bg-black/20 rounded-lg p-2 border border-white/5">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase">{p.label || `Q${i+1}`}</span>
-                    <span className="text-sm font-black text-indigo-400">${p.amount || 0}</span>
+            {dynamicPayouts.map((p, i) => (
+                <div key={i} className="flex flex-col items-center bg-black/20 rounded-lg p-2 border border-white/5 relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-500 opacity-20" />
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">{p.label}</span>
+                    <span className="text-sm font-black text-white group-hover:text-indigo-400 transition-colors">${p.amount}</span>
+                    <span className="text-[8px] text-slate-600 font-mono">{p.percent}</span>
                 </div>
             ))}
         </div>
@@ -97,9 +102,9 @@ export default function GameInfo({
         <div className="bg-gradient-to-r from-indigo-900/20 to-purple-900/20 rounded-xl p-4 border border-indigo-500/20">
             <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-bold text-indigo-300 uppercase tracking-widest">Total Pot</span>
-                <span className="text-2xl font-black text-white">${totalPot}</span>
+                <span className="text-3xl font-black text-white">${totalPot}</span>
             </div>
-            <div className="text-xs text-slate-400 flex justify-between">
+            <div className="text-xs text-slate-400 flex justify-between border-t border-white/5 pt-2 mt-1">
                 <span>Price per Square:</span>
                 <span className="text-white font-bold">${pricePerSquare}</span>
             </div>
@@ -108,7 +113,7 @@ export default function GameInfo({
         {/* PAYOUTS */}
         <div>
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-2">
-                <Trophy className="w-3 h-3" /> Payout Schedule
+                <Trophy className="w-3 h-3 text-yellow-500" /> Payout Schedule
             </h3>
             {renderPayouts()}
         </div>
