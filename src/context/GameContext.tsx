@@ -40,7 +40,7 @@ type GameData = {
   createdAt: any;
   espnGameId?: string;
   axis?: any;
-  participants?: string[]; // <--- NEW FIELD: Tracks everyone in the game
+  participants?: string[];
 };
 
 interface GameContextType {
@@ -104,8 +104,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
         const currentSquare = game?.squares[index];
-        
-        // --- KEY FIX: Add user to 'participants' list automatically ---
         const updatePayload: any = {
             participants: arrayUnion(user.uid) 
         };
@@ -119,7 +117,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         await updateDoc(ref, updatePayload);
-
     } catch (e) {
         console.error("Claim Error:", e);
         throw e;
@@ -169,7 +166,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       squares: {},
       scores: { teamA: 0, teamB: 0 },
       isScrambled: false,
-      participants: [user.uid], // Host is first participant
+      participants: [user.uid],
       createdAt: serverTimestamp(),
       pot: 0
     });
@@ -177,22 +174,35 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const updateScores = async (s: any) => { if(gameId) await updateDoc(doc(db,"games",gameId), { scores: s }); };
+  
+  // --- FIXED SCRAMBLE LOGIC ---
   const scrambleGrid = async () => { 
     if(!gameId) return; 
-    const row = [0,1,2,3,4,5,6,7,8,9].sort(()=>Math.random()-.5);
-    const col = [0,1,2,3,4,5,6,7,8,9].sort(()=>Math.random()-.5);
-    await updateDoc(doc(db,"games",gameId), { isScrambled: true, axis: { q1:{row,col}, q2:{row,col}, q3:{row,col}, final:{row,col} } });
+    
+    // Helper to generate a unique random array [0..9]
+    const generateAxis = () => [0,1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+
+    // Generate 4 UNIQUE sets of axes
+    const axis = {
+        q1: { row: generateAxis(), col: generateAxis() },
+        q2: { row: generateAxis(), col: generateAxis() },
+        q3: { row: generateAxis(), col: generateAxis() },
+        final: { row: generateAxis(), col: generateAxis() }
+    };
+
+    await updateDoc(doc(db,"games",gameId), { 
+        isScrambled: true, 
+        axis: axis 
+    });
   };
+
   const resetGrid = async () => { if(gameId) await updateDoc(doc(db,"games",gameId), { isScrambled: false }); };
   const deleteGame = async () => { if(gameId) await deleteDoc(doc(db,"games",gameId)); };
   
-  // --- REAL QUERY IMPLEMENTATION ---
   const getUserGames = async (uid: string) => {
      if (!uid) return [];
      try {
-         // 1. Get games I Host
          const hostedQuery = query(collection(db, "games"), where("host", "==", uid));
-         // 2. Get games I Joined (via participants array)
          const joinedQuery = query(collection(db, "games"), where("participants", "array-contains", uid));
          
          const [hostedSnap, joinedSnap] = await Promise.all([
@@ -200,7 +210,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
              getDocs(joinedQuery)
          ]);
 
-         // Merge and remove duplicates (using a Map by ID)
          const gamesMap = new Map();
          hostedSnap.forEach(doc => gamesMap.set(doc.id, { id: doc.id, ...doc.data() }));
          joinedSnap.forEach(doc => gamesMap.set(doc.id, { id: doc.id, ...doc.data() }));
