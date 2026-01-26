@@ -8,7 +8,7 @@ import type { SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
-import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2, ArrowRight, DollarSign, Ban, ArrowDown } from "lucide-react";
+import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2, Ban, ArrowDown } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 
 export default function GamePage() {
@@ -48,7 +48,7 @@ export default function GamePage() {
       if (isAdmin) setGamePhase(q);
   };
 
-  // --- LOGO HELPER ---
+  // --- LOGO HELPER (Fixed Placement) ---
   const getTeamLogo = (teamName: string) => {
     if (matchedGame?.competitors) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -101,17 +101,20 @@ export default function GamePage() {
   const currentAxis = game?.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
 
   const winningCoordinates = useMemo(() => {
-    if (!game?.isScrambled) return null; 
+    // FIX: Allow winner highlighting even if not scrambled (using default 0-9)
+    const axis = game?.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
+    
     let scoreA = 0, scoreB = 0;
     if (activeQuarter === 'q1') { scoreA = currentScores.q1.home; scoreB = currentScores.q1.away; }
     else if (activeQuarter === 'q2') { scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away; }
     else if (activeQuarter === 'q3') { scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home; scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away; }
     else { scoreA = currentScores.final.home; scoreB = currentScores.final.away; }
-    const rowIndex = currentAxis.row.indexOf(scoreA % 10);
-    const colIndex = currentAxis.col.indexOf(scoreB % 10);
+    
+    const rowIndex = axis.row.indexOf(scoreA % 10);
+    const colIndex = axis.col.indexOf(scoreB % 10);
     if (rowIndex === -1 || colIndex === -1) return null;
     return { row: rowIndex, col: colIndex };
-  }, [currentScores, activeQuarter, currentAxis, game]);
+  }, [currentScores, activeQuarter, game]);
 
   // --- GRID DATA ---
   const formattedSquares = useMemo(() => {
@@ -133,14 +136,12 @@ export default function GamePage() {
     return result;
   }, [game]);
 
-  // --- STRICT ROLLOVER LOGIC ---
+  // --- STRICT SNOWBALL ROLLOVER LOGIC ---
   const gameStats = useMemo(() => {
       // FIX: Return '0' for currentPotential instead of an object to match types
-      if (!game) return { payouts: {}, winners: [], currentPotential: 0 };
+      if (!game) return { payouts: { q1: 0, q2: 0, q3: 0, final: 0 }, winners: [], currentPotential: 0 };
       
       const pot = game.pot || (Object.keys(game.squares).length * game.price);
-      
-      // Base Payouts (10/20/20/50)
       const base = {
           q1: Math.floor(pot * 0.10),
           q2: Math.floor(pot * 0.20),
@@ -148,20 +149,22 @@ export default function GamePage() {
           final: pot - (Math.floor(pot * 0.10) + Math.floor(pot * 0.20) * 2)
       };
 
-      const getSquareOwner = (q: 'q1'|'q2'|'q3'|'final') => {
-          if (!game.isScrambled || !game.axis) return null;
+      // FIX: Robust Owner Check (Handles Unscrambled Games too)
+      const getOwner = (q: 'q1'|'q2'|'q3'|'final') => {
+          const axis = game.isScrambled && game.axis ? game.axis[q] : { row: defaultAxis, col: defaultAxis };
+          
           let sA=0, sB=0;
           if (q==='q1') { sA = currentScores.q1.home; sB = currentScores.q1.away; }
           else if (q==='q2') { sA = currentScores.q1.home+currentScores.q2.home; sB = currentScores.q1.away+currentScores.q2.away; }
           else if (q==='q3') { sA = currentScores.q1.home+currentScores.q2.home+currentScores.q3.home; sB = currentScores.q1.away+currentScores.q2.away+currentScores.q3.away; }
           else { sA = currentScores.final.home; sB = currentScores.final.away; }
 
-          const r = game.axis[q].row.indexOf(sA % 10);
-          const c = game.axis[q].col.indexOf(sB % 10);
+          const r = axis.row.indexOf(sA % 10);
+          const c = axis.col.indexOf(sB % 10);
           
           if (r === -1 || c === -1) return null; 
-
           const cell = game.squares[r*10+c];
+          
           if (Array.isArray(cell)) return cell.length > 0 ? cell[0] : null;
           if (cell) return cell;
           return null;
@@ -172,76 +175,74 @@ export default function GamePage() {
       const p = status?.period || 1;
       const isFinal = status?.type?.completed;
       const isHalf = status?.type?.name === "STATUS_HALFTIME";
-      
-      let rollover = 0;
+
+      let currentRollover = 0;
       const results = [];
-      const payoutMap = { ...base };
+      const payoutMap = { q1: 0, q2: 0, q3: 0, final: 0 };
 
       // --- Q1 ---
       const q1Done = p > 1 || isHalf || isFinal;
-      const w1 = getSquareOwner('q1');
-      if (q1Done) {
-          if (w1) {
-              results.push({ key: 'q1', label: "Q1", winner: w1.displayName, amount: base.q1, rollover: false });
-          } else {
-              results.push({ key: 'q1', label: "Q1", winner: "No Winner", amount: 0, rollover: true });
-              rollover += base.q1;
-              payoutMap.q1 = 0; 
-          }
+      const w1 = getOwner('q1');
+      if (q1Done && !w1) {
+          currentRollover += base.q1;
+          payoutMap.q1 = 0;
+          results.push({ key: 'q1', label: 'Q1', winner: 'No Winner', amount: 0, rollover: true });
+      } else if (q1Done && w1) {
+          payoutMap.q1 = base.q1;
+          results.push({ key: 'q1', label: "Q1", winner: w1.displayName, amount: base.q1, rollover: false });
+          currentRollover = 0; 
+      } else {
+          payoutMap.q1 = base.q1; 
       }
 
       // --- Q2 ---
       const q2Done = p > 2 || isFinal;
-      const w2 = getSquareOwner('q2');
-      const p2Pot = base.q2 + rollover; 
+      const w2 = getOwner('q2');
+      const q2Total = base.q2 + currentRollover;
       
-      if (q2Done) {
-          if (w2) {
-              results.push({ key: 'q2', label: "Half", winner: w2.displayName, amount: p2Pot, rollover: false });
-              rollover = 0; 
-              payoutMap.q2 = p2Pot;
-          } else {
-              results.push({ key: 'q2', label: "Half", winner: "No Winner", amount: 0, rollover: true });
-              rollover = p2Pot; 
-              payoutMap.q2 = 0;
-          }
+      if (q2Done && !w2) {
+          currentRollover = q2Total;
+          payoutMap.q2 = 0;
+          results.push({ key: 'q2', label: 'Half', winner: 'No Winner', amount: 0, rollover: true });
+      } else if (q2Done && w2) {
+          payoutMap.q2 = q2Total;
+          results.push({ key: 'q2', label: "Half", winner: w2.displayName, amount: q2Total, rollover: false });
+          currentRollover = 0;
       } else {
-          payoutMap.q2 = p2Pot;
+          payoutMap.q2 = q2Total;
       }
 
       // --- Q3 ---
       const q3Done = p > 3 || isFinal;
-      const w3 = getSquareOwner('q3');
-      const p3Pot = base.q3 + rollover;
+      const w3 = getOwner('q3');
+      const q3Total = base.q3 + currentRollover;
 
-      if (q3Done) {
-          if (w3) {
-              results.push({ key: 'q3', label: "Q3", winner: w3.displayName, amount: p3Pot, rollover: false });
-              rollover = 0;
-              payoutMap.q3 = p3Pot;
-          } else {
-              results.push({ key: 'q3', label: "Q3", winner: "No Winner", amount: 0, rollover: true });
-              rollover = p3Pot;
-              payoutMap.q3 = 0;
-          }
+      if (q3Done && !w3) {
+          currentRollover = q3Total;
+          payoutMap.q3 = 0;
+          results.push({ key: 'q3', label: 'Q3', winner: 'No Winner', amount: 0, rollover: true });
+      } else if (q3Done && w3) {
+          payoutMap.q3 = q3Total;
+          results.push({ key: 'q3', label: "Q3", winner: w3.displayName, amount: q3Total, rollover: false });
+          currentRollover = 0;
       } else {
-          payoutMap.q3 = p3Pot;
+          payoutMap.q3 = q3Total;
       }
 
-      // --- Final ---
-      const pFinal = base.final + rollover;
-      const wFinal = getSquareOwner('final');
-      payoutMap.final = pFinal;
+      // --- FINAL ---
+      const finalTotal = base.final + currentRollover;
+      payoutMap.final = finalTotal;
       
       if (isFinal) {
-          if (wFinal) results.push({ key: 'final', label: "Final", winner: wFinal.displayName, amount: pFinal, rollover: false });
-          else results.push({ key: 'final', label: "Final", winner: "No Winner", amount: 0, rollover: true });
+          const wFinal = getOwner('final');
+          if (wFinal) {
+              results.push({ key: 'final', label: "Final", winner: wFinal.displayName, amount: finalTotal, rollover: false });
+          } else {
+              results.push({ key: 'final', label: "Final", winner: "No Winner", amount: 0, rollover: true });
+          }
       }
 
-      const currentQuarterKey = activeQuarter;
-      const currentPotential = payoutMap[currentQuarterKey];
-
-      return { payouts: payoutMap, winners: results, currentPotential };
+      return { payouts: payoutMap, winners: results, currentPotential: payoutMap[activeQuarter] };
 
   }, [game, currentScores, matchedGame, activeQuarter]);
 
@@ -290,7 +291,7 @@ export default function GamePage() {
   const cartTotal = pendingSquares.length * game.price;
 
   const currentWinningPlayer = selectedSquareData.length > 0 ? selectedSquareData[0].name : "Open";
-  const currentPotValue = gameStats.currentPotential;
+  const currentPotValue = gameStats.currentPotential || 0;
 
   return (
     <main className="flex flex-col lg:flex-row h-screen w-full bg-[#0B0C15] overflow-hidden">

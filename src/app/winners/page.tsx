@@ -49,7 +49,10 @@ function WinnersContent() {
 
   // --- HELPER ---
   const getWinnerForQuarter = (q: 'q1'|'q2'|'q3'|'final') => {
-      if (!game?.isScrambled || !game.axis) return null;
+      // FIX: Use default axis if not scrambled
+      const defaultAxis = [0,1,2,3,4,5,6,7,8,9];
+      const axis = game?.isScrambled && game.axis ? game.axis[q] : { row: defaultAxis, col: defaultAxis };
+
       let scoreA = 0, scoreB = 0;
       if (q === 'q1') { scoreA = currentScores.q1.home; scoreB = currentScores.q1.away; }
       else if (q === 'q2') { scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away; }
@@ -58,14 +61,14 @@ function WinnersContent() {
 
       const lastDigitA = scoreA % 10;
       const lastDigitB = scoreB % 10;
-      const axis = game.axis[q] || { row: [0,1,2,3,4,5,6,7,8,9], col: [0,1,2,3,4,5,6,7,8,9] };
+      
       const rowIdx = axis.row.indexOf(lastDigitA);
       const colIdx = axis.col.indexOf(lastDigitB);
 
       if (rowIdx === -1 || colIdx === -1) return null;
 
       const cellIndex = rowIdx * 10 + colIdx;
-      const cellData = game.squares[cellIndex];
+      const cellData = game?.squares[cellIndex];
       
       let winners: SquareData[] = [];
       if (Array.isArray(cellData)) { winners = cellData as SquareData[]; } 
@@ -74,7 +77,7 @@ function WinnersContent() {
       return { quarter: q, scoreA, scoreB, rowDigit: lastDigitA, colDigit: lastDigitB, winners: winners.length > 0 ? winners : null };
   };
 
-  // --- ROLLOVER LOGIC ---
+  // --- SNOWBALL ROLLOVER LOGIC (Matches GamePage) ---
   const rolloverResults = useMemo(() => {
       if (!game) return [];
       
@@ -96,13 +99,13 @@ function WinnersContent() {
           final: pot - (Math.floor(pot * 0.10) + Math.floor(pot * 0.20) * 2)
       };
 
-      let carryOver = 0;
+      let currentRollover = 0;
       const results = [];
 
       for (const q of quarters) {
           const result = getWinnerForQuarter(q);
           const baseAmount = basePayouts[q];
-          const totalAmount = baseAmount + carryOver;
+          const potentialTotal = baseAmount + currentRollover;
           
           const hasWinner = result && result.winners !== null;
           
@@ -112,27 +115,27 @@ function WinnersContent() {
           if (q === 'q3') isFinished = p > 3 || isFinal;
           if (q === 'final') isFinished = isFinal;
 
-          let finalPayout = totalAmount;
+          let finalDisplayAmount = potentialTotal;
           let isRollover = false;
 
           if (isFinished) {
               if (!hasWinner) {
                   isRollover = true;
-                  finalPayout = 0; 
-                  carryOver = totalAmount; // Pass bucket
+                  finalDisplayAmount = 0; // Show $0 as payment
+                  currentRollover = potentialTotal; // Roll ENTIRE amount forward
               } else {
-                  carryOver = 0; // Winner takes all, bucket empty
+                  currentRollover = 0; // Winner took it, bucket is empty
               }
           } else {
               // Future quarter
-              carryOver = 0; 
+              // Don't modify rollover yet, just show potential
           }
           
           results.push({
               key: q,
               label: labels[q],
               baseAmount,
-              finalPayout: isRollover ? totalAmount : finalPayout, 
+              finalPayout: isRollover ? potentialTotal : finalDisplayAmount, 
               isRollover,
               hasWinner,
               isFinished,
