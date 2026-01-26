@@ -10,7 +10,7 @@ interface GameInfoProps {
   pricePerSquare: number;
   totalPot: number;
   payouts: any; 
-  winners: any[]; // <--- NEW: List of winners passed from parent
+  winners: any[]; // List of winners passed from parent
   matchup: { teamA: string; teamB: string };
   scores: any;
   isAdmin: boolean;
@@ -54,7 +54,6 @@ export default function GameInfo({
 
   // --- DYNAMIC PAYOUT RENDERER ---
   const renderPayouts = () => {
-      // 1. Setup default view
       let displayPayouts = [
           { key: 'q1', label: "Q1", amount: Math.floor(totalPot * 0.10) },
           { key: 'q2', label: "Half", amount: Math.floor(totalPot * 0.20) },
@@ -62,7 +61,7 @@ export default function GameInfo({
           { key: 'final', label: "Final", amount: totalPot - (Math.floor(totalPot * 0.10) + Math.floor(totalPot * 0.20) * 2) },
       ];
 
-      // 2. Override with calculated rollover data if available
+      // Use calculated rollover data from Parent if available
       if (payouts && typeof payouts.q1 === 'number') {
           displayPayouts = [
               { key: 'q1', label: "Q1", amount: payouts.q1 },
@@ -75,9 +74,7 @@ export default function GameInfo({
       return (
         <div className="grid grid-cols-4 gap-2 mt-2">
             {displayPayouts.map((p, i) => {
-                // Check if this quarter has a winner
                 const winner = winners?.find(w => w.key === p.key);
-                // Check if it was a rollover (0 amount, no winner)
                 const isRollover = p.amount === 0 && !winner && totalPot > 0;
                 
                 return (
@@ -88,7 +85,6 @@ export default function GameInfo({
                             ? "bg-red-900/10 border-red-500/20 opacity-60" 
                             : "bg-black/20 border-white/5"
                     }`}>
-                        {/* Winner Badge */}
                         {winner && <div className="absolute top-0 right-0 p-1"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/></div>}
                         
                         <span className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${winner ? "text-green-400" : "text-slate-500"}`}>{p.label}</span>
@@ -111,7 +107,6 @@ export default function GameInfo({
 
   return (
     <div className="bg-[#151725] border border-white/10 rounded-2xl p-6 shadow-xl space-y-6">
-        
         {/* GAME HEADER */}
         <div>
             <h2 className="text-2xl font-black text-white uppercase tracking-wide leading-none">{gameName}</h2>
@@ -150,6 +145,7 @@ export default function GameInfo({
         {isAdmin && (
             <div className="border-t border-white/10 pt-4 mt-4 space-y-3">
                 <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest block mb-2">Host Controls</span>
+                
                 <div className="flex items-center justify-between bg-black/20 p-3 rounded-xl border border-white/5">
                     <div className="flex items-center gap-2">
                         <Shuffle className="w-4 h-4 text-pink-500" />
@@ -162,6 +158,7 @@ export default function GameInfo({
                         {isScrambled ? "Locked" : "Open"}
                     </button>
                 </div>
+
                 <div className="bg-black/20 p-3 rounded-xl border border-white/5">
                     <div className="flex justify-between items-center mb-2">
                         <div className="flex items-center gap-2">
@@ -184,6 +181,7 @@ export default function GameInfo({
                         </div>
                     )}
                 </div>
+
                 <button onClick={onDeleteGame} className="w-full py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
                     <Trash2 className="w-4 h-4" /> Delete Game
                 </button>
