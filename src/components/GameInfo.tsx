@@ -51,32 +51,45 @@ export default function GameInfo({
     setIsEditingScores(false);
   };
 
-  // --- DYNAMIC PAYOUT CALCULATION ---
-  // This calculates values based on the live Pot size (10/20/20/50 split)
+  // --- DYNAMIC PAYOUT RENDERER ---
   const renderPayouts = () => {
-      // Calculate split
-      const q1 = Math.floor(totalPot * 0.10);
-      const q2 = Math.floor(totalPot * 0.20);
-      const q3 = Math.floor(totalPot * 0.20);
-      const final = totalPot - (q1 + q2 + q3); // Ensure remainder goes to final
-
-      const dynamicPayouts = [
-          { label: "Q1", amount: q1, percent: "10%" },
-          { label: "Half", amount: q2, percent: "20%" },
-          { label: "Q3", amount: q3, percent: "20%" },
-          { label: "Final", amount: final, percent: "50%" },
+      // Default standard split if no data passed yet
+      let displayPayouts = [
+          { label: "Q1", amount: Math.floor(totalPot * 0.10) },
+          { label: "Half", amount: Math.floor(totalPot * 0.20) },
+          { label: "Q3", amount: Math.floor(totalPot * 0.20) },
+          { label: "Final", amount: totalPot - (Math.floor(totalPot * 0.10) + Math.floor(totalPot * 0.20) * 2) },
       ];
+
+      // Use calculated rollover data from Parent if available
+      if (payouts && typeof payouts.q1 === 'number') {
+          displayPayouts = [
+              { label: "Q1", amount: payouts.q1 },
+              { label: "Half", amount: payouts.q2 },
+              { label: "Q3", amount: payouts.q3 },
+              { label: "Final", amount: payouts.final },
+          ];
+      }
 
       return (
         <div className="grid grid-cols-4 gap-2 mt-2">
-            {dynamicPayouts.map((p, i) => (
-                <div key={i} className="flex flex-col items-center bg-black/20 rounded-lg p-2 border border-white/5 relative overflow-hidden group">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-500 opacity-20" />
-                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">{p.label}</span>
-                    <span className="text-sm font-black text-white group-hover:text-indigo-400 transition-colors">${p.amount}</span>
-                    <span className="text-[8px] text-slate-600 font-mono">{p.percent}</span>
-                </div>
-            ))}
+            {displayPayouts.map((p, i) => {
+                const isRollover = p.amount === 0 && totalPot > 0; 
+                return (
+                    <div key={i} className={`flex flex-col items-center rounded-lg p-2 border relative overflow-hidden group transition-all ${
+                        isRollover 
+                        ? "bg-red-900/10 border-red-500/20 opacity-60" 
+                        : "bg-black/20 border-white/5"
+                    }`}>
+                        <div className={`absolute top-0 left-0 w-full h-1 ${isRollover ? "bg-red-500" : "bg-gradient-to-r from-indigo-500 to-cyan-500"} opacity-20`} />
+                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">{p.label}</span>
+                        <span className={`text-sm font-black transition-colors ${isRollover ? "text-slate-500 line-through" : "text-white group-hover:text-indigo-400"}`}>
+                            ${p.amount}
+                        </span>
+                        {isRollover && <span className="text-[7px] text-red-400 font-bold uppercase">Rollover</span>}
+                    </div>
+                );
+            })}
         </div>
       );
   };

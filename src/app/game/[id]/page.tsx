@@ -35,9 +35,8 @@ export default function GamePage() {
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- HOST SYNC LOGIC (The "Remote Control") ---
+  // --- HOST SYNC LOGIC ---
   useEffect(() => {
-      // If the database says the game is in a specific period, FORCE the view to match.
       if (game?.currentPeriod) {
           // @ts-ignore
           setActiveQuarter(game.currentPeriod);
@@ -46,10 +45,7 @@ export default function GamePage() {
 
   // --- TAB HANDLER ---
   const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
-      // 1. Update local view instantly
       setActiveQuarter(q);
-      
-      // 2. If you are the Host, update the database to force everyone else to switch
       if (isAdmin) {
           setGamePhase(q);
       }
@@ -149,6 +145,87 @@ export default function GamePage() {
     return result;
   }, [game]);
 
+  // --- ROLLOVER CALCULATOR (THE FIX) ---
+  const calculatedPayouts = useMemo(() => {
+      if (!game) return { q1: 0, q2: 0, q3: 0, final: 0 };
+      const pot = game.pot || (Object.keys(game.squares).length * game.price);
+      
+      // Standard Split: 10% / 20% / 20% / 50%
+      const base = {
+          q1: Math.floor(pot * 0.10),
+          q2: Math.floor(pot * 0.20),
+          q3: Math.floor(pot * 0.20),
+          final: pot - (Math.floor(pot * 0.10) + Math.floor(pot * 0.20) * 2)
+      };
+
+      // Helper to determine if a specific quarter had a winner
+      const checkWinner = (q: 'q1'|'q2'|'q3'|'final') => {
+          if (!game.isScrambled || !game.axis) return true; // Safety default
+          
+          let sA=0, sB=0;
+          // Calculate scores for that quarter
+          if (q==='q1') { sA = currentScores.q1.home; sB = currentScores.q1.away; }
+          else if (q==='q2') { sA = currentScores.q1.home+currentScores.q2.home; sB = currentScores.q1.away+currentScores.q2.away; }
+          else if (q==='q3') { sA = currentScores.q1.home+currentScores.q2.home+currentScores.q3.home; sB = currentScores.q1.away+currentScores.q2.away+currentScores.q3.away; }
+          else { sA = currentScores.final.home; sB = currentScores.final.away; }
+
+          const r = game.axis[q].row.indexOf(sA % 10);
+          const c = game.axis[q].col.indexOf(sB % 10);
+          const cellData = game.squares[r*10+c];
+          
+          return cellData && (Array.isArray(cellData) ? cellData.length > 0 : true);
+      };
+
+      // Game Status Checks
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const status = (matchedGame as any)?.status;
+      const p = status?.period || 1;
+      const isFinal = status?.type?.completed;
+      const isHalf = status?.type?.name === "STATUS_HALFTIME";
+
+      let carry = 0;
+      
+      // 1. Q1 Processing
+      let p1 = base.q1;
+      // Only check for winners if Q1 is definitely over (Period 2+, Halftime, or Final)
+      const q1Finished = p > 1 || isHalf || isFinal;
+      if (q1Finished) {
+          if (!checkWinner('q1')) {
+              carry += p1;
+              p1 = 0; // Winner gets 0, money moves
+          }
+      }
+
+      // 2. Q2 Processing
+      let p2 = base.q2 + carry; // Add rollover to pot
+      carry = 0; // Reset carry
+      // Q2 is done if Period > 2 or Final
+      const q2Finished = p > 2 || isFinal; 
+      if (q2Finished) {
+          if (!checkWinner('q2')) {
+              carry += p2;
+              p2 = 0; 
+          }
+      }
+
+      // 3. Q3 Processing
+      let p3 = base.q3 + carry;
+      carry = 0;
+      const q3Finished = p > 3 || isFinal;
+      if (q3Finished) {
+          if (!checkWinner('q3')) {
+              carry += p3;
+              p3 = 0;
+          }
+      }
+
+      // 4. Final Processing
+      const pFinal = base.final + carry;
+
+      return { q1: p1, q2: p2, q3: p3, final: pFinal };
+
+  }, [game, currentScores, matchedGame]);
+
   useEffect(() => {
     if (id && typeof id === 'string') {
       setGameId(id);
@@ -207,7 +284,9 @@ export default function GamePage() {
     <GameInfo 
         gameId={game.id} gameName={game.name} host={game.host} pricePerSquare={game.price}
         totalPot={game.pot || (Object.keys(game.squares).length * game.price)} 
-        payouts={game.payouts} matchup={{ teamA: game.teamA, teamB: game.teamB }}
+        // We pass the new Dynamic Payouts here!
+        payouts={calculatedPayouts} 
+        matchup={{ teamA: game.teamA, teamB: game.teamB }}
         scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
         isAdmin={isAdmin} isScrambled={game.isScrambled}
         eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
