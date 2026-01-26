@@ -8,7 +8,7 @@ import type { SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
-import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2, ArrowRight, DollarSign } from "lucide-react";
+import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2, ArrowRight, DollarSign, Ban, ArrowDown } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 
 export default function GamePage() {
@@ -135,13 +135,7 @@ export default function GamePage() {
 
   // --- ROLLOVER & WINNER LOGIC ---
   const gameStats = useMemo(() => {
-      // FIX 1: Provide safe defaults if game isn't loaded yet
-      if (!game) return { 
-          payouts: {}, 
-          winners: [], 
-          currentPotential: { q1: 0, q2: 0, q3: 0, final: 0 } 
-      };
-
+      if (!game) return { payouts: {}, winners: [], currentPotential: { q1: 0, q2: 0, q3: 0, final: 0 } };
       const pot = game.pot || (Object.keys(game.squares).length * game.price);
       
       const base = {
@@ -178,43 +172,74 @@ export default function GamePage() {
       const results = [];
       const payoutMap = { ...base };
 
-      // Q1 Check
+      // --- Q1 ---
       const q1Done = p > 1 || isHalf || isFinal;
       const w1 = getSquareOwner('q1');
-      if (q1Done && !w1) { rollover += base.q1; payoutMap.q1 = 0; results.push({ key: 'q1', label: 'Q1', winner: 'Rollover', amount: base.q1, rollover: true }); }
-      else if (q1Done && w1) { results.push({ key: 'q1', label: "Q1", winner: w1.displayName, amount: base.q1 }); }
-      
-      // Q2 Check
+      if (q1Done && !w1) { 
+          // No Winner -> Rollover
+          results.push({ key: 'q1', label: 'Q1', winner: 'No Winner', amount: base.q1, rollover: true });
+          rollover += base.q1; // Add to bucket
+          payoutMap.q1 = 0;    // Zero out Q1 display
+      } else if (q1Done && w1) {
+          results.push({ key: 'q1', label: "Q1", winner: w1.displayName, amount: base.q1 });
+          payoutMap.q1 = base.q1;
+      } else {
+          // Still playing Q1
+          payoutMap.q1 = base.q1;
+      }
+
+      // --- Q2 ---
       const q2Done = p > 2 || isFinal;
       const w2 = getSquareOwner('q2');
-      const p2Val = base.q2 + rollover;
-      if (q2Done && !w2) { rollover = p2Val; payoutMap.q2 = 0; results.push({ key: 'q2', label: 'Half', winner: 'Rollover', amount: p2Val, rollover: true }); }
-      else if (q2Done && w2) { results.push({ key: 'q2', label: "Half", winner: w2.displayName, amount: p2Val }); rollover = 0; payoutMap.q2 = p2Val; }
-      else { payoutMap.q2 = p2Val; } // Potential
+      const p2Val = base.q2 + rollover; // Current Q2 Pot = Base + Any Rollover
+      
+      if (q2Done) {
+          if (!w2) { 
+              // No Winner in Q2 -> Add Q2 pot (which includes Q1 rollover) to bucket
+              results.push({ key: 'q2', label: 'Half', winner: 'No Winner', amount: p2Val, rollover: true });
+              rollover = p2Val; // Keep rolling!
+              payoutMap.q2 = 0;
+          } else {
+              // Winner found -> Reset rollover
+              results.push({ key: 'q2', label: "Half", winner: w2.displayName, amount: p2Val });
+              rollover = 0; 
+              payoutMap.q2 = p2Val;
+          }
+      } else {
+          // Playing Q2 -> Show accumulated pot
+          payoutMap.q2 = p2Val; 
+      }
 
-      // Q3 Check
+      // --- Q3 ---
       const q3Done = p > 3 || isFinal;
       const w3 = getSquareOwner('q3');
-      const p3Val = base.q3 + rollover;
-      if (q3Done && !w3) { rollover = p3Val; payoutMap.q3 = 0; results.push({ key: 'q3', label: 'Q3', winner: 'Rollover', amount: p3Val, rollover: true }); }
-      else if (q3Done && w3) { results.push({ key: 'q3', label: "Q3", winner: w3.displayName, amount: p3Val }); rollover = 0; payoutMap.q3 = p3Val; }
-      else { payoutMap.q3 = p3Val; }
+      const p3Val = base.q3 + rollover; // Current Q3 Pot = Base + Any Rollover
+      
+      if (q3Done) {
+          if (!w3) { 
+              results.push({ key: 'q3', label: 'Q3', winner: 'No Winner', amount: p3Val, rollover: true });
+              rollover = p3Val; 
+              payoutMap.q3 = 0;
+          } else {
+              results.push({ key: 'q3', label: "Q3", winner: w3.displayName, amount: p3Val });
+              rollover = 0; 
+              payoutMap.q3 = p3Val;
+          }
+      } else {
+          payoutMap.q3 = p3Val;
+      }
 
-      // Final Check
+      // --- FINAL ---
       const pFinal = base.final + rollover;
       const wFinal = getSquareOwner('final');
       payoutMap.final = pFinal;
+      
       if (isFinal) {
           if (wFinal) results.push({ key: 'final', label: "Final", winner: wFinal.displayName, amount: pFinal });
-          else results.push({ key: 'final', label: "Final", winner: "House", amount: pFinal });
+          else results.push({ key: 'final', label: "Final", winner: "No Winner", amount: pFinal, rollover: true });
       }
 
-      return { payouts: payoutMap, winners: results, currentPotential: { 
-          q1: base.q1, 
-          q2: base.q2 + (q1Done && !w1 ? base.q1 : 0),
-          q3: base.q3 + (q2Done && !w2 ? (base.q2 + (q1Done && !w1 ? base.q1 : 0)) : 0),
-          final: pFinal
-      }};
+      return { payouts: payoutMap, winners: results, currentPotential: { q1: payoutMap.q1, q2: payoutMap.q2, q3: payoutMap.q3, final: payoutMap.final } };
 
   }, [game, currentScores, matchedGame]);
 
@@ -262,9 +287,8 @@ export default function GamePage() {
   const isWinningSquare = winningCoordinates && selectedCell && winningCoordinates.row === selectedCell.row && winningCoordinates.col === selectedCell.col;
   const cartTotal = pendingSquares.length * game.price;
 
-  // --- FIX 2: SAFE ACCESS ---
+  // Safe Access
   const currentWinningPlayer = selectedSquareData.length > 0 ? selectedSquareData[0].name : "Open";
-  // The magic fix: "gameStats?.currentPotential?.[activeQuarter] || 0"
   const currentPotValue = gameStats?.currentPotential?.[activeQuarter] || 0;
 
   return (
@@ -339,17 +363,26 @@ export default function GamePage() {
                       </div>
                   </div>
 
-                  {/* Past Winners List */}
+                  {/* Past Winners List (SHOW ROLLOVERS) */}
                   {gameStats?.winners && gameStats.winners.length > 0 && (
                       <div className="bg-[#151725] border border-white/5 rounded-xl p-4 shadow-lg flex flex-col justify-center">
                           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 border-b border-white/5 pb-1">History</span>
                           <div className="space-y-1">
                               {gameStats.winners.map((w: any, idx: number) => (
-                                  <div key={idx} className="flex justify-between text-xs">
+                                  <div key={idx} className="flex justify-between text-xs items-center">
                                       <span className="text-slate-400 font-bold">{w.label}</span>
                                       <div className="flex items-center gap-2">
-                                          <span className={w.rollover ? "text-red-400 italic" : "text-white"}>{w.winner}</span>
-                                          <span className="text-green-400 font-mono">${w.amount}</span>
+                                          {w.rollover ? (
+                                              <>
+                                                  <span className="text-red-400 italic flex items-center gap-1"><Ban className="w-3 h-3"/> No Winner</span>
+                                                  <span className="text-slate-500 line-through text-[10px]">${w.amount}</span>
+                                              </>
+                                          ) : (
+                                              <>
+                                                  <span className="text-white font-bold">{w.winner}</span>
+                                                  <span className="text-green-400 font-mono font-black">${w.amount}</span>
+                                              </>
+                                          )}
                                       </div>
                                   </div>
                               ))}

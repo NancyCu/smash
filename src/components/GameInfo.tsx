@@ -75,6 +75,7 @@ export default function GameInfo({
         <div className="grid grid-cols-4 gap-2 mt-2">
             {displayPayouts.map((p, i) => {
                 const winner = winners?.find(w => w.key === p.key);
+                // "Rollover" if amount is 0 and no winner found (and pot exists)
                 const isRollover = p.amount === 0 && !winner && totalPot > 0;
                 
                 return (
@@ -107,6 +108,7 @@ export default function GameInfo({
 
   return (
     <div className="bg-[#151725] border border-white/10 rounded-2xl p-6 shadow-xl space-y-6">
+        
         {/* GAME HEADER */}
         <div>
             <h2 className="text-2xl font-black text-white uppercase tracking-wide leading-none">{gameName}</h2>
@@ -146,6 +148,7 @@ export default function GameInfo({
             <div className="border-t border-white/10 pt-4 mt-4 space-y-3">
                 <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest block mb-2">Host Controls</span>
                 
+                {/* SCRAMBLE TOGGLE */}
                 <div className="flex items-center justify-between bg-black/20 p-3 rounded-xl border border-white/5">
                     <div className="flex items-center gap-2">
                         <Shuffle className="w-4 h-4 text-pink-500" />
@@ -159,6 +162,7 @@ export default function GameInfo({
                     </button>
                 </div>
 
+                {/* SCORE KEEPER */}
                 <div className="bg-black/20 p-3 rounded-xl border border-white/5">
                     <div className="flex justify-between items-center mb-2">
                         <div className="flex items-center gap-2">
@@ -182,16 +186,19 @@ export default function GameInfo({
                     )}
                 </div>
 
+                {/* DELETE */}
                 <button onClick={onDeleteGame} className="w-full py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
                     <Trash2 className="w-4 h-4" /> Delete Game
                 </button>
             </div>
         )}
 
+        {/* NAVIGATION LINKS */}
         <div className="grid grid-cols-2 gap-2 pt-2">
             <button onClick={() => router.push('/winners')} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 uppercase">View Winners</button>
             <button onClick={() => router.push('/payments')} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 uppercase">Payment Ledger</button>
         </div>
+
     </div>
   );
 }
