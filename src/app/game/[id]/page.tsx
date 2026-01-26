@@ -135,7 +135,13 @@ export default function GamePage() {
 
   // --- ROLLOVER & WINNER LOGIC ---
   const gameStats = useMemo(() => {
-      if (!game) return { payouts: {}, winners: [] };
+      // FIX 1: Provide safe defaults if game isn't loaded yet
+      if (!game) return { 
+          payouts: {}, 
+          winners: [], 
+          currentPotential: { q1: 0, q2: 0, q3: 0, final: 0 } 
+      };
+
       const pot = game.pot || (Object.keys(game.squares).length * game.price);
       
       const base = {
@@ -256,10 +262,10 @@ export default function GamePage() {
   const isWinningSquare = winningCoordinates && selectedCell && winningCoordinates.row === selectedCell.row && winningCoordinates.col === selectedCell.col;
   const cartTotal = pendingSquares.length * game.price;
 
-  // --- CURRENT WINNER CALCULATION ---
-  // Who is holding the bag RIGHT NOW?
+  // --- FIX 2: SAFE ACCESS ---
   const currentWinningPlayer = selectedSquareData.length > 0 ? selectedSquareData[0].name : "Open";
-  const currentPotValue = gameStats.currentPotential[activeQuarter];
+  // The magic fix: "gameStats?.currentPotential?.[activeQuarter] || 0"
+  const currentPotValue = gameStats?.currentPotential?.[activeQuarter] || 0;
 
   return (
     <main className="flex flex-col lg:flex-row h-screen w-full bg-[#0B0C15] overflow-hidden">
@@ -334,11 +340,11 @@ export default function GamePage() {
                   </div>
 
                   {/* Past Winners List */}
-                  {gameStats.winners.length > 0 && (
+                  {gameStats?.winners && gameStats.winners.length > 0 && (
                       <div className="bg-[#151725] border border-white/5 rounded-xl p-4 shadow-lg flex flex-col justify-center">
                           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 border-b border-white/5 pb-1">History</span>
                           <div className="space-y-1">
-                              {gameStats.winners.map((w, idx) => (
+                              {gameStats.winners.map((w: any, idx: number) => (
                                   <div key={idx} className="flex justify-between text-xs">
                                       <span className="text-slate-400 font-bold">{w.label}</span>
                                       <div className="flex items-center gap-2">
