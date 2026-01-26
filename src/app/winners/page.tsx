@@ -1,31 +1,24 @@
 "use client";
 
-import React, { useMemo, useState, Suspense } from 'react';
+import React, { useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useGame } from '@/context/GameContext';
 import type { SquareData } from '@/context/GameContext';
 import { useEspnScores } from '@/hooks/useEspnScores';
-import { ArrowLeft, Trophy, Crown } from 'lucide-react';
+import { ArrowLeft, Trophy, Crown, ArrowDown } from 'lucide-react';
 import Image from 'next/image';
 
 // --- 1. The Content Component ---
 function WinnersContent() {
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const searchParams = useSearchParams(); 
   const { game } = useGame();
   const { games: liveGames } = useEspnScores();
   
-  // --- ROBUST SCORE PARSING ---
+  // --- SCORES ---
   const currentScores = useMemo(() => {
-    const base = { 
-        q1: { home: 0, away: 0 }, 
-        q2: { home: 0, away: 0 }, 
-        q3: { home: 0, away: 0 }, 
-        final: { home: 0, away: 0 }, 
-        teamA: 0, 
-        teamB: 0 
-    };
-
+    const base = { q1: { home: 0, away: 0 }, q2: { home: 0, away: 0 }, q3: { home: 0, away: 0 }, final: { home: 0, away: 0 }, teamA: 0, teamB: 0 };
     if (!game) return base;
 
     if (game.espnGameId) {
@@ -58,29 +51,10 @@ function WinnersContent() {
             };
         }
     }
-
-    return {
-        ...base,
-        final: { home: game.scores?.teamA || 0, away: game.scores?.teamB || 0 },
-        teamA: game.scores?.teamA || 0,
-        teamB: game.scores?.teamB || 0
-    };
+    return { ...base, final: { home: game.scores?.teamA || 0, away: game.scores?.teamB || 0 }, teamA: game.scores?.teamA || 0, teamB: game.scores?.teamB || 0 };
   }, [game, liveGames]);
 
-  // --- DYNAMIC PAYOUT CALCULATOR ---
-  const calculatePayouts = useMemo(() => {
-      if (!game) return { q1: 0, q2: 0, q3: 0, final: 0 };
-      const pot = game.pot || (Object.keys(game.squares).length * game.price);
-      
-      const q1 = Math.floor(pot * 0.10);
-      const q2 = Math.floor(pot * 0.20);
-      const q3 = Math.floor(pot * 0.20);
-      const final = pot - (q1 + q2 + q3);
-      
-      return { q1, q2, q3, final };
-  }, [game]);
-
-  // --- CALCULATE WINNERS PER QUARTER ---
+  // --- HELPER: GET WINNERS FOR A QUARTER ---
   const getWinnerForQuarter = (q: 'q1'|'q2'|'q3'|'final') => {
       if (!game?.isScrambled || !game.axis) return null;
 
@@ -118,14 +92,57 @@ function WinnersContent() {
           scoreB,
           rowDigit: lastDigitA,
           colDigit: lastDigitB,
-          winners: winners.length > 0 ? winners : null
+          winners: winners.length > 0 ? winners : null // Returns null if no one owns the square
       };
   };
 
-  if (!game) return <div className="min-h-screen bg-[#0B0C15] flex items-center justify-center text-white">Loading...</div>;
+  // --- ROLLOVER LOGIC ---
+  const rolloverResults = useMemo(() => {
+      if (!game) return [];
+      
+      const quarters = ['q1', 'q2', 'q3', 'final'] as const;
+      const labels = { q1: "1st Quarter", q2: "Halftime", q3: "3rd Quarter", final: "Final Score" };
+      const pot = game.pot || (Object.keys(game.squares).length * game.price);
+      
+      // Standard Split
+      const basePayouts = {
+          q1: Math.floor(pot * 0.10),
+          q2: Math.floor(pot * 0.20),
+          q3: Math.floor(pot * 0.20),
+          final: pot - (Math.floor(pot * 0.10) + Math.floor(pot * 0.20) * 2)
+      };
 
-  const quarters = ['q1', 'q2', 'q3', 'final'] as const;
-  const results = quarters.map(q => getWinnerForQuarter(q));
+      let carryOver = 0;
+      const results = [];
+
+      for (const q of quarters) {
+          const result = getWinnerForQuarter(q);
+          const baseAmount = basePayouts[q];
+          const totalAmount = baseAmount + carryOver;
+          
+          const hasWinner = result && result.winners !== null;
+          
+          results.push({
+              key: q,
+              label: labels[q],
+              baseAmount,
+              carryOverIn: carryOver, // How much came from previous
+              finalPayout: totalAmount,
+              hasWinner,
+              ...result
+          });
+
+          if (hasWinner) {
+              carryOver = 0; // Reset if won
+          } else {
+              carryOver = totalAmount; // Roll everything forward
+          }
+      }
+      return results;
+
+  }, [game, currentScores]); // Recalculate if scores or game changes
+
+  if (!game) return <div className="min-h-screen bg-[#0B0C15] flex items-center justify-center text-white">Loading...</div>;
 
   return (
     <div className="max-w-4xl mx-auto relative z-10 pb-20">
@@ -144,25 +161,30 @@ function WinnersContent() {
 
         {/* MAIN WINNERS DISPLAY */}
         <div className="grid gap-6">
-            {results.map((res, i) => {
-                if (!res) return null;
-                const labels = { q1: "1st Quarter", q2: "Halftime", q3: "3rd Quarter", final: "Final Score" };
-                const amount = calculatePayouts[res.quarter];
-                const isFinal = res.quarter === 'final';
+            {rolloverResults.map((res, i) => {
+                const isFinal = res.key === 'final';
+                const isRollover = !res.hasWinner;
 
                 return (
-                    <div key={res.quarter} className={`relative overflow-hidden rounded-2xl border ${isFinal ? "border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-black" : "border-white/10 bg-[#151725]"} p-6 shadow-xl`}>
+                    <div key={res.key} className={`relative overflow-hidden rounded-2xl border transition-all ${
+                        isFinal 
+                        ? "border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-black" 
+                        : isRollover 
+                            ? "border-slate-700 bg-[#151725] opacity-75" 
+                            : "border-white/10 bg-[#151725]"
+                    } p-6 shadow-xl`}>
+                        
                         {isFinal && <div className="absolute -right-4 -top-4 w-24 h-24 bg-yellow-500/20 blur-xl rounded-full" />}
                         
                         <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
                             
                             {/* QUARTER INFO */}
                             <div className="flex flex-col items-center md:items-start min-w-[150px]">
-                                <span className={`text-xs font-bold uppercase tracking-widest mb-1 ${isFinal ? "text-yellow-400" : "text-slate-500"}`}>{labels[res.quarter]}</span>
+                                <span className={`text-xs font-bold uppercase tracking-widest mb-1 ${isFinal ? "text-yellow-400" : "text-slate-500"}`}>{res.label}</span>
                                 <div className="flex items-center gap-3 text-2xl font-black text-white">
-                                    <span>{res.scoreA}</span>
+                                    <span>{res.scoreA || 0}</span>
                                     <span className="text-slate-600 text-sm">-</span>
-                                    <span>{res.scoreB}</span>
+                                    <span>{res.scoreB || 0}</span>
                                 </div>
                                 <div className="text-[10px] text-slate-500 font-mono mt-1">
                                     Digits: {res.rowDigit} - {res.colDigit}
@@ -171,17 +193,32 @@ function WinnersContent() {
 
                             {/* PRIZE */}
                             <div className="flex flex-col items-center">
-                                <div className={`p-3 rounded-full mb-2 ${isFinal ? "bg-yellow-500 text-black shadow-lg shadow-yellow-500/50" : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"}`}>
+                                <div className={`p-3 rounded-full mb-2 ${
+                                    isFinal ? "bg-yellow-500 text-black shadow-lg" 
+                                    : isRollover ? "bg-slate-800 text-slate-500"
+                                    : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
+                                }`}>
                                     {isFinal ? <Crown className="w-6 h-6" /> : <Trophy className="w-5 h-5" />}
                                 </div>
-                                <span className={`text-xl font-black ${isFinal ? "text-yellow-400" : "text-white"}`}>${amount}</span>
+                                
+                                <div className="flex flex-col items-center">
+                                    {res.carryOverIn > 0 && (
+                                        <div className="flex items-center gap-1 text-[10px] text-green-400 font-bold uppercase tracking-wider mb-1 animate-pulse">
+                                            <ArrowDown className="w-3 h-3" />
+                                            <span>Rollover +${res.carryOverIn}</span>
+                                        </div>
+                                    )}
+                                    <span className={`text-xl font-black ${isFinal ? "text-yellow-400" : isRollover ? "text-slate-500 line-through decoration-red-500" : "text-white"}`}>
+                                        ${res.finalPayout}
+                                    </span>
+                                </div>
                             </div>
 
                             {/* WINNER(S) */}
                             <div className="flex-1 flex flex-col items-center md:items-end">
-                                {res.winners ? (
+                                {res.hasWinner ? (
                                     <div className="flex flex-col gap-2 items-center md:items-end">
-                                        {res.winners.map((w, idx) => (
+                                        {res.winners?.map((w, idx) => (
                                             <div key={idx} className="flex items-center gap-3 bg-black/30 px-4 py-2 rounded-xl border border-white/5">
                                                 <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-xs text-white">
                                                     {w.displayName?.[0]}
@@ -191,8 +228,13 @@ function WinnersContent() {
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="px-4 py-2 rounded-xl bg-white/5 border border-dashed border-white/10 text-slate-500 text-sm italic">
-                                        Unclaimed Square
+                                    <div className="flex flex-col items-end">
+                                        <div className="px-4 py-2 rounded-xl bg-white/5 border border-dashed border-white/10 text-slate-500 text-sm italic mb-1">
+                                            Unclaimed Square
+                                        </div>
+                                        <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider">
+                                            Prize Rolls Over →
+                                        </span>
                                     </div>
                                 )}
                             </div>
@@ -211,12 +253,10 @@ function WinnersContent() {
 export default function WinnersPage() {
   return (
     <main className="min-h-screen bg-[#0B0C15] p-4 lg:p-8 relative overflow-hidden">
-        {/* Background Ambience */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
             <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-yellow-500/10 rounded-full blur-[100px]" />
             <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[100px]" />
         </div>
-
         <Suspense fallback={<div className="text-white text-center pt-20">Loading Winners...</div>}>
             <WinnersContent />
         </Suspense>
