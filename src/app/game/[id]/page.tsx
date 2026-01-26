@@ -35,7 +35,7 @@ export default function GamePage() {
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- HOST SYNC LOGIC ---
+  // --- HOST SYNC ---
   useEffect(() => {
       if (game?.currentPeriod) {
           // @ts-ignore
@@ -43,12 +43,9 @@ export default function GamePage() {
       }
   }, [game?.currentPeriod]);
 
-  // --- TAB HANDLER ---
   const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
       setActiveQuarter(q);
-      if (isAdmin) {
-          setGamePhase(q);
-      }
+      if (isAdmin) setGamePhase(q);
   };
 
   // --- LOGO HELPER ---
@@ -78,19 +75,15 @@ export default function GamePage() {
             const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
             const targetA = normalize(game.teamA);
             const targetB = normalize(game.teamB);
-            
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let compA = safeGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetA) || targetA.includes(n); });
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let compB = safeGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetB) || targetB.includes(n); });
-            
             if (!compA && compB) compA = safeGame.competitors.find((c: any) => c.id !== compB.id);
             if (!compB && compA) compB = safeGame.competitors.find((c: any) => c.id !== compA.id);
             if (!compA && !compB) { compA = safeGame.competitors[0]; compB = safeGame.competitors[1]; }
-            
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const getScore = (c: any, i: number) => c?.linescores?.[i]?.value ? Number(c.linescores[i].value) : 0;
-            
             return {
                 q1: { home: getScore(compA, 0), away: getScore(compB, 0) },
                 q2: { home: getScore(compA, 1), away: getScore(compB, 1) },
@@ -103,22 +96,19 @@ export default function GamePage() {
     return { ...base, final: { home: game.scores?.teamA || 0, away: game.scores?.teamB || 0 }, teamA: game.scores?.teamA || 0, teamB: game.scores?.teamB || 0 };
   }, [game, liveGames]);
 
-  // --- WINNING CELL CALCULATION ---
+  // --- WINNING CELL ---
   const defaultAxis = [0,1,2,3,4,5,6,7,8,9];
   const currentAxis = game?.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
 
   const winningCoordinates = useMemo(() => {
     if (!game?.isScrambled) return null; 
     let scoreA = 0, scoreB = 0;
-    
     if (activeQuarter === 'q1') { scoreA = currentScores.q1.home; scoreB = currentScores.q1.away; }
     else if (activeQuarter === 'q2') { scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away; }
     else if (activeQuarter === 'q3') { scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home; scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away; }
     else { scoreA = currentScores.final.home; scoreB = currentScores.final.away; }
-    
     const rowIndex = currentAxis.row.indexOf(scoreA % 10);
     const colIndex = currentAxis.col.indexOf(scoreB % 10);
-    
     if (rowIndex === -1 || colIndex === -1) return null;
     return { row: rowIndex, col: colIndex };
   }, [currentScores, activeQuarter, currentAxis, game]);
@@ -127,13 +117,11 @@ export default function GamePage() {
   const formattedSquares = useMemo(() => {
     if (!game?.squares) return {};
     const result: Record<string, { uid: string, name: string, claimedAt: number }[]> = {};
-    
     Object.entries(game.squares).forEach(([key, value]) => {
       const index = parseInt(key);
       if (isNaN(index)) return;
       const gridKey = `${Math.floor(index / 10)}-${index % 10}`;
       if (!result[gridKey]) result[gridKey] = [];
-
       if (Array.isArray(value)) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         value.forEach((sq: any) => { result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0 }); });
@@ -145,12 +133,11 @@ export default function GamePage() {
     return result;
   }, [game]);
 
-  // --- ROLLOVER CALCULATOR (THE FIX) ---
-  const calculatedPayouts = useMemo(() => {
-      if (!game) return { q1: 0, q2: 0, q3: 0, final: 0 };
+  // --- ROLLOVER & WINNER LOGIC ---
+  const gameStats = useMemo(() => {
+      if (!game) return null;
       const pot = game.pot || (Object.keys(game.squares).length * game.price);
       
-      // Standard Split: 10% / 20% / 20% / 50%
       const base = {
           q1: Math.floor(pot * 0.10),
           q2: Math.floor(pot * 0.20),
@@ -158,12 +145,9 @@ export default function GamePage() {
           final: pot - (Math.floor(pot * 0.10) + Math.floor(pot * 0.20) * 2)
       };
 
-      // Helper to determine if a specific quarter had a winner
-      const checkWinner = (q: 'q1'|'q2'|'q3'|'final') => {
-          if (!game.isScrambled || !game.axis) return true; // Safety default
-          
+      const getSquareOwner = (q: 'q1'|'q2'|'q3'|'final') => {
+          if (!game.isScrambled || !game.axis) return null;
           let sA=0, sB=0;
-          // Calculate scores for that quarter
           if (q==='q1') { sA = currentScores.q1.home; sB = currentScores.q1.away; }
           else if (q==='q2') { sA = currentScores.q1.home+currentScores.q2.home; sB = currentScores.q1.away+currentScores.q2.away; }
           else if (q==='q3') { sA = currentScores.q1.home+currentScores.q2.home+currentScores.q3.home; sB = currentScores.q1.away+currentScores.q2.away+currentScores.q3.away; }
@@ -171,58 +155,59 @@ export default function GamePage() {
 
           const r = game.axis[q].row.indexOf(sA % 10);
           const c = game.axis[q].col.indexOf(sB % 10);
-          const cellData = game.squares[r*10+c];
+          const cell = game.squares[r*10+c];
           
-          return cellData && (Array.isArray(cellData) ? cellData.length > 0 : true);
+          if (cell && Array.isArray(cell) && cell.length > 0) return cell[0];
+          if (cell && !Array.isArray(cell)) return cell;
+          return null;
       };
 
-      // Game Status Checks
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const status = (matchedGame as any)?.status;
       const p = status?.period || 1;
       const isFinal = status?.type?.completed;
       const isHalf = status?.type?.name === "STATUS_HALFTIME";
-
-      let carry = 0;
       
-      // 1. Q1 Processing
-      let p1 = base.q1;
-      // Only check for winners if Q1 is definitely over (Period 2+, Halftime, or Final)
-      const q1Finished = p > 1 || isHalf || isFinal;
-      if (q1Finished) {
-          if (!checkWinner('q1')) {
-              carry += p1;
-              p1 = 0; // Winner gets 0, money moves
-          }
+      let rollover = 0;
+      const results = [];
+      const payoutMap = { ...base };
+
+      // Q1
+      const q1Done = p > 1 || isHalf || isFinal;
+      const w1 = getSquareOwner('q1');
+      if (q1Done && !w1) { rollover += base.q1; payoutMap.q1 = 0; }
+      else if (q1Done && w1) { payoutMap.q1 = base.q1; }
+      if (w1 && q1Done) results.push({ key: 'q1', label: "Q1", winner: w1.displayName, amount: base.q1 });
+      
+      // Q2
+      const q2Done = p > 2 || isFinal;
+      const w2 = getSquareOwner('q2');
+      const p2Val = base.q2 + rollover;
+      if (q2Done) {
+          if (!w2) { rollover = p2Val; payoutMap.q2 = 0; } 
+          else { rollover = 0; payoutMap.q2 = p2Val; results.push({ key: 'q2', label: "Half", winner: w2.displayName, amount: p2Val }); }
+      } else {
+          payoutMap.q2 = p2Val; 
       }
 
-      // 2. Q2 Processing
-      let p2 = base.q2 + carry; // Add rollover to pot
-      carry = 0; // Reset carry
-      // Q2 is done if Period > 2 or Final
-      const q2Finished = p > 2 || isFinal; 
-      if (q2Finished) {
-          if (!checkWinner('q2')) {
-              carry += p2;
-              p2 = 0; 
-          }
+      // Q3
+      const q3Done = p > 3 || isFinal;
+      const w3 = getSquareOwner('q3');
+      const p3Val = base.q3 + rollover;
+      if (q3Done) {
+          if (!w3) { rollover = p3Val; payoutMap.q3 = 0; }
+          else { rollover = 0; payoutMap.q3 = p3Val; results.push({ key: 'q3', label: "Q3", winner: w3.displayName, amount: p3Val }); }
+      } else {
+          payoutMap.q3 = p3Val;
       }
 
-      // 3. Q3 Processing
-      let p3 = base.q3 + carry;
-      carry = 0;
-      const q3Finished = p > 3 || isFinal;
-      if (q3Finished) {
-          if (!checkWinner('q3')) {
-              carry += p3;
-              p3 = 0;
-          }
-      }
+      // Final
+      const pFinal = base.final + rollover;
+      const wFinal = getSquareOwner('final');
+      payoutMap.final = pFinal;
+      if (isFinal && wFinal) results.push({ key: 'final', label: "Final", winner: wFinal.displayName, amount: pFinal });
 
-      // 4. Final Processing
-      const pFinal = base.final + carry;
-
-      return { q1: p1, q2: p2, q3: p3, final: pFinal };
+      return { payouts: payoutMap, winners: results };
 
   }, [game, currentScores, matchedGame]);
 
@@ -237,39 +222,29 @@ export default function GamePage() {
     if (winningCoordinates) setSelectedCell(winningCoordinates);
   }, [winningCoordinates]);
 
-  // --- HANDLERS ---
+  // Handlers
   const handleSquareClick = (row: number, col: number) => {
     const index = row * 10 + col;
     if (game?.isScrambled && !isAdmin) { setSelectedCell({ row, col }); return; }
     setPendingSquares(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]);
     setSelectedCell({ row, col });
   };
-
   const handleAuth = async () => { if (user) await logOut(); else router.push('/?action=login'); };
-
   const handleConfirmCart = async () => {
     if (!user) { await handleAuth(); return; }
     if (pendingSquares.length === 0) return;
     setIsSubmitting(true);
-    try {
-        for (const index of pendingSquares) await claimSquare(index);
-        setPendingSquares([]); setSelectedCell(null);
-    } catch (err) { alert("Could not claim square."); } finally { setIsSubmitting(false); }
+    try { for (const index of pendingSquares) await claimSquare(index); setPendingSquares([]); setSelectedCell(null); } catch (err) { alert("Error"); } finally { setIsSubmitting(false); }
   };
-
   const handleClearCart = () => setPendingSquares([]);
   const handleClaim = async () => {
     if (!selectedCell || !game) return;
     if (!user) { await handleAuth(); return; }
     if (game.isScrambled && !isAdmin) { alert("Game is locked!"); return; }
     setIsSubmitting(true);
-    try { await claimSquare(selectedCell.row * 10 + selectedCell.col); } 
-    catch (err) { alert("Failed."); } finally { setIsSubmitting(false); }
+    try { await claimSquare(selectedCell.row * 10 + selectedCell.col); } catch (err) { alert("Failed."); } finally { setIsSubmitting(false); }
   };
-  const handleUnclaim = async () => {
-    if (!selectedCell || !game) return;
-    await unclaimSquare(selectedCell.row * 10 + selectedCell.col);
-  };
+  const handleUnclaim = async () => { if (selectedCell) await unclaimSquare(selectedCell.row * 10 + selectedCell.col); };
   const copyCode = () => { if(game) { navigator.clipboard.writeText(game.id); setCopied(true); setTimeout(() => setCopied(false), 2000); }};
   const handleDelete = async () => { if (confirm("Are you sure?")) { await deleteGame(); router.push("/"); }};
 
@@ -279,22 +254,6 @@ export default function GamePage() {
   const selectedSquareData = selectedCell ? formattedSquares[`${selectedCell.row}-${selectedCell.col}`] || [] : [];
   const isWinningSquare = winningCoordinates && selectedCell && winningCoordinates.row === selectedCell.row && winningCoordinates.col === selectedCell.col;
   const cartTotal = pendingSquares.length * game.price;
-
-  const infoPanel = (
-    <GameInfo 
-        gameId={game.id} gameName={game.name} host={game.host} pricePerSquare={game.price}
-        totalPot={game.pot || (Object.keys(game.squares).length * game.price)} 
-        // We pass the new Dynamic Payouts here!
-        payouts={calculatedPayouts} 
-        matchup={{ teamA: game.teamA, teamB: game.teamB }}
-        scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
-        isAdmin={isAdmin} isScrambled={game.isScrambled}
-        eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
-        onUpdateScores={updateScores} onDeleteGame={handleDelete}
-        onScrambleGridDigits={scrambleGrid} onResetGridDigits={resetGrid}
-        selectedEventId={game.espnGameId} availableGames={liveGames}
-    />
-  );
 
   return (
     <main className="flex flex-col lg:flex-row h-screen w-full bg-[#0B0C15] overflow-hidden">
@@ -311,9 +270,7 @@ export default function GamePage() {
                   <span className="font-bold text-white tracking-widest text-xs uppercase">Souper Bowl Squares</span>
               </div>
               <div className="flex items-center gap-2">
-                  <button onClick={handleAuth} className="p-2 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
-                      {user ? <LogOut className="w-4 h-4 text-red-400" /> : <LogIn className="w-4 h-4 text-green-400" />}
-                  </button>
+                  <button onClick={handleAuth} className="p-2 rounded-full bg-slate-800 border border-slate-700 text-slate-400">{user ? <LogOut className="w-4 h-4 text-red-400" /> : <LogIn className="w-4 h-4 text-green-400" />}</button>
                   <button onClick={copyCode} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
                       <span className="text-xs font-mono text-slate-400">{game.id.slice(0,6)}...</span>
                       {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-slate-500" />}
@@ -323,43 +280,26 @@ export default function GamePage() {
 
           <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-6 gap-6">
               
-              {/* SCOREBOARD (Clean - No Clock) */}
+              {/* SCOREBOARD */}
               <div className="w-full relative group z-20 shrink-0">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
                   <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-2xl">
                       
                       <div className="flex w-full justify-between items-center mb-2">
-                          
-                          {/* TEAM A */}
                           <div className="flex flex-col items-center w-1/3 relative">
                               <span className="text-pink-500 font-teko text-xl md:text-3xl tracking-[0.2em] uppercase mb-1">{game.teamA}</span>
                               <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)]">
                                   {activeQuarter === 'final' ? currentScores.final.home : activeQuarter === 'q1' ? currentScores.q1.home : activeQuarter === 'q2' ? (currentScores.q1.home + currentScores.q2.home) : currentScores.teamA}
                               </span>
                           </div>
-                          
-                          {/* QUARTER CONTROLS */}
                           <div className="flex flex-col items-center w-1/3 z-10">
                               <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100">
                                   {(['q1', 'q2', 'q3', 'final'] as const).map((q) => (
-                                      <button 
-                                        key={q} 
-                                        onClick={() => handleQuarterChange(q)} 
-                                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all
-                                            ${activeQuarter === q 
-                                              ? 'bg-indigo-600 text-white shadow-lg' 
-                                              : 'text-slate-500 hover:text-white'}
-                                        `}
-                                      >
-                                          {q.toUpperCase()}
-                                      </button>
+                                      <button key={q} onClick={() => handleQuarterChange(q)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activeQuarter === q ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>{q.toUpperCase()}</button>
                                   ))}
                               </div>
-                              {/* ONLY HOST SEES THIS "CONTROL" LABEL */}
                               {isAdmin && <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest animate-pulse">Host Control</span>}
                           </div>
-
-                          {/* TEAM B */}
                           <div className="flex flex-col items-center w-1/3 relative">
                               <span className="text-cyan-400 font-teko text-xl md:text-3xl tracking-[0.2em] uppercase mb-1">{game.teamB}</span>
                               <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]">
@@ -369,6 +309,21 @@ export default function GamePage() {
                       </div>
                   </div>
               </div>
+
+              {/* WINNERS TICKER */}
+              {gameStats?.winners && gameStats.winners.length > 0 && (
+                  <div className="w-full bg-[#151725] border border-yellow-500/20 rounded-xl p-3 shadow-lg flex items-center justify-between animate-in fade-in slide-in-from-top-4">
+                      <div className="flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-yellow-500" />
+                          <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Latest Winner</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-400">{gameStats.winners[gameStats.winners.length - 1].label}:</span>
+                          <span className="text-sm font-black text-white">{gameStats.winners[gameStats.winners.length - 1].winner}</span>
+                          <span className="text-xs font-bold text-green-400">(${gameStats.winners[gameStats.winners.length - 1].amount})</span>
+                      </div>
+                  </div>
+              )}
 
               {/* GRID */}
               <div className="w-full aspect-square shrink-0 relative z-10">
@@ -442,7 +397,19 @@ export default function GamePage() {
               )}
 
               <div className="lg:hidden w-full pb-20">
-                  {infoPanel}
+                  <GameInfo 
+                      gameId={game.id} gameName={game.name} host={game.host} pricePerSquare={game.price}
+                      totalPot={game.pot || (Object.keys(game.squares).length * game.price)} 
+                      payouts={gameStats?.payouts} 
+                      winners={gameStats?.winners || []}  // <--- FIXED: Added safe fallback
+                      matchup={{ teamA: game.teamA, teamB: game.teamB }}
+                      scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
+                      isAdmin={isAdmin} isScrambled={game.isScrambled}
+                      eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
+                      onUpdateScores={updateScores} onDeleteGame={handleDelete}
+                      onScrambleGridDigits={scrambleGrid} onResetGridDigits={resetGrid}
+                      selectedEventId={game.espnGameId} availableGames={liveGames}
+                  />
               </div>
           </div>
       </div>
@@ -474,7 +441,19 @@ export default function GamePage() {
                   </button>
                </div>
           </div>
-          {infoPanel}
+          <GameInfo 
+              gameId={game.id} gameName={game.name} host={game.host} pricePerSquare={game.price}
+              totalPot={game.pot || (Object.keys(game.squares).length * game.price)} 
+              payouts={gameStats?.payouts} 
+              winners={gameStats?.winners || []} // <--- FIXED: Added safe fallback
+              matchup={{ teamA: game.teamA, teamB: game.teamB }}
+              scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
+              isAdmin={isAdmin} isScrambled={game.isScrambled}
+              eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
+              onUpdateScores={updateScores} onDeleteGame={handleDelete}
+              onScrambleGridDigits={scrambleGrid} onResetGridDigits={resetGrid}
+              selectedEventId={game.espnGameId} availableGames={liveGames}
+          />
       </div>
     </main>
   );

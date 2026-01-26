@@ -10,6 +10,7 @@ interface GameInfoProps {
   pricePerSquare: number;
   totalPot: number;
   payouts: any; 
+  winners: any[]; // <--- NEW: List of winners passed from parent
   matchup: { teamA: string; teamB: string };
   scores: any;
   isAdmin: boolean;
@@ -25,7 +26,7 @@ interface GameInfoProps {
 
 export default function GameInfo({
   gameId, gameName, host, pricePerSquare, totalPot,
-  payouts, matchup, scores, isAdmin, isScrambled,
+  payouts, winners, matchup, scores, isAdmin, isScrambled,
   eventDate, onUpdateScores, onDeleteGame,
   onScrambleGridDigits, onResetGridDigits
 }: GameInfoProps) {
@@ -53,40 +54,54 @@ export default function GameInfo({
 
   // --- DYNAMIC PAYOUT RENDERER ---
   const renderPayouts = () => {
-      // Default standard split if no data passed yet
+      // 1. Setup default view
       let displayPayouts = [
-          { label: "Q1", amount: Math.floor(totalPot * 0.10) },
-          { label: "Half", amount: Math.floor(totalPot * 0.20) },
-          { label: "Q3", amount: Math.floor(totalPot * 0.20) },
-          { label: "Final", amount: totalPot - (Math.floor(totalPot * 0.10) + Math.floor(totalPot * 0.20) * 2) },
+          { key: 'q1', label: "Q1", amount: Math.floor(totalPot * 0.10) },
+          { key: 'q2', label: "Half", amount: Math.floor(totalPot * 0.20) },
+          { key: 'q3', label: "Q3", amount: Math.floor(totalPot * 0.20) },
+          { key: 'final', label: "Final", amount: totalPot - (Math.floor(totalPot * 0.10) + Math.floor(totalPot * 0.20) * 2) },
       ];
 
-      // Use calculated rollover data from Parent if available
+      // 2. Override with calculated rollover data if available
       if (payouts && typeof payouts.q1 === 'number') {
           displayPayouts = [
-              { label: "Q1", amount: payouts.q1 },
-              { label: "Half", amount: payouts.q2 },
-              { label: "Q3", amount: payouts.q3 },
-              { label: "Final", amount: payouts.final },
+              { key: 'q1', label: "Q1", amount: payouts.q1 },
+              { key: 'q2', label: "Half", amount: payouts.q2 },
+              { key: 'q3', label: "Q3", amount: payouts.q3 },
+              { key: 'final', label: "Final", amount: payouts.final },
           ];
       }
 
       return (
         <div className="grid grid-cols-4 gap-2 mt-2">
             {displayPayouts.map((p, i) => {
-                const isRollover = p.amount === 0 && totalPot > 0; 
+                // Check if this quarter has a winner
+                const winner = winners?.find(w => w.key === p.key);
+                // Check if it was a rollover (0 amount, no winner)
+                const isRollover = p.amount === 0 && !winner && totalPot > 0;
+                
                 return (
                     <div key={i} className={`flex flex-col items-center rounded-lg p-2 border relative overflow-hidden group transition-all ${
-                        isRollover 
-                        ? "bg-red-900/10 border-red-500/20 opacity-60" 
-                        : "bg-black/20 border-white/5"
+                        winner 
+                        ? "bg-green-900/20 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.2)]" 
+                        : isRollover 
+                            ? "bg-red-900/10 border-red-500/20 opacity-60" 
+                            : "bg-black/20 border-white/5"
                     }`}>
-                        <div className={`absolute top-0 left-0 w-full h-1 ${isRollover ? "bg-red-500" : "bg-gradient-to-r from-indigo-500 to-cyan-500"} opacity-20`} />
-                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">{p.label}</span>
-                        <span className={`text-sm font-black transition-colors ${isRollover ? "text-slate-500 line-through" : "text-white group-hover:text-indigo-400"}`}>
-                            ${p.amount}
+                        {/* Winner Badge */}
+                        {winner && <div className="absolute top-0 right-0 p-1"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/></div>}
+                        
+                        <span className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${winner ? "text-green-400" : "text-slate-500"}`}>{p.label}</span>
+                        
+                        <span className={`text-sm font-black transition-colors ${isRollover ? "text-slate-500 line-through" : "text-white"}`}>
+                            {winner ? `$${winner.amount}` : `$${p.amount}`}
                         </span>
-                        {isRollover && <span className="text-[7px] text-red-400 font-bold uppercase">Rollover</span>}
+
+                        {winner ? (
+                            <span className="text-[9px] text-green-300 font-bold truncate max-w-full">{winner.winner}</span>
+                        ) : isRollover ? (
+                            <span className="text-[7px] text-red-400 font-bold uppercase mt-1">Rollover</span>
+                        ) : null}
                     </div>
                 );
             })}
@@ -135,8 +150,6 @@ export default function GameInfo({
         {isAdmin && (
             <div className="border-t border-white/10 pt-4 mt-4 space-y-3">
                 <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest block mb-2">Host Controls</span>
-                
-                {/* SCRAMBLE TOGGLE */}
                 <div className="flex items-center justify-between bg-black/20 p-3 rounded-xl border border-white/5">
                     <div className="flex items-center gap-2">
                         <Shuffle className="w-4 h-4 text-pink-500" />
@@ -149,8 +162,6 @@ export default function GameInfo({
                         {isScrambled ? "Locked" : "Open"}
                     </button>
                 </div>
-
-                {/* SCORE KEEPER */}
                 <div className="bg-black/20 p-3 rounded-xl border border-white/5">
                     <div className="flex justify-between items-center mb-2">
                         <div className="flex items-center gap-2">
@@ -173,20 +184,16 @@ export default function GameInfo({
                         </div>
                     )}
                 </div>
-
-                {/* DELETE */}
                 <button onClick={onDeleteGame} className="w-full py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
                     <Trash2 className="w-4 h-4" /> Delete Game
                 </button>
             </div>
         )}
 
-        {/* NAVIGATION LINKS */}
         <div className="grid grid-cols-2 gap-2 pt-2">
             <button onClick={() => router.push('/winners')} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 uppercase">View Winners</button>
             <button onClick={() => router.push('/payments')} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 uppercase">Payment Ledger</button>
         </div>
-
     </div>
   );
 }
