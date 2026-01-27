@@ -5,12 +5,11 @@ import { useRouter } from "next/navigation";
 import { useGame } from "@/context/GameContext";
 import { useEspnScores } from "@/hooks/useEspnScores";
 import { Calendar, Trophy, DollarSign, Target, ArrowRight, Loader2 } from "lucide-react";
-import Image from "next/image";
 
 export default function CreateGameForm() {
   const router = useRouter();
   const { createGame } = useGame();
-  const { games: liveGames, loading: loadingEspn } = useEspnScores();
+  const { games: liveGames } = useEspnScores();
   
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -30,8 +29,8 @@ export default function CreateGameForm() {
       const c = selectedGame.competitors;
       setFormData(prev => ({
         ...prev,
-        teamA: c[0].team.name, // Home (Vertical usually)
-        teamB: c[1].team.name, // Away (Horizontal usually)
+        teamA: c[0].team.name, // Home
+        teamB: c[1].team.name, // Away
         espnGameId: selectedGame.id,
         name: selectedGame.name
       }));
@@ -44,7 +43,6 @@ export default function CreateGameForm() {
 
     setLoading(true);
     try {
-      // FIX: Pass ONE object instead of multiple arguments
       const price = Number(formData.price);
       const gameId = await createGame({
         name: formData.name,
@@ -53,7 +51,7 @@ export default function CreateGameForm() {
         teamB: formData.teamB,
         espnGameId: formData.espnGameId || null,
         payouts: {
-            q1: price * 10,   // Default 10% (Just placeholder, logic can be smarter)
+            q1: price * 10,   
             q2: price * 20,
             q3: price * 20,
             final: price * 50
@@ -68,10 +66,15 @@ export default function CreateGameForm() {
     }
   };
 
-  // --- RENDER HELPERS ---
+  // --- HELPERS ---
   const handleLiveSelect = (g: any) => {
       setSelectedGame(g);
       setStep(2);
+  };
+
+  const formatGameTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   };
 
   return (
@@ -93,34 +96,33 @@ export default function CreateGameForm() {
 
         {/* STEP 1: SELECT MATCH */}
         {step === 1 && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Select Live Game</label>
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {liveGames.map((g: any) => (
+                    <button 
+                        key={g.id} 
+                        onClick={() => handleLiveSelect(g)}
+                        className="w-full text-left p-4 rounded-xl bg-black/20 border border-white/5 hover:border-indigo-500 hover:bg-indigo-500/10 transition-all group"
+                    >
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs font-bold text-slate-400 group-hover:text-indigo-300 flex items-center gap-1">
+                                <Calendar className="w-3 h-3"/> 
+                                {new Date(g.date).toLocaleDateString()} 
+                                <span className="text-slate-600 px-1">•</span>
+                                <span className="text-white">{formatGameTime(g.date)}</span>
+                            </span>
+                            
+                            <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300">{g.shortName}</span>
+                        </div>
+                        <div className="font-bold text-white text-sm">{g.name}</div>
+                    </button>
+                ))}
                 
-                {loadingEspn ? (
-                    <div className="p-8 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2"/>Loading Schedule...</div>
-                ) : (
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                        {liveGames.map((g: any) => (
-                            <button 
-                                key={g.id} 
-                                onClick={() => handleLiveSelect(g)}
-                                className="w-full text-left p-4 rounded-xl bg-black/20 border border-white/5 hover:border-indigo-500 hover:bg-indigo-500/10 transition-all group"
-                            >
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs font-bold text-slate-400 group-hover:text-indigo-300 flex items-center gap-1"><Calendar className="w-3 h-3"/> {new Date(g.date).toLocaleDateString()}</span>
-                                    <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300">{g.shortName}</span>
-                                </div>
-                                <div className="font-bold text-white text-sm">{g.name}</div>
-                            </button>
-                        ))}
-                        <button 
-                             onClick={() => setStep(2)}
-                             className="w-full text-center p-3 text-xs font-bold text-slate-500 hover:text-white border border-dashed border-white/10 rounded-xl hover:border-white/30 transition-colors"
-                        >
-                            Skip / Custom Matchup
-                        </button>
-                    </div>
-                )}
+                <button 
+                     onClick={() => setStep(2)}
+                     className="w-full text-center p-3 text-xs font-bold text-slate-500 hover:text-white border border-dashed border-white/10 rounded-xl hover:border-white/30 transition-colors"
+                >
+                    Skip / Custom Matchup
+                </button>
             </div>
         )}
 
