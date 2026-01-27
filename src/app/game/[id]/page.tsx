@@ -41,21 +41,32 @@ export default function GamePage() {
   // This syncs the Active Quarter to the LIVE ESPN Game Clock.
   // If the game is live, ESPN controls the board. If not, the Host (Firebase) controls it.
 // --- STREET SMARTS FIX: AUTO-ROTATE LOGIC ---
+// --- STREET SMARTS FIX: AUTO-ROTATE LOGIC ---
   useEffect(() => {
-      // Priority 1: Live Game Data (Use the clean properties from your hook)
-      if (matchedGame?.isLive) {
+      // 1. Is the game totally over? -> Force Final
+      if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) {
+          setActiveQuarter('final');
+      }
+      // 2. Is the game LIVE? -> Sync to Period
+      else if (matchedGame?.isLive) {
           const p = matchedGame.period;
           if (p === 1) setActiveQuarter('q1');
           else if (p === 2) setActiveQuarter('q2');
           else if (p === 3) setActiveQuarter('q3');
           else if (p >= 4) setActiveQuarter('final');
       } 
-      // Priority 2: Host Manual Control (Firebase)
+      // 3. Fallback: Host Manual Control (Firebase)
       else if (game?.currentPeriod) {
           // @ts-ignore
           setActiveQuarter(game.currentPeriod);
       }
-  }, [matchedGame?.period, matchedGame?.isLive, game?.currentPeriod]);
+  }, [
+      matchedGame?.period, 
+      matchedGame?.isLive, 
+      matchedGame?.status, 
+      matchedGame?.statusDetail, 
+      game?.currentPeriod
+  ]);
 
 
   const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
