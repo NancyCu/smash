@@ -8,7 +8,9 @@ import type { SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
-import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2, Ban, ArrowDown } from "lucide-react";
+// STREET SMARTS FIX: Import the new Clock Component
+import LiveGameClock from "@/components/LiveGameClock"; 
+import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2, Ban } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 
 export default function GamePage() {
@@ -21,7 +23,7 @@ export default function GamePage() {
   } = useGame();
   
   const { user, logOut } = useAuth();
-  const { games: liveGames } = useEspnScores();
+  const { games: liveGames } = useEspnScores(); // Ensure your hook returns { games: [...] }
 
   const matchedGame = useMemo(() => 
     game?.espnGameId ? liveGames.find(g => g.id === game.espnGameId) : null, 
@@ -35,20 +37,34 @@ export default function GamePage() {
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- HOST SYNC ---
+  // --- STREET SMARTS FIX: AUTO-ROTATE LOGIC ---
+  // This syncs the Active Quarter to the LIVE ESPN Game Clock.
+  // If the game is live, ESPN controls the board. If not, the Host (Firebase) controls it.
+// --- STREET SMARTS FIX: AUTO-ROTATE LOGIC ---
   useEffect(() => {
-      if (game?.currentPeriod) {
+      // Priority 1: Live Game Data (Use the clean properties from your hook)
+      if (matchedGame?.isLive) {
+          const p = matchedGame.period;
+          if (p === 1) setActiveQuarter('q1');
+          else if (p === 2) setActiveQuarter('q2');
+          else if (p === 3) setActiveQuarter('q3');
+          else if (p >= 4) setActiveQuarter('final');
+      } 
+      // Priority 2: Host Manual Control (Firebase)
+      else if (game?.currentPeriod) {
           // @ts-ignore
           setActiveQuarter(game.currentPeriod);
       }
-  }, [game?.currentPeriod]);
+  }, [matchedGame?.period, matchedGame?.isLive, game?.currentPeriod]);
+
 
   const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
       setActiveQuarter(q);
+      // Only update Firebase if Admin manually clicks it
       if (isAdmin) setGamePhase(q);
   };
 
-  // --- LOGO HELPER (Fixed Placement) ---
+  // --- LOGO HELPER ---
   const getTeamLogo = (teamName: string) => {
     if (matchedGame?.competitors) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,28 +78,31 @@ export default function GamePage() {
     return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/${teamName.toLowerCase().slice(0,3)}.png&h=200&w=200`;
   };
 
-  // --- SCORES ---
+  // --- SCORES CALCULATION ---
   const currentScores = useMemo(() => {
     const base = { q1: { home: 0, away: 0 }, q2: { home: 0, away: 0 }, q3: { home: 0, away: 0 }, final: { home: 0, away: 0 }, teamA: 0, teamB: 0 };
     if (!game) return base;
 
     if (game.espnGameId) {
-        const matched = liveGames.find(g => g.id === game.espnGameId);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const safeGame = matched as any; 
-        if (safeGame && safeGame.competitors) {
+        // Use the memoized matchedGame we already found
+        if (matchedGame && matchedGame.competitors) {
             const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
             const targetA = normalize(game.teamA);
             const targetB = normalize(game.teamB);
+            
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let compA = safeGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetA) || targetA.includes(n); });
+            let compA = matchedGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetA) || targetA.includes(n); });
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let compB = safeGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetB) || targetB.includes(n); });
-            if (!compA && compB) compA = safeGame.competitors.find((c: any) => c.id !== compB.id);
-            if (!compB && compA) compB = safeGame.competitors.find((c: any) => c.id !== compA.id);
-            if (!compA && !compB) { compA = safeGame.competitors[0]; compB = safeGame.competitors[1]; }
+            let compB = matchedGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetB) || targetB.includes(n); });
+            
+            // Fallback logic for finding teams
+            if (!compA && compB) compA = matchedGame.competitors.find((c: any) => c.id !== compB.id);
+            if (!compB && compA) compB = matchedGame.competitors.find((c: any) => c.id !== compA.id);
+            if (!compA && !compB) { compA = matchedGame.competitors[0]; compB = matchedGame.competitors[1]; }
+            
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const getScore = (c: any, i: number) => c?.linescores?.[i]?.value ? Number(c.linescores[i].value) : 0;
+            
             return {
                 q1: { home: getScore(compA, 0), away: getScore(compB, 0) },
                 q2: { home: getScore(compA, 1), away: getScore(compB, 1) },
@@ -94,14 +113,15 @@ export default function GamePage() {
         }
     }
     return { ...base, final: { home: game.scores?.teamA || 0, away: game.scores?.teamB || 0 }, teamA: game.scores?.teamA || 0, teamB: game.scores?.teamB || 0 };
-  }, [game, liveGames]);
+  }, [game, matchedGame]);
 
-  // --- WINNING CELL ---
+  // --- WINNING CELL LOGIC ---
   const defaultAxis = [0,1,2,3,4,5,6,7,8,9];
+  // STREET SMARTS: This relies on activeQuarter. Since activeQuarter now updates automatically via useEffect,
+  // The grid headers (axis) will rotate automatically!
   const currentAxis = game?.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
 
   const winningCoordinates = useMemo(() => {
-    // FIX: Allow winner highlighting even if not scrambled (using default 0-9)
     const axis = game?.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
     
     let scoreA = 0, scoreB = 0;
@@ -116,7 +136,7 @@ export default function GamePage() {
     return { row: rowIndex, col: colIndex };
   }, [currentScores, activeQuarter, game]);
 
-  // --- GRID DATA ---
+  // --- FORMATTED SQUARES ---
   const formattedSquares = useMemo(() => {
     if (!game?.squares) return {};
     const result: Record<string, { uid: string, name: string, claimedAt: number }[]> = {};
@@ -136,9 +156,8 @@ export default function GamePage() {
     return result;
   }, [game]);
 
-  // --- STRICT SNOWBALL ROLLOVER LOGIC ---
+  // --- STATS / PAYOUTS ---
   const gameStats = useMemo(() => {
-      // FIX: Return '0' for currentPotential instead of an object to match types
       if (!game) return { payouts: { q1: 0, q2: 0, q3: 0, final: 0 }, winners: [], currentPotential: 0 };
       
       const pot = game.pot || (Object.keys(game.squares).length * game.price);
@@ -149,10 +168,8 @@ export default function GamePage() {
           final: pot - (Math.floor(pot * 0.10) + Math.floor(pot * 0.20) * 2)
       };
 
-      // FIX: Robust Owner Check (Handles Unscrambled Games too)
       const getOwner = (q: 'q1'|'q2'|'q3'|'final') => {
           const axis = game.isScrambled && game.axis ? game.axis[q] : { row: defaultAxis, col: defaultAxis };
-          
           let sA=0, sB=0;
           if (q==='q1') { sA = currentScores.q1.home; sB = currentScores.q1.away; }
           else if (q==='q2') { sA = currentScores.q1.home+currentScores.q2.home; sB = currentScores.q1.away+currentScores.q2.away; }
@@ -161,10 +178,8 @@ export default function GamePage() {
 
           const r = axis.row.indexOf(sA % 10);
           const c = axis.col.indexOf(sB % 10);
-          
           if (r === -1 || c === -1) return null; 
           const cell = game.squares[r*10+c];
-          
           if (Array.isArray(cell)) return cell.length > 0 ? cell[0] : null;
           if (cell) return cell;
           return null;
@@ -180,71 +195,41 @@ export default function GamePage() {
       const results = [];
       const payoutMap = { q1: 0, q2: 0, q3: 0, final: 0 };
 
-      // --- Q1 ---
+      // Q1
       const q1Done = p > 1 || isHalf || isFinal;
       const w1 = getOwner('q1');
-      if (q1Done && !w1) {
-          currentRollover += base.q1;
-          payoutMap.q1 = 0;
-          results.push({ key: 'q1', label: 'Q1', winner: 'No Winner', amount: 0, rollover: true });
-      } else if (q1Done && w1) {
-          payoutMap.q1 = base.q1;
-          results.push({ key: 'q1', label: "Q1", winner: w1.displayName, amount: base.q1, rollover: false });
-          currentRollover = 0; 
-      } else {
-          payoutMap.q1 = base.q1; 
-      }
+      if (q1Done && !w1) { currentRollover += base.q1; payoutMap.q1 = 0; results.push({ key: 'q1', label: 'Q1', winner: 'No Winner', amount: 0, rollover: true }); } 
+      else if (q1Done && w1) { payoutMap.q1 = base.q1; results.push({ key: 'q1', label: "Q1", winner: w1.displayName, amount: base.q1, rollover: false }); currentRollover = 0; } 
+      else { payoutMap.q1 = base.q1; }
 
-      // --- Q2 ---
+      // Q2
       const q2Done = p > 2 || isFinal;
       const w2 = getOwner('q2');
       const q2Total = base.q2 + currentRollover;
-      
-      if (q2Done && !w2) {
-          currentRollover = q2Total;
-          payoutMap.q2 = 0;
-          results.push({ key: 'q2', label: 'Half', winner: 'No Winner', amount: 0, rollover: true });
-      } else if (q2Done && w2) {
-          payoutMap.q2 = q2Total;
-          results.push({ key: 'q2', label: "Half", winner: w2.displayName, amount: q2Total, rollover: false });
-          currentRollover = 0;
-      } else {
-          payoutMap.q2 = q2Total;
-      }
+      if (q2Done && !w2) { currentRollover = q2Total; payoutMap.q2 = 0; results.push({ key: 'q2', label: 'Half', winner: 'No Winner', amount: 0, rollover: true }); } 
+      else if (q2Done && w2) { payoutMap.q2 = q2Total; results.push({ key: 'q2', label: "Half", winner: w2.displayName, amount: q2Total, rollover: false }); currentRollover = 0; } 
+      else { payoutMap.q2 = q2Total; }
 
-      // --- Q3 ---
+      // Q3
       const q3Done = p > 3 || isFinal;
       const w3 = getOwner('q3');
       const q3Total = base.q3 + currentRollover;
+      if (q3Done && !w3) { currentRollover = q3Total; payoutMap.q3 = 0; results.push({ key: 'q3', label: 'Q3', winner: 'No Winner', amount: 0, rollover: true }); } 
+      else if (q3Done && w3) { payoutMap.q3 = q3Total; results.push({ key: 'q3', label: "Q3", winner: w3.displayName, amount: q3Total, rollover: false }); currentRollover = 0; } 
+      else { payoutMap.q3 = q3Total; }
 
-      if (q3Done && !w3) {
-          currentRollover = q3Total;
-          payoutMap.q3 = 0;
-          results.push({ key: 'q3', label: 'Q3', winner: 'No Winner', amount: 0, rollover: true });
-      } else if (q3Done && w3) {
-          payoutMap.q3 = q3Total;
-          results.push({ key: 'q3', label: "Q3", winner: w3.displayName, amount: q3Total, rollover: false });
-          currentRollover = 0;
-      } else {
-          payoutMap.q3 = q3Total;
-      }
-
-      // --- FINAL ---
+      // Final
       const finalTotal = base.final + currentRollover;
       payoutMap.final = finalTotal;
-      
       if (isFinal) {
           const wFinal = getOwner('final');
-          if (wFinal) {
-              results.push({ key: 'final', label: "Final", winner: wFinal.displayName, amount: finalTotal, rollover: false });
-          } else {
-              results.push({ key: 'final', label: "Final", winner: "No Winner", amount: 0, rollover: true });
-          }
+          if (wFinal) results.push({ key: 'final', label: "Final", winner: wFinal.displayName, amount: finalTotal, rollover: false });
+          else results.push({ key: 'final', label: "Final", winner: "No Winner", amount: 0, rollover: true });
       }
 
       return { payouts: payoutMap, winners: results, currentPotential: payoutMap[activeQuarter] };
-
   }, [game, currentScores, matchedGame, activeQuarter]);
+
 
   useEffect(() => {
     if (id && typeof id === 'string') {
@@ -289,7 +274,6 @@ export default function GamePage() {
   const selectedSquareData = selectedCell ? formattedSquares[`${selectedCell.row}-${selectedCell.col}`] || [] : [];
   const isWinningSquare = winningCoordinates && selectedCell && winningCoordinates.row === selectedCell.row && winningCoordinates.col === selectedCell.col;
   const cartTotal = pendingSquares.length * game.price;
-
   const currentWinningPlayer = selectedSquareData.length > 0 ? selectedSquareData[0].name : "Open";
   const currentPotValue = gameStats.currentPotential || 0;
 
@@ -330,7 +314,12 @@ export default function GamePage() {
                                   {activeQuarter === 'final' ? currentScores.final.home : activeQuarter === 'q1' ? currentScores.q1.home : activeQuarter === 'q2' ? (currentScores.q1.home + currentScores.q2.home) : currentScores.teamA}
                               </span>
                           </div>
+                          
+                          {/* STREET SMARTS FIX: CLOCK + CONTROLS */}
                           <div className="flex flex-col items-center w-1/3 z-10">
+                              {/* INJECTED THE CLOCK HERE */}
+                              <LiveGameClock game={matchedGame} />
+
                               <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100">
                                   {(['q1', 'q2', 'q3', 'final'] as const).map((q) => (
                                       <button key={q} onClick={() => handleQuarterChange(q)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activeQuarter === q ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>{q.toUpperCase()}</button>
@@ -338,6 +327,7 @@ export default function GamePage() {
                               </div>
                               {isAdmin && <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest animate-pulse">Host Control</span>}
                           </div>
+
                           <div className="flex flex-col items-center w-1/3 relative">
                               <span className="text-cyan-400 font-teko text-xl md:text-3xl tracking-[0.2em] uppercase mb-1">{game.teamB}</span>
                               <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]">
@@ -348,7 +338,9 @@ export default function GamePage() {
                   </div>
               </div>
 
-              {/* CURRENT WINNER & PURSE DISPLAY */}
+              {/* ... REST OF YOUR CODE (Winners, Grid, Cart) ... */}
+              {/* No changes needed below here, because Grid uses activeQuarter which we now automate */}
+              
               <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-[#151725] border border-green-500/30 rounded-xl p-4 shadow-lg flex items-center justify-between relative overflow-hidden">
                       <div className="absolute top-0 right-0 p-2"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" /></div>
@@ -364,7 +356,6 @@ export default function GamePage() {
                       </div>
                   </div>
 
-                  {/* PAST WINNERS / ROLLOVER LOG */}
                   {gameStats?.winners && gameStats.winners.length > 0 && (
                       <div className="bg-[#151725] border border-white/5 rounded-xl p-4 shadow-lg flex flex-col justify-center">
                           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 border-b border-white/5 pb-1">History</span>
@@ -389,7 +380,6 @@ export default function GamePage() {
                   )}
               </div>
 
-              {/* GRID */}
               <div className="w-full aspect-square shrink-0 relative z-10">
                   <div className="h-full w-full bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 overflow-hidden">
                       <Grid 
@@ -403,7 +393,6 @@ export default function GamePage() {
                   </div>
               </div>
 
-              {/* CART / DETAILS BOX */}
               {pendingSquares.length > 0 ? (
                   <div className="w-full bg-[#151725] border border-indigo-500/50 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
                       <div className="flex items-center justify-between mb-4">
@@ -477,8 +466,8 @@ export default function GamePage() {
               </div>
           </div>
       </div>
-
-      {/* DESKTOP SIDEBAR */}
+      
+      {/* DESKTOP SIDEBAR (Kept same) */}
       <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-[#0f111a] border-l border-white/5 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl relative">
           <div className="mb-6">
                <div onClick={() => router.push('/')} className="cursor-pointer group">

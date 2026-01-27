@@ -37,11 +37,26 @@ export function useEspnScores() {
   useEffect(() => {
     const fetchScores = async () => {
       try {
-        const endpoints = [
-          { key: "NFL", url: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard" },
-          { key: "NBA", url: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard" },
-          { key: "UCL", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard" }
-        ];
+// Inside src/hooks/useEspnScores.ts
+
+// ... inside fetchScores function ...
+const endpoints = [
+  { key: "NFL", url: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard" },
+  { key: "NBA", url: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard" },
+  // CHAMPIONS LEAGUE
+  { key: "UCL", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard" },
+  // ENGLISH PREMIER LEAGUE
+  { key: "EPL", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard" },
+  // SPANISH LA LIGA
+  { key: "ESP", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard" },
+  // GERMAN BUNDESLIGA
+  { key: "GER", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1/scoreboard" },
+  // ITALIAN SERIE A
+  { key: "ITA", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard" },
+  // MEXICAN LIGA MX (Good for evenings in US time)
+  { key: "MEX", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/mex.1/scoreboard" }
+];
+// ... rest of the code ...
 
         const fetchConfigs = endpoints.flatMap((ep) => {
           // For NFL, fetch the default "current week" view (no specific date) to ensure we see upcoming weekend games
