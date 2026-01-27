@@ -330,13 +330,6 @@ export default function GamePage() {
                           <div className="flex flex-col items-center w-1/3 z-10">
                               {/* INJECTED THE CLOCK HERE */}
                               <LiveGameClock game={matchedGame} />
-
-                              <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100">
-                                  {(['q1', 'q2', 'q3', 'final'] as const).map((q) => (
-                                      <button key={q} onClick={() => handleQuarterChange(q)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activeQuarter === q ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>{q.toUpperCase()}</button>
-                                  ))}
-                              </div>
-                              {isAdmin && <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest animate-pulse">Host Control</span>}
                           </div>
 
                           <div className="flex flex-col items-center w-1/3 relative">
