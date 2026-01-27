@@ -31,47 +31,62 @@ export default function GamePage() {
   );
   
   // --- STATE ---
+// --- STATE ---
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
+  const [isManualView, setIsManualView] = useState(false); // NEW: Track if we are in "Manual Override" mode
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- STREET SMARTS FIX: AUTO-ROTATE LOGIC ---
-  // This syncs the Active Quarter to the LIVE ESPN Game Clock.
-  // If the game is live, ESPN controls the board. If not, the Host (Firebase) controls it.
-// --- STREET SMARTS FIX: AUTO-ROTATE LOGIC ---
-// --- STREET SMARTS FIX: AUTO-ROTATE LOGIC ---
-  useEffect(() => {
-      // 1. Is the game totally over? -> Force Final
+  // --- LOGIC: CALCULATE THE "REAL" LIVE QUARTER ---
+  const liveQuarter = useMemo(() => {
+      // Priority 1: Game Over -> Final
       if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) {
-          setActiveQuarter('final');
+          return 'final';
       }
-      // 2. Is the game LIVE? -> Sync to Period
-      else if (matchedGame?.isLive) {
+      // Priority 2: Game Live -> Use Period
+      if (matchedGame?.isLive) {
           const p = matchedGame.period;
-          if (p === 1) setActiveQuarter('q1');
-          else if (p === 2) setActiveQuarter('q2');
-          else if (p === 3) setActiveQuarter('q3');
-          else if (p >= 4) setActiveQuarter('final');
-      } 
-      // 3. Fallback: Host Manual Control (Firebase)
-      else if (game?.currentPeriod) {
-          // @ts-ignore
-          setActiveQuarter(game.currentPeriod);
+          if (p === 1) return 'q1';
+          if (p === 2) return 'q2';
+          if (p === 3) return 'q3';
+          if (p >= 4) return 'final';
       }
-  }, [
-      matchedGame?.period, 
-      matchedGame?.isLive, 
-      matchedGame?.status, 
-      matchedGame?.statusDetail, 
-      game?.currentPeriod
-  ]);
+      // Priority 3: Fallback to Host Manual Control (Firebase)
+      return (game?.currentPeriod as 'q1'|'q2'|'q3'|'final') || 'q1';
+  }, [matchedGame, game]);
 
+  // --- EFFECT 1: AUTO-SYNC ---
+  // If user isn't looking at history manually, always show the live quarter
+  useEffect(() => {
+      if (!isManualView) {
+          setActiveQuarter(liveQuarter);
+      }
+  }, [liveQuarter, isManualView]);
 
+  // --- EFFECT 2: SNAP BACK TIMER (10s) ---
+  useEffect(() => {
+      if (isManualView) {
+          const timer = setTimeout(() => {
+              setIsManualView(false); // Snap back to live!
+          }, 10000); 
+          return () => clearTimeout(timer);
+      }
+  }, [isManualView]);
+
+  // --- HANDLER: QUARTER CLICK (Replace your old one with this!) ---
   const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
       setActiveQuarter(q);
-      // Only update Firebase if Admin manually clicks it
+
+      // If they clicked the current live quarter, stay live (disable timer).
+      // If they clicked a past/future quarter, enable manual mode (start 10s timer).
+      if (q === liveQuarter) {
+          setIsManualView(false);
+      } else {
+          setIsManualView(true);
+      }
+
       if (isAdmin) setGamePhase(q);
   };
 
@@ -327,10 +342,26 @@ export default function GamePage() {
                           </div>
                           
                           {/* STREET SMARTS FIX: CLOCK + CONTROLS */}
-                          <div className="flex flex-col items-center w-1/3 z-10">
-                              {/* INJECTED THE CLOCK HERE */}
-                              <LiveGameClock game={matchedGame} />
-                          </div>
+<div className="flex flex-col items-center w-1/3 z-10">
+    {/* 1. The Clock (Top) */}
+    <LiveGameClock game={matchedGame} />
+
+    {/* 2. The Buttons (Restored) */}
+    <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100 mt-1">
+        {(['q1', 'q2', 'q3', 'final'] as const).map((q) => (
+            <button 
+                key={q} 
+                onClick={() => handleQuarterChange(q)} 
+                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activeQuarter === q ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+            >
+                {q === 'final' ? 'Final' : q.toUpperCase()}
+            </button>
+        ))}
+    </div>
+    
+    {/* 3. Host Control Text */}
+    {isAdmin && <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest animate-pulse">Host Control</span>}
+</div>
 
                           <div className="flex flex-col items-center w-1/3 relative">
                               <span className="text-cyan-400 font-teko text-xl md:text-3xl tracking-[0.2em] uppercase mb-1">{game.teamB}</span>
