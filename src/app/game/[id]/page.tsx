@@ -514,8 +514,8 @@ export default function GamePage() {
         {/* MOBILE HEADER */}
         <div className="lg:hidden p-4 bg-[#0B0C15]/95 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5">
           <div onClick={() => router.push("/")} className="flex items-center gap-2 cursor-pointer">
-            <div className="relative h-10 w-auto rounded-lg overflow-hidden">
-              <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-10 w-auto object-contain" />
+            <div className="relative h-14 w-auto rounded-lg overflow-hidden">
+              <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-14 w-auto object-contain" />
             </div>
             <span className="font-bold text-white tracking-widest text-xs uppercase">Souper Bowl Squares</span>
           </div>
@@ -534,7 +534,7 @@ export default function GamePage() {
           {/* SCOREBOARD */}
           <div className="w-full relative group z-20 shrink-0">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
-            <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 flex flex-col items-center shadow-2xl">
+            <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl px-2 pt-2 pb-1 flex flex-col items-center shadow-2xl">
               <div className="flex w-full justify-between items-start relative">
                 {/* TEAM A */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
@@ -648,7 +648,7 @@ export default function GamePage() {
                                   {cellData.map((p, i) => (
                                     <div key={i} className="flex items-center gap-1.5">
                                       <span className={`text-xl font-bold ${p.uid === user?.uid ? "text-indigo-300" : "text-white"}`}>{p.name}</span>
-                                      {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-400 transition-colors text-slate-500"><Trash2 className="w-3.5 h-3.5" /></button>}
+                                      {!isWinnerView && (isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-400 transition-colors text-slate-500"><Trash2 className="w-3.5 h-3.5" /></button>}
                                     </div>
                                   ))}
                                 </div>
@@ -718,8 +718,8 @@ export default function GamePage() {
               <Image src="/SouperBowlBanner.jpg" alt="Banner" fill className="object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0f111a] to-transparent/50" />
               <div className="absolute bottom-3 left-3 flex items-center gap-3">
-                <div className="relative h-12 w-auto rounded-xl overflow-hidden shadow-lg">
-                  <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-12 w-auto object-contain" />
+                <div className="relative h-16 w-auto rounded-xl overflow-hidden shadow-lg">
+                  <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-16 w-auto object-contain" />
                 </div>
                 <div><h1 className="text-white font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Souper Bowl</h1><h1 className="text-indigo-400 font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Squares</h1></div>
               </div>
