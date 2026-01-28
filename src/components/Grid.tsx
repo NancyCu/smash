@@ -84,7 +84,6 @@ export default function Grid({
 
             {/* HEADERS */}
             {cols.map((num, i) => {
-              // FIX: Highlight if Winning OR Selected
               const isHighlight = (winningCell && winningCell.col === i) || (selectedCell && selectedCell.col === i);
               return (
                 <div key={`col-${i}`} className={cn("col-span-1 row-span-1 flex items-center justify-center border-r border-b border-white/10 relative overflow-hidden transition-all", isHighlight ? "bg-cyan-500/20 z-50 shadow-[inset_0_0_10px_rgba(34,211,238,0.5)]" : "bg-[#0B0C15]")}>
@@ -93,7 +92,6 @@ export default function Grid({
               );
             })}
             {rows.map((rowNum, rowIndex) => {
-              // FIX: Highlight if Winning OR Selected
               const isHighlight = (winningCell && winningCell.row === rowIndex) || (selectedCell && selectedCell.row === rowIndex);
               return (
                 <React.Fragment key={`row-${rowIndex}`}>
@@ -107,13 +105,50 @@ export default function Grid({
                     const key = `${rowIndex}-${colIndex}`;
                     const claims = (squares[key] ?? []).slice(0, 10);
                     
+                    // --- STREET SMARTS LOGIC START ---
                     const isWinner = !!winningCell && winningCell.row === rowIndex && winningCell.col === colIndex;
                     const isSelected = !!selectedCell && selectedCell.row === rowIndex && selectedCell.col === colIndex;
                     const isPending = pendingIndices.includes(cellIndex);
                     
-                    // FIX: Activate Crosshair for BOTH Winning Cell and Selected Cell
+                    // Is this square claimed by ME?
+                    const isMe = currentUserId && claims.some(c => c.uid === currentUserId);
+
+                    // Crosshair logic
                     const isCrosshair = (!!winningCell && (winningCell.row === rowIndex || winningCell.col === colIndex)) || 
                                         (!!selectedCell && (selectedCell.row === rowIndex || selectedCell.col === colIndex));
+
+                    // Dynamic Styling based on Status
+                    let cellStyle = "bg-transparent hover:bg-white/5"; // Default Empty
+                    
+                    if (claims.length > 0) {
+                        // It is taken. Check priority:
+                        if (isWinner) {
+                            if (isMe) {
+                                // JACKPOT: Winner + Me (Gold Pulse)
+                                cellStyle = "z-30 ring-2 ring-yellow-400 bg-yellow-400/20 shadow-[inset_0_0_20px_rgba(250,204,21,0.5)] animate-pulse";
+                            } else {
+                                // Winner + Other (Gold Static)
+                                cellStyle = "z-30 ring-2 ring-yellow-400 bg-yellow-400/10 shadow-[0_0_15px_rgba(250,204,21,0.2)]";
+                            }
+                        } else if (isMe) {
+                            // Me (Indigo/Purple pop)
+                            cellStyle = "z-10 ring-1 ring-indigo-500 bg-indigo-500/10 shadow-[inset_0_0_10px_rgba(99,102,241,0.2)]";
+                        } else {
+                            // Taken by Other (Slate)
+                            cellStyle = "bg-slate-800/40";
+                        }
+                    } else {
+                        // Empty Square Logic
+                        if (isWinner) cellStyle = "z-30 ring-2 ring-yellow-400 bg-yellow-400/20 shadow-[inset_0_0_20px_rgba(250,204,21,0.5)]"; // Winning but empty
+                        else if (isSelected) cellStyle = "z-20 ring-1 ring-cyan-400 bg-cyan-400/10";
+                        else if (isCrosshair) cellStyle = "bg-white/5";
+                    }
+
+                    // Pending override (Shopping Cart)
+                    if (isPending) {
+                        cellStyle = `ring-inset ring-2 ${myColor.ring} ${myColor.soft} animate-pulse z-30`;
+                    }
+                    // --- STREET SMARTS LOGIC END ---
 
                     return (
                       <div
@@ -121,29 +156,18 @@ export default function Grid({
                         onClick={() => onSquareClick(rowIndex, colIndex)}
                         className={cn(
                           'col-span-1 row-span-1 relative border-r border-b border-white/5 overflow-hidden transition-all duration-75 cursor-pointer',
-                          claims.length > 0 ? 'bg-slate-800/40' : 'bg-transparent hover:bg-white/5',
-                          
-                          isPending && `ring-inset ring-2 ${myColor.ring} ${myColor.soft} animate-pulse z-30`,
-                          
-                          // Crosshair Logic
-                          isCrosshair && !isWinner && !isSelected && "bg-white/5",
-
-                          // Winner Logic
-                          isWinner && 'z-30 ring-2 ring-yellow-400 bg-yellow-400/20 shadow-[inset_0_0_20px_rgba(250,204,21,0.5)]',
-                          
-                          // Selected Logic (Blue Ring)
-                          isSelected && !isWinner && !isPending && 'z-20 ring-1 ring-cyan-400 bg-cyan-400/10'
+                          cellStyle
                         )}
                       >
-                         {/* PENDING OVERLAY */}
-                         {isPending && claims.length === 0 && (
+                          {/* PENDING OVERLAY */}
+                          {isPending && claims.length === 0 && (
                             <div className="w-full h-full flex items-center justify-center">
                                 <span className={cn("text-[min(3vw,12px)] font-black uppercase tracking-wider", myColor.text)}>Pick</span>
                             </div>
-                         )}
+                          )}
 
-                         {/* CONTENT RENDERER */}
-                         {claims.length > 0 && (
+                          {/* CONTENT RENDERER */}
+                          {claims.length > 0 && (
                              <div className={cn(
                                "w-full h-full grid gap-[0.5px]",
                                claims.length === 1 ? "grid-cols-1 grid-rows-1" :
@@ -163,13 +187,13 @@ export default function Grid({
                                           claims.length <= 4 ? "text-[min(2.5vw,9px)]" : 
                                           "text-[min(2vw,7px)]"
                                         )}>
-                                           {claims.length <= 2 ? c.name : c.name.slice(0,3).toUpperCase()}
+                                            {claims.length <= 2 ? c.name : c.name.slice(0,3).toUpperCase()}
                                         </span>
                                      </div>
                                    )
                                 })}
                              </div>
-                         )}
+                          )}
                       </div>
                     );
                   })}
