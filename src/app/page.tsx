@@ -11,9 +11,17 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const { user, signIn, signUp, logOut } = useAuth(); // Needs signIn/signUp from AuthContext
 
-  const initialGameCode = searchParams.get('code') || '';
+  const initialGameCode = searchParams.get('code') || searchParams.get('redirect') || '';
   const [gameCode, setGameCode] = useState(initialGameCode);
   const [isJoining, setIsJoining] = useState(false);
+  
+  // Auto-focus logic
+  useEffect(() => {
+    if (initialGameCode) {
+        const input = document.getElementById('game-code-input');
+        if (input) input.focus();
+    }
+  }, [initialGameCode]);
 
   // Auth State
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -91,11 +99,16 @@ function HomeContent() {
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Join Existing Game</label>
             <div className="flex gap-2">
               <input 
+                id="game-code-input"
                 type="text" value={gameCode} onChange={(e) => setGameCode(e.target.value)}
                 placeholder="Enter Game Code" 
-                className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                className={`flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors ${initialGameCode ? "border-green-500/50 bg-green-900/10" : ""}`}
               />
-              <button type="submit" disabled={isJoining || !gameCode} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl px-4 flex items-center justify-center">
+              <button 
+                type="submit" 
+                disabled={isJoining || !gameCode} 
+                className={`bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl px-4 flex items-center justify-center ${initialGameCode ? "animate-pulse shadow-[0_0_15px_rgba(79,70,229,0.5)]" : ""}`}
+              >
                 {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
               </button>
             </div>

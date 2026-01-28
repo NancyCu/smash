@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Copy, Check, Trophy, Trash2, Edit2, Shuffle, Save } from "lucide-react";
+import { Copy, Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getDisplayPeriods, getPeriodLabel, type SportType } from "@/lib/sport-config";
@@ -55,10 +55,23 @@ export default function GameInfo({
     }
   }, [scores]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(gameId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleShare = async () => {
+    const shareData = {
+      title: 'Join my Super Bowl Squares!',
+      text: 'Bet on the game with me.',
+      url: window.location.href
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        // Share cancelled or failed
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleSaveScores = async () => {
@@ -153,8 +166,9 @@ export default function GameInfo({
             <h2 className="text-2xl font-black text-white uppercase tracking-wide leading-none">{gameName}</h2>
             <div className="flex items-center gap-2 mt-2 text-xs text-slate-400 font-mono">
                 <span>ID: {gameId.slice(0, 8)}...</span>
-                <button onClick={handleCopy} className="hover:text-white transition-colors">
-                    {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                <button onClick={handleShare} className="hover:text-white transition-colors flex items-center gap-1">
+                    {copied ? <Check className="w-3 h-3 text-green-400" /> : <Share2 className="w-3 h-3" />}
+                    <span className="text-[10px] uppercase font-bold underline">Share</span>
                 </button>
             </div>
             <div className="mt-1 text-xs text-slate-500">

@@ -49,6 +49,20 @@ export default function GamePage() {
       setGameId(id as string);
     }
   }, [id, setGameId]);
+  
+  // 2b. The Bouncer (Auth Guard)
+  useEffect(() => {
+    if (!loading && game && id) {
+       // Allow if user is participant OR if user is the Host (Admin)
+       const isParticipant = user && (game.participants?.includes(user.uid) || game.host === user.uid);
+       
+       // If not logged in, or not a participant, bounce to lobby to join
+       if (!user || !isParticipant) {
+           // We use replace to prevent back-button loops
+           router.replace(`/?code=${id}`);
+       }
+    }
+  }, [loading, game, user, id, router]);
 
   // 3. Safety & Pot Logic
   const squares = game?.squares ?? {};
