@@ -248,8 +248,8 @@ export default function GameInfo({
 
         {/* NAVIGATION LINKS */}
         <div className="grid grid-cols-2 gap-2 pt-2">
-            <button onClick={() => router.push('/winners')} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 uppercase">View Winners</button>
-            <button onClick={() => router.push('/payments')} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 uppercase">Payment Ledger</button>
+            <button onClick={() => router.push(`/winners?id=${gameId}`)} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 uppercase">View Winners</button>
+            <button onClick={() => router.push(`/payments?id=${gameId}`)} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 uppercase">Payment Ledger</button>
         </div>
 
     </div>

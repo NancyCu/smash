@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
 /* 1. GLOBAL RESET & THEME COLORS */
 :root {
   --background: #0B0C15;

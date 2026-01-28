@@ -35,7 +35,7 @@ export default function GameBar() {
   if (!user || games.length === 0) return null;
 
   return (
-    <div className="w-full shrink-0 flex overflow-x-auto gap-3 no-scrollbar py-3 px-4 bg-[#0B0C15] border-b border-white/10 shadow-lg relative lg:sticky lg:top-0 z-40">
+    <div className="w-full shrink-0 flex overflow-x-auto gap-2 no-scrollbar py-1 px-4 bg-[#0B0C15] border-b border-white/5 relative items-center h-12">
       {games.map((g) => {
         const isActive = g.id === params.id;
         // Determine Winning State (Simple Approximation)
@@ -56,39 +56,41 @@ export default function GameBar() {
         }
         
         const isHost = g.host === user.uid;
-        const hostLabel = isHost ? "You" : "Host";
 
         return (
           <button
             key={g.id}
             onClick={() => router.push(`/game/${g.id}`)}
             className={`
-              relative shrink-0 flex flex-col items-start justify-center px-4 py-2.5 rounded-xl transition-all duration-300 w-40 overflow-hidden
+              relative shrink-0 flex flex-row items-center gap-2 px-3 pl-3 pr-4 rounded-full transition-all duration-200 h-8
+              border
               ${isActive 
-                ? "bg-cyan-400 text-black font-bold border-2 border-white shadow-[0_0_20px_rgba(34,211,238,0.5)] scale-105 z-10" 
-                : "bg-[#1E293B] text-slate-200 border border-slate-700 hover:bg-[#334155] hover:border-slate-500 shadow-sm opacity-100"
+                ? "bg-cyan-400/20 border-cyan-400 text-white shadow-[0_0_10px_rgba(34,211,238,0.2)]" 
+                : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-slate-200"
               }
             `}
           >
             {/* Winning Indicator */}
             {isWinning && (
-                <div className="absolute top-1 right-1">
-                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]" />
+                <div className="absolute top-0 right-0 -mt-0.5 -mr-0.5">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_#22c55e]" />
                 </div>
             )}
 
-            <span className={`text-[11px] uppercase tracking-wider font-extrabold truncate w-full text-left ${isActive ? "text-cyan-950" : "text-slate-300"}`}>
-              {g.teamA} vs {g.teamB}
-            </span>
-            <div className={`flex items-baseline gap-1 mt-0.5 ${isActive ? "text-black" : "text-white"}`}>
-               <span className="text-xs font-bold">$</span>
-               <span className={`text-xl font-black tracking-tighter ${isActive ? "text-black" : "text-green-400"}`}>
-                 {g.pot || g.totalPot || 0}
-               </span>
+            <div className="flex items-center gap-1.5 max-w-[140px]">
+                <span className={`text-xs font-bold truncate ${isActive ? "text-cyan-100" : ""}`}>
+                {g.teamA} vs {g.teamB}
+                </span>
+                <span className={`text-[10px] font-medium whitespace-nowrap ${isActive ? "text-cyan-200" : "text-slate-500"}`}>
+                • ${g.pot || g.totalPot || 0}
+                </span>
             </div>
-            <span className={`text-[9px] uppercase tracking-widest leading-none mt-1 ${isActive ? "text-cyan-900/70" : "text-slate-500"}`}>
-                {hostLabel}
-            </span>
+            
+            {isHost && (
+                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ml-1 ${isActive ? "bg-cyan-500/20 text-cyan-300" : "bg-white/10 text-slate-500"}`}>
+                    YOU
+                </span>
+            )}
           </button>
         );
       })}

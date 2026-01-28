@@ -528,24 +528,24 @@ export default function GamePage() {
   return (
     <main className="flex flex-col lg:flex-row h-dvh w-full bg-[#0B0C15] overflow-hidden">
       {/* 1. MAIN AREA */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto no-scrollbar relative">
+      <div className="flex-1 flex flex-col h-full relative overflow-hidden">
         {/* MOBILE HEADER */}
-        <div className="lg:hidden p-2 bg-[#0B0C15]/95 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5">
+        <div className="lg:hidden p-2 bg-[#0B0C15]/95 shrink-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5">
           <div onClick={() => router.push("/")} className="flex items-center gap-2 cursor-pointer">
-            <div className="relative h-12 w-auto rounded-lg overflow-hidden">
-              <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-12 w-auto object-contain" />
+            <div className="relative h-8 w-auto rounded-lg overflow-hidden">
+              <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-8 w-auto object-contain" />
             </div>
             <span className="font-bold text-white tracking-widest text-[10px] uppercase">Souper Bowl Squares</span>
           </div>
-          <button onClick={handleAuth} className="p-2 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
-            {user ? <LogOut className="w-4 h-4 text-red-400" /> : <LogIn className="w-4 h-4 text-green-400" />}
+          <button onClick={handleAuth} className="p-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
+            {user ? <LogOut className="w-3 h-3 text-red-400" /> : <LogIn className="w-3 h-3 text-green-400" />}
           </button>
         </div>
         
         {/* GAME BAR */}
         <GameBar />
 
-        <div className="flex flex-col items-center w-full max-w-4xl mx-auto px-2 py-1 lg:p-2 gap-1 lg:gap-2">
+        <div className="flex-1 w-full min-h-0 overflow-y-auto no-scrollbar flex flex-col items-center max-w-4xl mx-auto px-2 py-1 lg:p-2 gap-1">
           {/* SCOREBOARD */}
           <div className="w-full relative group z-20 shrink-0">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/10 via-indigo-500/5 to-cyan-500/10 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition duration-1000"></div>
@@ -624,8 +624,8 @@ export default function GamePage() {
           </div>
 
           {/* GRID */}
-          <div className="w-full aspect-square shrink-0 relative z-10">
-            <div className="h-full w-full bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5">
+          <div className="flex-1 w-full min-h-0 relative z-10 flex flex-col justify-center my-1">
+            <div className="aspect-square max-h-full w-full mx-auto bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5">
               <Grid rows={currentAxis.row} cols={currentAxis.col} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamA || "Home"} teamB={game.teamB || "Away"} teamALogo={getTeamLogo(game.teamA)} teamBLogo={getTeamLogo(game.teamB)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} currentUserId={user?.uid} />
             </div>
           </div>

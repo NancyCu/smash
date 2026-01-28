@@ -12,8 +12,17 @@ import Image from "next/image";
 function WinnersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { game } = useGame();
+  const { game, setGameId } = useGame();
   const { games: liveGames } = useEspnScores();
+
+  // --- 0. HYDRATION ---
+  // Ensure we have the game data loaded if refreshing this page
+  React.useEffect(() => {
+    const id = searchParams.get("id");
+    if (id && (!game || game.id !== id)) {
+        setGameId(id);
+    }
+  }, [searchParams, game, setGameId]);
 
   // --- 1. SCORES ENGINE ---
   const currentScores = useMemo(() => {
@@ -219,12 +228,12 @@ function WinnersContent() {
     <div className="max-w-4xl mx-auto relative z-10 pb-20">
       <div className="flex items-center justify-between mb-8">
         <div
-          onClick={() => router.back()}
+          onClick={() => game ? router.push(`/game/${game.id}`) : router.back()}
           className="flex items-center gap-2 text-slate-400 hover:text-white cursor-pointer transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="font-bold uppercase text-xs tracking-widest">
-            Back
+            Back to Game
           </span>
         </div>
         <div className="flex items-center gap-2">

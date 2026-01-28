@@ -1,17 +1,26 @@
 "use client";
 
-import React, { useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useGame } from '@/context/GameContext';
 import type { SquareData } from '@/context/GameContext';
 import { ArrowLeft, Check, X, DollarSign, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 
-export default function PaymentsPage() {
-  const { game, togglePaid } = useGame();
+function PaymentsPageContent() {
+  const { game, togglePaid, setGameId } = useGame();
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // --- HYDRATION ---
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (id && (!game || game.id !== id)) {
+        setGameId(id);
+    }
+  }, [searchParams, game, setGameId]);
 
   useEffect(() => {
     // Security redirect: Only Host can see this
@@ -79,7 +88,7 @@ export default function PaymentsPage() {
        
        {/* HEADER */}
        <div className="max-w-4xl mx-auto mb-8 flex items-center justify-between">
-           <div onClick={() => router.back()} className="flex items-center gap-2 text-slate-400 hover:text-white cursor-pointer transition-colors">
+           <div onClick={() => game ? router.push(`/game/${game.id}`) : router.back()} className="flex items-center gap-2 text-slate-400 hover:text-white cursor-pointer transition-colors">
                <ArrowLeft className="w-5 h-5" />
                <span className="font-bold uppercase text-xs tracking-widest">Back to Game</span>
            </div>
@@ -167,5 +176,13 @@ export default function PaymentsPage() {
 
        </div>
     </main>
+  );
+}
+
+export default function PaymentsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0B0C15] flex items-center justify-center text-white">Loading Payments...</div>}>
+      <PaymentsPageContent />
+    </Suspense>
   );
 }
