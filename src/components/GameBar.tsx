@@ -35,7 +35,7 @@ export default function GameBar() {
   if (!user || games.length === 0) return null;
 
   return (
-    <div className="w-full flex overflow-x-auto gap-3 no-scrollbar py-3 px-4 bg-[#0B0C15] border-b border-white/10 shadow-lg">
+    <div className="w-full shrink-0 flex overflow-x-auto gap-3 no-scrollbar py-3 px-4 bg-[#0B0C15] border-b border-white/10 shadow-lg relative lg:sticky lg:top-0 z-40">
       {games.map((g) => {
         const isActive = g.id === params.id;
         // Determine Winning State (Simple Approximation)

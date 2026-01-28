@@ -28,6 +28,14 @@ body {
   display: none;
 }
 
+.no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
 /* 5. CUSTOM UTILITY CLASSES (Neon text + animations) */
 
 /* Neon text shadow effect used in hero/headline elements */
