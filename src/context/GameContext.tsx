@@ -26,7 +26,7 @@ export type PayoutLog = {
   timestamp: any;
 };
 
-type GameData = {
+export interface GameData { // Changed 'type' to 'export interface'
   id: string;
   host: string;
   name: string;
@@ -34,6 +34,7 @@ type GameData = {
   teamB: string;
   price: number;
   pot: number;
+  totalPot?: number; // Added this optional field to fix the $0 pot bug
   squares: Record<string, SquareData | SquareData[]>;
   scores: { teamA: number; teamB: number };
   isScrambled: boolean;
@@ -41,12 +42,12 @@ type GameData = {
   createdAt: any;
   espnGameId?: string;
   axis?: any;
-  participants: string[]; // Keep for existing logic
-  playerIds: string[];    // New: Efficient history querying
-  payoutHistory: PayoutLog[]; // New: The "Winnings" ledger
+  participants: string[]; 
+  playerIds: string[];  
+  payoutHistory: PayoutLog[]; 
   currentPeriod?: string;
   status: 'open' | 'active' | 'final';
-};
+}
 
 interface GameContextType {
   game: GameData | null;

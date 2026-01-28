@@ -283,7 +283,7 @@ export default function GamePage() {
         currentPotential: 0,
       };
 
-    const pot = game.pot || Object.keys(game.squares).length * game.price;
+      const pot = game.pot || game.totalPot || Object.keys(game.squares).length * game.price;
     const base = {
       q1: Math.floor(pot * 0.1),
       q2: Math.floor(pot * 0.2),
@@ -1020,7 +1020,7 @@ export default function GamePage() {
           gameName={game.name}
           host={game.host}
           pricePerSquare={game.price}
-          totalPot={game.pot || Object.keys(game.squares).length * game.price}
+          totalPot={game.pot || game.totalPot || Object.keys(game.squares).length * game.price}
           payouts={gameStats?.payouts}
           winners={gameStats?.winners || []}
           matchup={{ teamA: game.teamA, teamB: game.teamB }}
