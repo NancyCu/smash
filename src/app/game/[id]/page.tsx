@@ -601,8 +601,8 @@ export default function GamePage() {
                 const isTargetWinning = winningCoordinates && targetCell && winningCoordinates.row === targetCell.row && winningCoordinates.col === targetCell.col;
                 return (
                     <div className={`w-full bg-[#151725] border ${isTargetWinning ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
-                      <div className="flex items-center justify-between mb-2 border-b border-white/5 pb-1">
-                        <div className="flex flex-col">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <div className="flex flex-col flex-1">
                           <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-2">
                              {selectedCell ? "Selected Square" : isWinnerView ? <span className="text-yellow-400 flex items-center gap-1 animate-pulse"><Trophy className="w-3 h-3" /> Winning Square</span> : "Square Details"}
                           </span>
@@ -610,6 +610,20 @@ export default function GamePage() {
                             {targetCell ? `Row ${currentAxis.row[targetCell.row]} • Col ${currentAxis.col[targetCell.col]}` : "Select a Square"}
                             {isTargetWinning && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />}
                           </span>
+                          {targetCell && (() => {
+                             const cellKey = `${targetCell.row}-${targetCell.col}`;
+                             const cellData = formattedSquares[cellKey] || [];
+                             return cellData.length > 0 ? (
+                                <div className="flex flex-row flex-wrap gap-1.5 mt-2">
+                                  {cellData.map((p, i) => (
+                                    <div key={i} className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${p.uid === user?.uid ? "bg-indigo-500/30 text-indigo-200" : "bg-white/10 text-slate-300"}`}>
+                                      <span>{p.name}</span>
+                                      {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></button>}
+                                    </div>
+                                  ))}
+                                </div>
+                             ) : null;
+                          })()}
                         </div>
                         {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/10 text-slate-500"><X className="w-4 h-4" /></button>}
                       </div>
@@ -617,23 +631,9 @@ export default function GamePage() {
                           (() => {
                              const cellKey = `${targetCell.row}-${targetCell.col}`;
                              const cellData = formattedSquares[cellKey] || [];
-                             return (
-                                <div className="space-y-2">
-                                  <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                                    {cellData.length === 0 ? <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg">Empty Square</div> : 
-                                      cellData.map((p, i) => (
-                                        <div key={i} className={`flex justify-between items-center p-2 rounded-lg border ${p.uid === user?.uid ? "bg-indigo-600/20 border-indigo-500/30" : "bg-black/40 border-white/5"}`}>
-                                          <div className="flex items-center gap-2">
-                                            <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold ${p.uid === user?.uid ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}>{i + 1}</div>
-                                            <span className={`text-xs font-bold ${p.uid === user?.uid ? "text-indigo-200" : "text-slate-200"}`}>{p.name} {p.uid === user?.uid && "(You)"}</span>
-                                          </div>
-                                          {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"><Trash2 className="w-3 h-3" /></button>}
-                                        </div>
-                                      ))
-                                    }
-                                  </div>
-                                </div>
-                             )
+                             return cellData.length === 0 ? (
+                                <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg mt-2">Empty Square</div>
+                             ) : null;
                           })()
                        ) : <div className="text-center py-4 text-slate-500 text-xs">Tap empty squares to build your cart.</div>}
                     </div>
