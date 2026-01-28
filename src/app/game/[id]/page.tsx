@@ -79,17 +79,22 @@ export default function GamePage() {
       if (isManualView) {
           timer = setTimeout(() => {
               // TIME IS UP: Reset everything to "Live State"
+              console.log('🔄 SNAP BACK: Clearing selection, returning to live quarter:', liveQuarter);
+              setSelectedCell(null); // Clear selection FIRST to allow winningCell to show
               setIsManualView(false);
-              setSelectedCell(null); 
               setActiveQuarter(liveQuarter); // Force sync to live quarter
           }, 10000);
       } else {
           // If not in manual view, ensure we are synced
-          setActiveQuarter(liveQuarter);
+          if (activeQuarter !== liveQuarter) {
+              setActiveQuarter(liveQuarter);
+          }
       }
 
-      return () => clearTimeout(timer);
-  }, [isManualView, liveQuarter]);
+      return () => {
+          if (timer) clearTimeout(timer);
+      };
+  }, [isManualView, liveQuarter, activeQuarter]);
 
   // --- 3. HANDLE QUARTER TAB CLICK ---
   const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
@@ -186,12 +191,8 @@ export default function GamePage() {
   }, [game, matchedGame]);
 
   // --- WINNING CELL ---
-  const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-  const currentAxis = game?.isScrambled
-    ? game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }
-    : { row: defaultAxis, col: defaultAxis };
-
   const winningCoordinates = useMemo(() => {
+    const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     const axis = game?.isScrambled
       ? game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }
       : { row: defaultAxis, col: defaultAxis };
@@ -216,9 +217,29 @@ export default function GamePage() {
 
     const rowIndex = axis.row.indexOf(scoreA % 10);
     const colIndex = axis.col.indexOf(scoreB % 10);
-    if (rowIndex === -1 || colIndex === -1) return null;
-    return { row: rowIndex, col: colIndex };
+    
+    if (rowIndex === -1 || colIndex === -1) {
+      console.log('⚠️ No winning square:', { scoreA, scoreB, mod: [scoreA % 10, scoreB % 10] });
+      return null;
+    }
+    
+    const result = { row: rowIndex, col: colIndex };
+    console.log('🏆 Winning coordinates:', { 
+      quarter: activeQuarter, 
+      scores: { scoreA, scoreB }, 
+      digits: { row: scoreA % 10, col: scoreB % 10 },
+      indices: result,
+      axis
+    });
+    
+    return result;
   }, [currentScores, activeQuarter, game]);
+
+  // Current axis for rendering the grid
+  const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const currentAxis = game?.isScrambled
+    ? game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }
+    : { row: defaultAxis, col: defaultAxis };
 
   // --- GRID DATA ---
   const formattedSquares = useMemo(() => {
@@ -457,25 +478,29 @@ export default function GamePage() {
   const handleSquareClick = (row: number, col: number) => {
     const index = row * 10 + col;
 
-    // 1. If Game is Locked (Scrambled) and not Admin, just select for viewing
-    if (game?.isScrambled && !isAdmin) {
-      // Set selection and Trigger Manual Mode
-      setSelectedCell({ row, col });
-      setIsManualView(true);
-      return;
-    }
+    console.log('🎯 Square clicked:', { row, col, index, 
+                                         isScrambled: game?.isScrambled, 
+                                         isAdmin,
+                                         currentSelectedCell: selectedCell,
+                                         winningCell: winningCoordinates });
 
-    // Set selection and Trigger Manual Mode
+    // 1. ALWAYS set selection first to trigger highlighting (for both viewing and claiming)
     setSelectedCell({ row, col });
     setIsManualView(true);
 
-    // 2. If the user is removing a square from their cart, let them (no checks needed)
+    // 2. If Game is Locked (Scrambled) and not Admin, ONLY allow viewing (no claiming)
+    if (game?.isScrambled && !isAdmin) {
+      console.log('🔒 Game locked - view only mode');
+      return;
+    }
+
+    // 3. If the user is removing a square from their cart, let them (no checks needed)
     if (pendingSquares.includes(index)) {
       setPendingSquares((prev) => prev.filter((i) => i !== index));
       return;
     }
 
-    // 3. --- RULE CHECKS START HERE --- //
+    // 4. --- RULE CHECKS START HERE --- //
 
     // Check A: Is the user already in THIS specific square?
     // FIX: Normalize data to ensure it is ALWAYS an array before checking
@@ -514,7 +539,8 @@ export default function GamePage() {
       return;
     }
 
-    // 4. If all rules pass, add to cart
+    // 5. If all rules pass, add to cart
+    console.log('✅ Adding square to cart');
     setPendingSquares((prev) => [...prev, index]);
   };
   const handleAuth = async () => {

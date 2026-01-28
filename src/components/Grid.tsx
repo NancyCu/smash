@@ -31,7 +31,18 @@ export default function Grid({
 
   // 3. THE FIX: Determine which Row/Col should be highlighted
   // If user selected a cell, highlight THAT. Otherwise, highlight the WINNER.
-  const activeFocus = selectedCell || winningCell;
+  const activeFocus = selectedCell ?? winningCell ?? null;
+
+  // Debug logging to verify highlighting works
+  React.useEffect(() => {
+    console.log('📊 Grid Render State:', { 
+      selectedCell, 
+      winningCell, 
+      activeFocus,
+      willHighlightRow: activeFocus?.row,
+      willHighlightCol: activeFocus?.col
+    });
+  }, [selectedCell, winningCell, activeFocus]);
 
   // 4. COLOR GENERATOR
   const getUserColor = (name: string) => {
@@ -79,9 +90,14 @@ export default function Grid({
            const isColHighlighted = activeFocus?.col === i;
            
            return (
-             <div key={`col-${i}`} className={`relative p-1 h-8 md:h-10 flex items-center justify-center border-b border-r border-white/5 bg-[#151725] ${isColHighlighted ? 'bg-cyan-900/40 shadow-[inset_0_0_10px_rgba(34,211,238,0.2)]' : ''}`}>
-               {isColHighlighted && <div className="absolute inset-0 border-b-2 border-cyan-400 animate-pulse"></div>}
-               <span className={`font-mono font-bold text-sm md:text-lg ${isColHighlighted ? 'text-cyan-400 scale-110' : 'text-cyan-600'} transition-all`}>{num}</span>
+             <div key={`col-${i}`} className={`relative p-1 h-8 md:h-10 flex items-center justify-center border-b border-r border-white/5 bg-[#151725] transition-all duration-300 ${isColHighlighted ? 'bg-cyan-900/60 shadow-[inset_0_0_20px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.3)] z-40' : ''}`}>
+               {isColHighlighted && (
+                 <>
+                   <div className="absolute inset-0 border-b-4 border-cyan-400 animate-pulse"></div>
+                   <div className="absolute inset-0 bg-gradient-to-b from-cyan-400/20 to-transparent"></div>
+                 </>
+               )}
+               <span className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isColHighlighted ? 'text-cyan-300 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'text-cyan-600'}`}>{num}</span>
              </div>
            );
          })}
@@ -95,9 +111,14 @@ export default function Grid({
         return (
             <div key={`row-${rIndex}`} className="contents">
                 {/* LEFT HEADER COLUMN (TEAM A / ROWS) */}
-                <div className={`relative w-8 md:w-10 flex items-center justify-center border-r border-b border-white/5 bg-[#151725] ${isRowHighlighted ? 'bg-pink-900/40 shadow-[inset_0_0_10px_rgba(236,72,153,0.2)]' : ''}`}>
-                {isRowHighlighted && <div className="absolute inset-0 border-r-2 border-pink-500 animate-pulse"></div>}
-                <span className={`font-mono font-bold text-sm md:text-lg ${isRowHighlighted ? 'text-pink-500 scale-110' : 'text-pink-700'} transition-all`}>{rowNum}</span>
+                <div className={`relative w-8 md:w-10 flex items-center justify-center border-r border-b border-white/5 bg-[#151725] transition-all duration-300 ${isRowHighlighted ? 'bg-pink-900/60 shadow-[inset_0_0_20px_rgba(236,72,153,0.4),0_0_20px_rgba(236,72,153,0.3)] z-40' : ''}`}>
+                {isRowHighlighted && (
+                  <>
+                    <div className="absolute inset-0 border-r-4 border-pink-400 animate-pulse"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-pink-400/20 to-transparent"></div>
+                  </>
+                )}
+                <span className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isRowHighlighted ? 'text-pink-300 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]' : 'text-pink-700'}`}>{rowNum}</span>
                 </div>
                 
                 {/* SQUARES */}
