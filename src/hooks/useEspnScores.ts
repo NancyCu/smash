@@ -11,15 +11,14 @@ export interface EspnScoreData {
   homeTeam: { name: string; score: string; abbreviation: string; logo: string };
   awayTeam: { name: string; score: string; abbreviation: string; logo: string };
   period: number;
-  clock: string; // e.g., "12:45"
-  status: string; // e.g., "in", "pre", "post"
-  statusDetail: string; // e.g., "1/25 - 3:00 PM EST"
+  clock: string; 
+  status: string; // "in", "pre", "post"
+  statusDetail: string; 
   isLive: boolean;
-  competitors?: any[]; // Raw competitors array for line scores
+  competitors?: any[];
 }
 
-const DATE_OFFSETS = [-1, 0, 1];
-
+// Helper to generate a date string (YYYYMMDD) for a specific offset
 function formatDateKey(offsetDays: number): string {
   const target = new Date();
   target.setDate(target.getDate() + offsetDays);
@@ -37,39 +36,38 @@ export function useEspnScores() {
   useEffect(() => {
     const fetchScores = async () => {
       try {
-// Inside src/hooks/useEspnScores.ts
-
-// ... inside fetchScores function ...
-const endpoints = [
-  { key: "NFL", url: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard" },
-  { key: "NBA", url: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard" },
-  // CHAMPIONS LEAGUE
-  { key: "UCL", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard" },
-  // ENGLISH PREMIER LEAGUE
-  { key: "EPL", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard" },
-  // SPANISH LA LIGA
-  { key: "ESP", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard" },
-  // GERMAN BUNDESLIGA
-  { key: "GER", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1/scoreboard" },
-  // ITALIAN SERIE A
-  { key: "ITA", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard" },
-  // MEXICAN LIGA MX (Good for evenings in US time)
-  { key: "MEX", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/mex.1/scoreboard" }
-];
-// ... rest of the code ...
-
-        const fetchConfigs = endpoints.flatMap((ep) => {
-          // For NFL, fetch the default "current week" view (no specific date) to ensure we see upcoming weekend games
-          if (ep.key === "NFL") {
-            return [{ key: ep.key, url: ep.url }];
+        // STREET SMART CONFIG: 
+        // We define exactly how far to look ahead for EACH league.
+        const endpoints = [
+          { 
+            key: "NFL", 
+            url: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard", 
+            daysToCheck: 21 // Look ahead 3 weeks for Super Bowl
+          },
+          { 
+            key: "NBA", 
+            url: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard", 
+            daysToCheck: 7  // Keep NBA list clean (1 week only)
+          },
+          { 
+            key: "NCAAM", 
+            url: "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard", 
+            daysToCheck: 7  // Keep NCAA list clean (1 week only)
           }
-          // For others, fetch Today (0) and Tomorrow (1)
-          return DATE_OFFSETS.map((offset) => ({
+        ];
+
+        // Create a specific list of fetch URLs based on each league's "daysToCheck"
+        const fetchConfigs = endpoints.flatMap((ep) => {
+          // Generate array of offsets: [0, 1, 2, ... daysToCheck]
+          const offsets = Array.from({ length: ep.daysToCheck }, (_, i) => i);
+          
+          return offsets.map((offset) => ({
             key: ep.key,
             url: `${ep.url}?dates=${formatDateKey(offset)}`,
           }));
         });
 
+        // Execute all fetches concurrently
         const responses = await Promise.all(
           fetchConfigs.map((cfg) =>
             fetch(cfg.url)
@@ -84,18 +82,27 @@ const endpoints = [
 
         let allGames: EspnScoreData[] = [];
         const seenGameIds = new Set<string>();
+        
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
 
         for (const { key, data } of responses) {
           if (!data || !data.events) continue;
-          const competitionList = data.events;
-          for (const game of competitionList) {
+          
+          for (const game of data.events) {
             if (seenGameIds.has(game.id)) continue;
+
+            // Double-check: Skip past games (just in case API returns yesterday)
+            const gameDate = new Date(game.date);
+            if (gameDate < todayStart) continue;
+
             const competition = game.competitions?.[0];
             if (!competition) continue;
 
             const competitors = competition.competitors ?? [];
             const home = competitors.find((c: { homeAway: string }) => c.homeAway === "home");
             const away = competitors.find((c: { homeAway: string }) => c.homeAway === "away");
+            
             if (!home || !away) continue;
 
             const status = competition.status ?? {};
@@ -127,13 +134,25 @@ const endpoints = [
               clock: status.displayClock ?? "",
               status: state,
               statusDetail: detail,
-              competitors: competitors, // Pass raw competitors for linescore parsing
+              competitors: competitors, 
               isLive: state === "in",
             });
           }
         }
 
-        allGames.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        // SORTING PRIORITY:
+        // 1. "Super Bowl" matches -> TOP
+        // 2. All other games -> Sorted by Date
+        allGames.sort((a, b) => {
+           const isSuperBowlA = a.name.toLowerCase().includes("super bowl") || a.shortName?.toLowerCase().includes("super bowl");
+           const isSuperBowlB = b.name.toLowerCase().includes("super bowl") || b.shortName?.toLowerCase().includes("super bowl");
+
+           if (isSuperBowlA && !isSuperBowlB) return -1; // Force A to top
+           if (!isSuperBowlA && isSuperBowlB) return 1;  // Force B to top
+
+           // Standard Sort: Earliest games first
+           return new Date(a.date).getTime() - new Date(b.date).getTime();
+        });
 
         setGames(allGames);
         setError(null);
@@ -146,7 +165,7 @@ const endpoints = [
     };
 
     fetchScores();
-    const interval = setInterval(fetchScores, 15000); // Poll every 15s for fresher clock
+    const interval = setInterval(fetchScores, 60000); // 60s refresh
 
     return () => clearInterval(interval);
   }, []);
