@@ -59,7 +59,7 @@ interface GameContextType {
   joinGame: (gameId: string, password?: string, userId?: string) => Promise<void>;
   unclaimSquare: (index: number) => Promise<void>;
   togglePaid: (index: number, targetUserId?: string) => Promise<void>;
-  updateScores: (scores: any) => Promise<void>;
+  updateScores: (home: any, away?: any) => Promise<void>;
   scrambleGrid: () => Promise<void>;
   resetGrid: () => Promise<void>;
   deleteGame: () => Promise<void>;
@@ -176,11 +176,26 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     return docRef.id;
   };
 
-  const updateScores = async (s: any) => {
-  if (gameId) {
-    await updateDoc(doc(db, "games", gameId), { scores: s });
-  }
-};
+const updateScores = async (home: any, away?: any) => {
+    if (!gameId) return;
+
+    // FIX: Detect if we received (7, 3) or ({teamA: 7, teamB: 3})
+    let newScores;
+    if (typeof home === 'object' && home !== null) {
+        newScores = home;
+    } else {
+        newScores = { 
+            teamA: Number(home), 
+            teamB: Number(away) 
+        };
+    }
+
+    try {
+        await updateDoc(doc(db, "games", gameId), { scores: newScores });
+    } catch (err) {
+        console.error("Failed to update scores:", err);
+    }
+  };
   const setGamePhase = async (period: string) => {
   if (gameId) {
     await updateDoc(doc(db, "games", gameId), { currentPeriod: period });
