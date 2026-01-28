@@ -46,11 +46,22 @@ export default function ProfilePage() {
     });
   }, [games]);
 
-  const handleEnterGame = async (gameId: string) => {
-    if (!user) return;
+const handleEnterGame = async (gameId: string) => {
+  if (!user) return;
+  
+  try {
+    // 1. Ensure the DB knows you're a participant
     await joinGame(gameId, undefined, user.uid);
-    router.push("/?view=game");
-  };
+    
+    // 2. THIS IS THE KEY: Prime the local storage for the Wormhole redirect
+    localStorage.setItem('lastActiveGameId', gameId);
+    
+    // 3. Redirect to the live path which handles the 'Wormhole' logic
+    router.push("/live"); 
+  } catch (error) {
+    console.error("Failed to enter game:", error);
+  }
+};
 
   if (!user) {
     return (
