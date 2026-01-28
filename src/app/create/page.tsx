@@ -41,8 +41,8 @@ export default function CreatePage() {
                </div>
                
                <div className="flex items-center gap-2">
-                   <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-white/20">
-                      <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" />
+                   <div className="relative h-10 w-auto rounded-lg overflow-hidden">
+                      <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-10 w-auto object-contain" />
                    </div>
                    <span className="font-black text-white uppercase tracking-wider hidden sm:inline">Souper Bowl Squares</span>
                </div>

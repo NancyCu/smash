@@ -19,8 +19,8 @@ export default function RulesPage() {
             <span>Back to Game</span>
           </Link>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200">
-              <Image src="/SouperBowlDark.png" alt="logo" width={32} height={32} className="object-cover" />
+            <div className="h-10 w-auto rounded-full overflow-hidden">
+              <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-10 w-auto object-contain" />
             </div>
             <span className="text-sm font-black text-slate-900 uppercase tracking-widest hidden sm:block">Rules of Play</span>
           </div>

@@ -514,8 +514,8 @@ export default function GamePage() {
         {/* MOBILE HEADER */}
         <div className="lg:hidden p-4 bg-[#0B0C15]/95 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5">
           <div onClick={() => router.push("/")} className="flex items-center gap-2 cursor-pointer">
-            <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-white/20">
-              <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" />
+            <div className="relative h-10 w-auto rounded-lg overflow-hidden">
+              <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-10 w-auto object-contain" />
             </div>
             <span className="font-bold text-white tracking-widest text-xs uppercase">Souper Bowl Squares</span>
           </div>
@@ -718,7 +718,9 @@ export default function GamePage() {
               <Image src="/SouperBowlBanner.jpg" alt="Banner" fill className="object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0f111a] to-transparent/50" />
               <div className="absolute bottom-3 left-3 flex items-center gap-3">
-                <div className="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg"><Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" /></div>
+                <div className="relative h-12 w-auto rounded-xl overflow-hidden shadow-lg">
+                  <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-12 w-auto object-contain" />
+                </div>
                 <div><h1 className="text-white font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Souper Bowl</h1><h1 className="text-indigo-400 font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Squares</h1></div>
               </div>
             </div>

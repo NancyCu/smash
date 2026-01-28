@@ -228,12 +228,10 @@ function WinnersContent() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Image
-            src="/SouperBowlDark.png"
-            alt="Logo"
-            width={32}
-            height={32}
-            className="rounded-lg border border-white/10"
+          <img
+            src="/image_9.png"
+            alt="Souper Bowl LX Logo"
+            className="h-10 w-auto object-contain rounded-lg"
           />
           <span className="text-white font-black uppercase tracking-wider">
             Winners Circle

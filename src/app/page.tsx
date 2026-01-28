@@ -60,10 +60,12 @@ function HomeContent() {
       
       {/* LOGO SECTION */}
       <div className="flex flex-col items-center gap-4">
-        <div className="relative w-32 h-32 md:w-40 md:h-40 drop-shadow-2xl animate-in fade-in zoom-in duration-700">
-           <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-contain" />
-        </div>
         <div className="text-center">
+          <img 
+            src="/image_9.png" 
+            alt="Souper Bowl LX Logo" 
+            className="w-full max-w-[320px] mx-auto mb-6 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.3)]"
+          />
           <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-wider leading-none">Souper Bowl</h1>
           <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500 uppercase tracking-wider leading-none">Squares</h1>
           <p className="text-slate-400 mt-3 text-sm font-medium tracking-wide">"Because with us, a Nguyen is always a Win"</p>

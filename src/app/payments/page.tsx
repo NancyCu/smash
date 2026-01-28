@@ -95,8 +95,8 @@ export default function PaymentsPage() {
            <div className="space-y-4">
                <div className="bg-[#151725] border border-white/10 rounded-2xl p-6 shadow-xl">
                    <div className="flex items-center gap-4 mb-6">
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 shadow-lg">
-                             <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" />
+                        <div className="relative h-12 w-auto rounded-xl overflow-hidden shadow-lg">
+                             <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-12 w-auto object-contain" />
                         </div>
                         <div>
                             <h1 className="text-white font-black text-lg leading-none mb-1">PAYMENT LEDGER</h1>
