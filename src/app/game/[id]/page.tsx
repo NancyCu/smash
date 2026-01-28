@@ -394,7 +394,7 @@ export default function GamePage() {
     const usersInSquare = Array.isArray(rawData) ? rawData : rawData ? [rawData] : [];
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const alreadyInSquare = user && usersInSquare.some((u: any) => u.uid === user.uid);
+    const alreadyInSquare = user && usersInSquare.some((u: any) => (u.uid && u.uid === user.uid) || (u.userId && u.userId === user.uid));
     if (alreadyInSquare) {
       alert("You already have a spot in this square!");
       return;
@@ -407,7 +407,7 @@ export default function GamePage() {
       Object.values(game.squares).forEach((sqValue: any) => {
         const sqUsers = Array.isArray(sqValue) ? sqValue : [sqValue];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (sqUsers.some((u: any) => u.uid === user.uid)) {
+        if (sqUsers.some((u: any) => (u.uid && u.uid === user.uid) || (u.userId && u.userId === user.uid))) {
           ownedCount++;
         }
       });
@@ -550,7 +550,7 @@ export default function GamePage() {
 
           {/* GRID */}
           <div className="w-full aspect-square shrink-0 relative z-10">
-            <div className="h-full w-full bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 overflow-hidden">
+            <div className="h-full w-full bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5">
               <Grid rows={currentAxis.row} cols={currentAxis.col} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamA || "Home"} teamB={game.teamB || "Away"} teamALogo={getTeamLogo(game.teamA)} teamBLogo={getTeamLogo(game.teamB)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} currentUserId={user?.uid} />
             </div>
           </div>

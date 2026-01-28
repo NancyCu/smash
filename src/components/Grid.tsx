@@ -47,21 +47,22 @@ export default function Grid({
   // 3. COLOR GENERATOR
   const getUserColor = (name: string) => {
     const colors = [
-      "bg-red-500/20 text-red-200 border-red-500/30",
-      "bg-orange-500/20 text-orange-200 border-orange-500/30",
-      "bg-amber-500/20 text-amber-200 border-amber-500/30",
-      "bg-green-500/20 text-green-200 border-green-500/30",
-      "bg-emerald-500/20 text-emerald-200 border-emerald-500/30",
-      "bg-teal-500/20 text-teal-200 border-teal-500/30",
-      "bg-cyan-500/20 text-cyan-200 border-cyan-500/30",
-      "bg-sky-500/20 text-sky-200 border-sky-500/30",
-      "bg-blue-500/20 text-blue-200 border-blue-500/30",
-      "bg-indigo-500/20 text-indigo-200 border-indigo-500/30",
-      "bg-violet-500/20 text-violet-200 border-violet-500/30",
-      "bg-purple-500/20 text-purple-200 border-purple-500/30",
-      "bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-500/30",
-      "bg-pink-500/20 text-pink-200 border-pink-500/30",
-      "bg-rose-500/20 text-rose-200 border-rose-500/30",
+      "bg-red-400/40 text-white border-red-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(248,113,113,0.3)]",
+      "bg-orange-400/40 text-white border-orange-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(251,146,60,0.3)]",
+      "bg-amber-400/40 text-white border-amber-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(251,191,36,0.3)]",
+      "bg-green-400/40 text-white border-green-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(74,222,128,0.3)]",
+      "bg-emerald-400/40 text-white border-emerald-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(52,211,153,0.3)]",
+      "bg-teal-400/40 text-white border-teal-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(45,212,191,0.3)]",
+      "bg-cyan-400/40 text-white border-cyan-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(34,211,238,0.3)]",
+      "bg-sky-400/40 text-white border-sky-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(56,189,248,0.3)]",
+      "bg-blue-400/40 text-white border-blue-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(96,165,250,0.3)]",
+      "bg-indigo-400/40 text-white border-indigo-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(129,140,248,0.3)]",
+      "bg-violet-400/40 text-white border-violet-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(167,139,250,0.3)]",
+      "bg-purple-400/40 text-white border-purple-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(192,132,252,0.3)]",
+      "bg-fuchsia-400/40 text-white border-fuchsia-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(232,121,249,0.3)]",
+      "bg-pink-400/40 text-white border-pink-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(244,114,182,0.3)]",
+      "bg-rose-400/40 text-white border-rose-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(251,113,133,0.3)]",
+      "bg-lime-400/40 text-white border-lime-400 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(163,230,53,0.3)]",
     ];
     let hash = 0;
     for (let i = 0; i < name.length; i++)
@@ -71,111 +72,29 @@ export default function Grid({
 
   return (
     // OUTER CONTAINER - FLEX COLUMN (thin team bars like reference)
-    <div className="flex flex-col h-full w-full bg-[#0f111a] select-none">
-      {/* --- 1. TOP HEADER BAR (TEAM B - CYAN) --- */}
-      {isScrambled ? (
-        <div
-          className="relative w-full flex items-center justify-center border-b border-white/5 bg-[#151725] h-6 md:h-8 overflow-hidden"
-        >
-          {/* Watermark Logo */}
-          {teamBLogo && (
-            <img
-              src={teamBLogo}
-              className="absolute inset-0 w-full h-full object-cover opacity-[0.05] grayscale"
-              alt=""
-            />
-          )}
-
-          <div
-            className="flex items-center gap-2 relative z-10 px-2"
-          >
-            {teamBLogo && (
-              <img
-                src={teamBLogo}
-                className="w-3 h-3 md:w-4 md:h-4 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
-                alt=""
-              />
-            )}
-            <span
-              className="text-cyan-400 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(34,211,238,0.4)] text-xs md:text-sm truncate max-w-[80%]"
-            >
-              {teamB}
-            </span>
-            {teamBLogo && (
-              <img
-                src={teamBLogo}
-                className="w-3 h-3 md:w-4 md:h-4 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
-                alt=""
-              />
-            )}
-          </div>
-        </div>
-      ) : null}
-
+    <div className="flex flex-col h-full w-full bg-[#0f111a] select-none rounded-2xl relative">
+      
       {/* MAIN CONTENT - FLEX ROW */}
       <div className="flex flex-1 min-h-0 relative">
-        {/* --- 2. LEFT SIDEBAR (TEAM A - PINK) --- */}
-        {isScrambled ? (
-          <div
-            className="relative h-full border-r border-white/5 flex items-center justify-center bg-[#151725] w-6 md:w-8 overflow-hidden"
-          >
-            {/* Watermark Logo */}
-            {teamALogo && (
-              <img
-                src={teamALogo}
-                className="absolute inset-0 w-full h-full object-cover opacity-[0.05] grayscale"
-                alt=""
-              />
-            )}
-
-            <div
-              className="flex flex-col items-center gap-2 relative z-10 py-2 h-full justify-center"
-            >
-              {teamALogo && (
-                <img
-                  src={teamALogo}
-                  className="w-3 h-3 md:w-4 md:h-4 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
-                  alt=""
-                />
-              )}
-              <span
-                className="text-pink-500 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(236,72,153,0.4)] whitespace-nowrap [writing-mode:vertical-rl] rotate-180 text-xs md:text-sm truncate"
-              >
-                {teamA}
-              </span>
-              {teamALogo && (
-                <img
-                  src={teamALogo}
-                  className="w-3 h-3 md:w-4 md:h-4 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
-                  alt=""
-                />
-              )}
-            </div>
-          </div>
-        ) : null}
-
+        
         {/* --- 3. THE GRID --- */}
-        <div className={`${isScrambled ? "flex-1" : "w-full"} h-full`}>
+        <div className="w-full h-full">
           <div className="relative h-full w-full">
-            {!isScrambled && (
-              <>
-                {/* Team B name overlay across the top header row (inside grid) */}
-                <div className="pointer-events-none absolute top-0 left-8 md:left-10 right-0 h-8 md:h-10 flex items-center justify-center z-50">
-                  <span className="text-cyan-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] text-sm md:text-base truncate max-w-[85%]">
-                    {teamB}
-                  </span>
-                </div>
+            {/* Team B name overlay across the top header row (inside grid) */}
+            <div className="pointer-events-none absolute top-0 left-8 md:left-10 right-0 h-8 md:h-10 flex items-center justify-center z-50 -translate-y-1/2">
+                <span className="text-cyan-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(34,211,238,0.9)] text-sm md:text-base truncate max-w-[85%]">
+                {teamB}
+                </span>
+            </div>
 
-                {/* Team A name overlay down the left header column (inside grid) */}
-                <div className="pointer-events-none absolute top-8 md:top-10 left-0 w-8 md:w-10 bottom-0 flex items-center justify-center z-50">
-                  <span className="text-pink-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(236,72,153,0.5)] text-sm md:text-base whitespace-nowrap [writing-mode:vertical-rl] rotate-180 truncate">
-                    {teamA}
-                  </span>
-                </div>
-              </>
-            )}
+            {/* Team A name overlay down the left header column (inside grid) */}
+            <div className="pointer-events-none absolute top-8 md:top-10 left-0 w-8 md:w-10 bottom-0 flex items-center justify-center z-50 -translate-x-1/2">
+                <span className="text-pink-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(236,72,153,0.9)] text-sm md:text-base whitespace-nowrap [writing-mode:vertical-rl] rotate-180 truncate">
+                {teamA}
+                </span>
+            </div>
 
-            <div className="grid grid-cols-[auto_repeat(10,1fr)] border-b border-r border-white/5 h-full w-full bg-[#0f111a]">
+            <div className="grid grid-cols-[auto_repeat(10,1fr)] border-b border-r border-white/5 h-full w-full bg-[#0f111a] rounded-2xl overflow-hidden">
             {/* HEADER ROW (COLUMNS) */}
             <div className="contents">
               {/* CORNER */}
