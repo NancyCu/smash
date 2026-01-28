@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Copy, Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2 } from "lucide-react";
+import { Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getDisplayPeriods, getPeriodLabel, type SportType } from "@/lib/sport-config";

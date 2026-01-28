@@ -35,20 +35,17 @@ export default function GameBar() {
   if (!user || games.length === 0) return null;
 
   return (
-    <div className="w-full flex overflow-x-auto gap-3 no-scrollbar py-2 px-4 sticky top-0 z-30 bg-[#0B0C15]/5 backdrop-blur-sm border-b border-white/5">
+    <div className="w-full flex overflow-x-auto gap-3 no-scrollbar py-3 px-4 bg-[#0B0C15] border-b border-white/10 shadow-lg">
       {games.map((g) => {
         const isActive = g.id === params.id;
         // Determine Winning State (Simple Approximation)
-        // This relies on Firestore scores being up to date
         const sA = g.scores?.teamA || 0;
         const sB = g.scores?.teamB || 0;
-        // Default Logic (No Scramble Awareness here for simplicity yet)
         const row = sA % 10;
         const col = sB % 10;
         const idx = row * 10 + col;
         
         let isWinning = false;
-        // Basic check: If unscrambled, check index directly
         if (!g.isScrambled) {
             const cell = g.squares?.[idx];
             if (Array.isArray(cell)) {
@@ -58,13 +55,6 @@ export default function GameBar() {
             }
         }
         
-        // Host Name Truncation
-        // We might not have host name directly if fetching by ID, 
-        // but let's assume host ID is present. We'll verify if we have host display name or just ID.
-        // GameData has 'host' (uid). It doesn't have host *name* stored usually?
-        // Let's check GameData structure in Context.
-        // It has `host: string` (likely UID). 
-        // We'll use "Host" or check if the user is the host.
         const isHost = g.host === user.uid;
         const hostLabel = isHost ? "You" : "Host";
 
@@ -73,10 +63,10 @@ export default function GameBar() {
             key={g.id}
             onClick={() => router.push(`/game/${g.id}`)}
             className={`
-              relative shrink-0 flex flex-col items-start justify-center px-4 py-2 rounded-xl transition-all duration-300 w-32
+              relative shrink-0 flex flex-col items-start justify-center px-4 py-2.5 rounded-xl transition-all duration-300 w-40 overflow-hidden
               ${isActive 
-                ? "bg-cyan-400 text-black font-bold border-2 border-white shadow-[0_0_15px_rgba(34,211,238,0.5)] scale-105" 
-                : "bg-white/5 text-white border border-white/10 hover:bg-white/10 opacity-70 hover:opacity-100"
+                ? "bg-cyan-400 text-black font-bold border-2 border-white shadow-[0_0_20px_rgba(34,211,238,0.5)] scale-105 z-10" 
+                : "bg-[#1E293B] text-slate-200 border border-slate-700 hover:bg-[#334155] hover:border-slate-500 shadow-sm opacity-100"
               }
             `}
           >
@@ -87,16 +77,16 @@ export default function GameBar() {
                 </div>
             )}
 
-            <span className={`text-[10px] uppercase tracking-wider font-extrabold truncate w-full text-left ${isActive ? "text-cyan-900" : "text-slate-400"}`}>
-              {g.teamA.substring(0,3)} vs {g.teamB.substring(0,3)}
+            <span className={`text-[11px] uppercase tracking-wider font-extrabold truncate w-full text-left ${isActive ? "text-cyan-950" : "text-slate-300"}`}>
+              {g.teamA} vs {g.teamB}
             </span>
-            <div className={`flex items-baseline gap-1 ${isActive ? "text-black" : "text-white"}`}>
+            <div className={`flex items-baseline gap-1 mt-0.5 ${isActive ? "text-black" : "text-white"}`}>
                <span className="text-xs font-bold">$</span>
-               <span className={`text-lg font-black tracking-tighter ${isActive ? "text-black" : "text-green-400"}`}>
+               <span className={`text-xl font-black tracking-tighter ${isActive ? "text-black" : "text-green-400"}`}>
                  {g.pot || g.totalPot || 0}
                </span>
             </div>
-            <span className={`text-[9px] uppercase tracking-widest leading-none ${isActive ? "text-cyan-800/60" : "text-slate-600"}`}>
+            <span className={`text-[9px] uppercase tracking-widest leading-none mt-1 ${isActive ? "text-cyan-900/70" : "text-slate-500"}`}>
                 {hostLabel}
             </span>
           </button>
