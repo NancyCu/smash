@@ -52,18 +52,18 @@ export default function Grid({
       <div className="flex flex-1 min-h-0 relative overflow-visible">
         
         {/* --- 3. THE GRID --- */}
-        <div className="w-full h-full pt-8 pl-8">
+        <div className="w-full h-full pt-8 pl-8 md:pt-14 md:pl-14">
           <div className="relative h-full w-full">
             {/* Team B name overlay across the top header row (inside grid) */}
-            <div className="pointer-events-none absolute -top-6 left-8 md:left-10 right-0 h-8 md:h-10 flex items-center justify-center z-50 mb-2">
-                <span className="text-[#22d3ee]/90 font-teko font-black uppercase tracking-[0.25em] md:tracking-[0.3em] blur-[0.5px] drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] drop-shadow-[0_0_10px_rgba(34,211,238,0.6)] text-xs md:text-sm whitespace-nowrap overflow-visible z-10 relative">
+            <div className="pointer-events-none absolute -top-6 md:-top-12 left-8 md:left-10 right-0 h-8 md:h-12 flex items-center justify-center z-50 mb-2">
+                <span className="text-[#22d3ee]/90 font-teko font-black uppercase tracking-[0.25em] md:tracking-[0.3em] blur-[0.5px] drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] drop-shadow-[0_0_10px_rgba(34,211,238,0.6)] text-xs md:text-3xl whitespace-nowrap overflow-visible z-10 relative">
                 {teamB}
                 </span>
             </div>
 
             {/* Team A name overlay down the left header column (inside grid) */}
-            <div className="pointer-events-none absolute top-8 md:top-10 -left-6 w-8 md:w-10 bottom-0 flex items-center justify-center z-50">
-                <span className="text-[#db2777]/90 font-teko font-black uppercase tracking-[0.25em] md:tracking-[0.3em] blur-[0.5px] drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] drop-shadow-[0_0_10px_rgba(219,39,119,0.6)] text-xs md:text-sm whitespace-nowrap [writing-mode:vertical-rl] rotate-180 overflow-visible mr-2 z-10 relative">
+            <div className="pointer-events-none absolute top-8 md:top-10 -left-6 md:-left-12 w-8 md:w-12 bottom-0 flex items-center justify-center z-50">
+                <span className="text-[#db2777]/90 font-teko font-black uppercase tracking-[0.25em] md:tracking-[0.3em] blur-[0.5px] drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] drop-shadow-[0_0_10px_rgba(219,39,119,0.6)] text-xs md:text-3xl whitespace-nowrap [writing-mode:vertical-rl] rotate-180 overflow-visible mr-2 z-10 relative">
                 {teamA}
                 </span>
             </div>
