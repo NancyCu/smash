@@ -15,6 +15,11 @@ import {
 } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 
+// Required for static export with dynamic routes
+export function generateStaticParams() {
+  return [];
+}
+
 export default function GamePage() {
   const router = useRouter();
   const { id } = useParams();
