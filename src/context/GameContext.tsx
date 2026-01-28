@@ -102,7 +102,7 @@ interface GameContextType {
   unclaimSquare: (row: number, col: number, userId: string) => Promise<void>;
   togglePaid: (playerId: string) => Promise<void>;
   deletePlayer: (playerId: string) => Promise<void>;
-  updateScores: (teamA: number, teamB: number) => Promise<void>;
+  updateScores: (teamAOrScores: number | { teamA: number; teamB: number }, teamB?: number) => Promise<void>;
   scrambleGridDigits: () => Promise<void>;
   resetGridDigits: () => Promise<void>;
   resetGame: () => Promise<void>;
@@ -296,7 +296,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const updatedPlayers = [...activeGame.players];
     updatedPlayers[playerIndex].paid = !updatedPlayers[playerIndex].paid;
-    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : null;
+    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : undefined;
     
     await updateDoc(doc(db, "games", activeGame.id), { players: updatedPlayers });
   };
@@ -318,10 +318,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
       });
   };
 
-  const updateScores = async (teamA: number, teamB: number) => {
+  const updateScores = async (teamAOrScores: number | { teamA: number; teamB: number }, teamB?: number) => {
     if (!activeGame) return;
+    
+    // Handle both call formats:
+    // 1. Manual: updateScores(7, 3) - Two numbers
+    // 2. Automatic: updateScores({teamA: 7, teamB: 3}) - One object
+    let scoreA: number;
+    let scoreB: number;
+    
+    if (typeof teamAOrScores === 'object' && teamAOrScores !== null) {
+      // Object format: {teamA: 7, teamB: 3}
+      scoreA = teamAOrScores.teamA;
+      scoreB = teamAOrScores.teamB;
+    } else {
+      // Two-argument format: (7, 3)
+      scoreA = teamAOrScores;
+      scoreB = teamB ?? 0;
+    }
+    
     await updateDoc(doc(db, "games", activeGame.id), {
-        scores: { teamA, teamB }
+        scores: { teamA: scoreA, teamB: scoreB }
     });
   };
 
