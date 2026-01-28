@@ -26,13 +26,13 @@ import { useEspnScores } from "@/hooks/useEspnScores";
 
 export default function GamePage() {
   const router = useRouter();
-  const { id } = useParams(); // This is the 'id' you actually use
+  const { id } = useParams();
 
-  // 1. Hooks
+  // 1. Hooks - ENSURE THESE TWO LINES EXIST
   const { user, logOut } = useAuth();
-  const { games: liveGames } = useEspnScores();
+  const { games: liveGames } = useEspnScores(); // <--- THIS WAS MISSING
+
   const {
-    // REMOVED 'id' FROM HERE (it doesn't exist in useGame)
     game,
     setGameId,
     loading,
@@ -47,7 +47,7 @@ export default function GamePage() {
     setGamePhase,
   } = useGame();
 
-  // 2. Data Fetching
+  // 2. Data Fetching Ignition
   useEffect(() => {
     if (id) {
       setGameId(id as string);
@@ -57,14 +57,14 @@ export default function GamePage() {
   // 3. Safety & Pot Logic
   const squares = game?.squares ?? {};
   const pot = game?.pot || game?.totalPot || (Object.keys(squares).length * (game?.price || 0));
-  
-  // ... rest of the file
 
-  // 4. Live Game Sync
+  // 4. Live Game Sync (This is line 60-63 in your error)
   const matchedGame = useMemo(
     () => game?.espnGameId ? liveGames.find((g) => g.id === game.espnGameId) : null,
     [game, liveGames]
   );
+  
+  // ... rest of the file
 
   // 5. State (Rest of your original logic)
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
@@ -289,7 +289,15 @@ export default function GamePage() {
     return result;
   }, [game]);
 
-  if (!game) return null; // Stops the 'length' crash before it starts
+  if (!game) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#0B0C15] text-cyan-400">
+        <p className="animate-pulse font-black uppercase tracking-widest text-xs">
+          LOADING GAME DATA...
+        </p>
+      </div>
+    );
+  }
 
   // --- STATS / PAYOUTS (CORRECT SEQUENTIAL ROLLOVER) ---
   const gameStats = useMemo(() => {
