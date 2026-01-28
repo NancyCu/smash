@@ -624,8 +624,8 @@ export default function GamePage() {
           </div>
 
           {/* GRID */}
-          <div className="flex-1 w-full min-h-0 relative z-10 flex flex-col justify-center my-1">
-            <div className="aspect-square max-h-full w-full mx-auto bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5">
+          <div className="w-full shrink-0 aspect-square max-w-[500px] z-10 flex flex-col justify-center my-1">
+            <div className="w-full h-full bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 overflow-hidden">
               <Grid rows={currentAxis.row} cols={currentAxis.col} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamA || "Home"} teamB={game.teamB || "Away"} teamALogo={getTeamLogo(game.teamA)} teamBLogo={getTeamLogo(game.teamB)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} currentUserId={user?.uid} />
             </div>
           </div>
