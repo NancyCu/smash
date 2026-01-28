@@ -79,7 +79,7 @@ export default function GamePage() {
       if (isManualView) {
           timer = setTimeout(() => {
               // TIME IS UP: Reset everything to "Live State"
-              console.log('🔄 SNAP BACK: Clearing selection, returning to live quarter:', liveQuarter);
+              // console.log('🔄 SNAP BACK: Clearing selection, returning to live quarter:', liveQuarter);
               setSelectedCell(null); // Clear selection FIRST to allow winningCell to show
               setIsManualView(false);
               setActiveQuarter(liveQuarter); // Force sync to live quarter
@@ -726,6 +726,28 @@ export default function GamePage() {
                           ? currentScores.q1.away + currentScores.q2.away
                           : currentScores.teamB}
                   </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 🐛 DEBUG PANEL - Shows what's being passed to Grid (Set hidden={true} to hide) */}
+          <div className="w-full bg-yellow-500/10 border-2 border-yellow-500 rounded-xl p-3 mb-4 hidden">
+            <div className="text-xs font-mono text-yellow-300 space-y-1">
+              <div className="font-bold text-yellow-400 mb-2">🐛 GAME PAGE DEBUG:</div>
+              <div>Quarter: <span className="text-white">{activeQuarter}</span></div>
+              <div>Live Quarter: <span className="text-white">{liveQuarter}</span></div>
+              <div>Manual View: <span className="text-white">{isManualView ? '✅ YES' : '❌ NO'}</span></div>
+              <div className="border-t border-yellow-500/30 pt-2 mt-2">
+                <div className="font-bold text-pink-400">Row Score (Team A): {activeQuarter === 'q1' ? currentScores.q1.home : activeQuarter === 'q2' ? currentScores.q1.home + currentScores.q2.home : activeQuarter === 'q3' ? currentScores.q1.home + currentScores.q2.home + currentScores.q3.home : currentScores.final.home} → Digit: {activeQuarter === 'q1' ? currentScores.q1.home % 10 : activeQuarter === 'q2' ? (currentScores.q1.home + currentScores.q2.home) % 10 : activeQuarter === 'q3' ? (currentScores.q1.home + currentScores.q2.home + currentScores.q3.home) % 10 : currentScores.final.home % 10}</div>
+                <div className="font-bold text-cyan-400">Col Score (Team B): {activeQuarter === 'q1' ? currentScores.q1.away : activeQuarter === 'q2' ? currentScores.q1.away + currentScores.q2.away : activeQuarter === 'q3' ? currentScores.q1.away + currentScores.q2.away + currentScores.q3.away : currentScores.final.away} → Digit: {activeQuarter === 'q1' ? currentScores.q1.away % 10 : activeQuarter === 'q2' ? (currentScores.q1.away + currentScores.q2.away) % 10 : activeQuarter === 'q3' ? (currentScores.q1.away + currentScores.q2.away + currentScores.q3.away) % 10 : currentScores.final.away % 10}</div>
+              </div>
+              <div className="border-t border-yellow-500/30 pt-2 mt-2">
+                <div className="font-bold text-green-400">
+                  Passing to Grid → selectedCell: {selectedCell ? `Row ${selectedCell.row}, Col ${selectedCell.col}` : '❌ null'}
+                </div>
+                <div className="font-bold text-green-400">
+                  Passing to Grid → winningCell: {winningCoordinates ? `Row ${winningCoordinates.row}, Col ${winningCoordinates.col}` : '❌ null'}
                 </div>
               </div>
             </div>

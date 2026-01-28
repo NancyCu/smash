@@ -34,6 +34,7 @@ export default function Grid({
   const activeFocus = selectedCell ?? winningCell ?? null;
 
   // Debug logging to verify highlighting works
+  /* 
   React.useEffect(() => {
     console.log('📊 Grid Render State:', { 
       selectedCell, 
@@ -43,6 +44,10 @@ export default function Grid({
       willHighlightCol: activeFocus?.col
     });
   }, [selectedCell, winningCell, activeFocus]);
+  */
+
+  // Debug state display
+  const [showDebug] = React.useState(false); // Set to true to show debug panel below grid
 
   // 4. COLOR GENERATOR
   const getUserColor = (name: string) => {
@@ -134,22 +139,43 @@ export default function Grid({
                     const belongsToSelectedUser = isTaken && selectedUserIdToHighlight && owner.uid === selectedUserIdToHighlight;
                     const isMe = currentUserId && owner?.uid === currentUserId;
 
+                    // 🎯 NEW: Check if this square is in the highlighted row or column
+                    const isInHighlightedRow = activeFocus && activeFocus.row === rIndex;
+                    const isInHighlightedCol = activeFocus && activeFocus.col === cIndex;
+                    const isInCrosshair = isInHighlightedRow || isInHighlightedCol;
+
                     // --- DYNAMIC STYLES ---
-                    let containerClass = "relative w-full aspect-square flex flex-col items-center justify-center border-r border-b border-white/5 cursor-pointer transition-all duration-300";
+                    let containerClass = "relative w-full aspect-square flex flex-col items-center justify-center cursor-pointer transition-all duration-300";
                     let textClass = "text-[8px] md:text-[10px] font-bold truncate max-w-[90%] px-0.5";
+                    let borderClass = "border-r border-b border-white/5"; // Default border
 
                     if (isWinner) {
                         // 1. WINNER: Gold Background (Overrides everything)
                         containerClass += " bg-yellow-500/20 shadow-[inset_0_0_15px_rgba(250,204,21,0.4)] z-30 border border-yellow-500";
+                        borderClass = ""; // Winner has its own border
                         textClass += " text-yellow-200";
                     } else if (isExactSelected) {
                         // 2. SELECTED: Bright Indigo
                         containerClass += " bg-indigo-500/80 z-20 scale-105 shadow-[0_0_20px_rgba(99,102,241,0.5)] border-2 border-white";
+                        borderClass = ""; // Selected has its own border
                         textClass += " text-white";
+                    } else if (isInCrosshair) {
+                        // 🎯 CROSSHAIR HIGHLIGHTING - Subtle white glow with nearly invisible internal grid lines
+                        containerClass += " shadow-[inset_0_0_12px_rgba(255,255,255,0.2),0_0_10px_rgba(255,255,255,0.15)]";
+                        borderClass = "border-r border-b border-white/[0.02]"; // Almost invisible borders
+                        
+                        // Keep existing content visible on highlighted squares
+                        if (belongsToSelectedUser) {
+                            const userColor = getUserColor(owner.name);
+                            textClass += ` ${userColor.split(' ')[1]}`;
+                        } else if (isTaken) {
+                            // Don't fade taken squares in crosshair
+                        }
                     } else if (belongsToSelectedUser) {
                         // 3. FRIEND FILTER
                         const userColor = getUserColor(owner.name); 
                         containerClass += ` ${userColor.replace('/20', '/40')} z-10 scale-100 shadow-[inset_0_0_10px_rgba(255,255,255,0.1)] border border-indigo-400/50`;
+                        borderClass = ""; // Has its own border
                     } else if (isPending) {
                         // 4. CART
                         containerClass += " bg-indigo-900/30 animate-pulse";
@@ -162,14 +188,17 @@ export default function Grid({
                         // 6. DEFAULT TAKEN
                         const userColor = getUserColor(owner.name);
                         containerClass += ` ${userColor}`; 
-                        if (isMe) containerClass += " border-indigo-500/40";
+                        if (isMe) {
+                            containerClass += " border border-indigo-500/40";
+                            borderClass = ""; // Has its own border
+                        }
                     } else {
                         // 7. EMPTY
                         containerClass += " hover:bg-white/5";
                     }
 
                     return (
-                        <div key={cellKey} onClick={() => onSquareClick(rIndex, cIndex)} className={containerClass}>
+                        <div key={cellKey} onClick={() => onSquareClick(rIndex, cIndex)} className={`${containerClass} ${borderClass}`}>
                             {isWinner && <div className="absolute -top-1 -right-1 text-[8px]">👑</div>}
                             
                             {owner ? (
@@ -185,6 +214,27 @@ export default function Grid({
             </div>
         );
       })}
+
+      {/* DEBUG PANEL - Remove this after fixing */}
+      {showDebug && (
+        <div className="col-span-11 bg-yellow-500/10 border-t-2 border-yellow-500 p-2">
+          <div className="text-[10px] font-mono text-yellow-300 space-y-1">
+            <div className="font-bold text-yellow-400">🐛 DEBUG INFO:</div>
+            <div>Selected: {selectedCell ? `Row ${selectedCell.row}, Col ${selectedCell.col}` : '❌ None'}</div>
+            <div>Winning: {winningCell ? `Row ${winningCell.row}, Col ${winningCell.col}` : '❌ None'}</div>
+            <div className="font-bold text-green-400">
+              Active Highlight: {activeFocus ? `Row ${activeFocus.row}, Col ${activeFocus.col}` : '❌ NOTHING WILL HIGHLIGHT!'}
+            </div>
+            {activeFocus && (
+              <div className="text-[9px] text-green-300 mt-1 space-y-0.5">
+                <div>✅ Row {activeFocus.row}: All 10 squares should have faint WHITE glow</div>
+                <div>✅ Col {activeFocus.col}: All 10 squares should have faint WHITE glow</div>
+                <div>✅ Selected/Winning square: Bright highlight on top</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
