@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Trophy, DollarSign, Users, Info, ChevronRight, Share2, Trash2 } from "lucide-react";
+import { Trophy, DollarSign, Users, Info, ChevronRight, Share2, Trash2, Lock, Unlock } from "lucide-react";
 import { EspnScoreData } from "@/hooks/useEspnScores";
 
 interface GameInfoProps {
@@ -385,13 +385,23 @@ export default function GameInfo({ gameId, gameName, host, pricePerSquare, total
               type="button"
               onClick={onScrambleGridDigits}
               disabled={isScrambled}
-              className={`px-3 py-1 rounded-lg font-black text-[10px] tracking-[0.2em] transition-colors border ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-black text-[10px] tracking-[0.2em] transition-colors border ${
                 isScrambled
                   ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
                   : "bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-md shadow-indigo-500/20"
               }`}
             >
-              {isScrambled ? "LOCKED" : "Scramble"}
+              {isScrambled ? (
+                <>
+                  <Lock className="w-3 h-3" />
+                  LOCKED
+                </>
+              ) : (
+                <>
+                  <Unlock className="w-3 h-3" />
+                  Scramble
+                </>
+              )}
             </button>
           </div>
         </div>
