@@ -7,6 +7,7 @@ import { useGame } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
+import GameBar from "@/components/GameBar";
 import LiveGameClock from "@/components/LiveGameClock";
 import {
   ShoppingCart,
@@ -526,6 +527,9 @@ export default function GamePage() {
             {user ? <LogOut className="w-4 h-4 text-red-400" /> : <LogIn className="w-4 h-4 text-green-400" />}
           </button>
         </div>
+        
+        {/* GAME BAR */}
+        <GameBar />
 
         <div className="flex flex-col items-center w-full max-w-4xl mx-auto px-2 py-1 lg:p-2 gap-1 lg:gap-2">
           {/* SCOREBOARD */}
