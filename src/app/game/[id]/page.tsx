@@ -42,11 +42,21 @@ export default function GamePage() {
     setGamePhase,
   } = useGame();
 
-  // 1. Get a safe reference to squares to prevent the .length crash
-const squares = game?.squares ?? {};
+  // DELETE THE REDUNDANT LINES THAT WERE HERE (the second const { id } and const { game })
 
-// 2. Define the ONE AND ONLY pot variable
-const pot = game?.pot || game?.totalPot || (Object.keys(squares).length * (game?.price || 0));
+  useEffect(() => {
+    if (id) {
+      setGameId(id as string);
+    }
+  }, [id, setGameId]);
+
+  // 1. Get a safe reference to squares to prevent the .length crash
+  const squares = game?.squares ?? {};
+
+  // 2. Define the ONE AND ONLY pot variable
+  const pot = game?.pot || game?.totalPot || (Object.keys(squares).length * (game?.price || 0));
+  
+  // ... rest of the file
 
 
   const { user, logOut } = useAuth();
@@ -644,18 +654,26 @@ const finalTotal = (payouts?.final?.amount || 0) + activeRollover;
     }
   };
 
-  if (loading && !game)
+// --- THE SAFETY HATCH (Replace lines 390-405) ---
+  if (!game) {
+    if (loading) {
+      return (
+        <div className="flex h-screen items-center justify-center bg-[#0B0C15] text-cyan-400">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-12 h-12 animate-spin text-indigo-500" />
+            <p className="animate-pulse font-black tracking-widest uppercase text-xs">
+              LOADING GAME DATA...
+            </p>
+          </div>
+        </div>
+      );
+    }
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0B0C15]">
-        <div className="animate-spin h-12 w-12 border-4 border-indigo-500 rounded-full border-t-transparent" />
+      <div className="min-h-screen flex items-center justify-center bg-[#0B0C15] text-white font-teko text-2xl tracking-widest">
+        GAME NOT FOUND
       </div>
     );
-  if (error || !game)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0B0C15] text-white">
-        Game Not Found
-      </div>
-    );
+  }
 
   const cartTotal = pendingSquares.length * game.price;
 
