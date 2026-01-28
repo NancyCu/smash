@@ -257,168 +257,101 @@ export default function GamePage() {
     : { row: defaultAxis, col: defaultAxis };
 
   // --- GRID DATA ---
+// 1. GRID DATA HOOK
   const formattedSquares = useMemo(() => {
     if (!game?.squares) return {};
-    const result: Record<
-      string,
-      { uid: string; name: string; claimedAt: number }[]
-    > = {};
+    const result: Record<string, { uid: string; name: string; claimedAt: number }[]> = {};
     Object.entries(game.squares).forEach(([key, value]) => {
       const index = parseInt(key);
       if (isNaN(index)) return;
       const gridKey = `${Math.floor(index / 10)}-${index % 10}`;
       if (!result[gridKey]) result[gridKey] = [];
-      if (Array.isArray(value)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        value.forEach((sq: any) => {
-          result[gridKey].push({
-            uid: sq.userId,
-            name: sq.displayName,
-            claimedAt: 0,
-          });
-        });
-      } else {
-        const sq = value as SquareData;
-        result[gridKey].push({
-          uid: sq.userId,
-          name: sq.displayName,
-          claimedAt: 0,
-        });
-      }
+      const users = Array.isArray(value) ? value : [value];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      users.forEach((sq: any) => {
+        if (sq) result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0 });
+      });
     });
     return result;
   }, [game]);
 
-  if (!game) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#0B0C15] text-cyan-400">
-        <p className="animate-pulse font-black uppercase tracking-widest text-xs">
-          LOADING GAME DATA...
-        </p>
-      </div>
-    );
-  }
+  // 2. PAYOUTS HOOK (Must run before gameStats)
+  const payouts = useMemo(() => {
+    if (!game) return { q1: { amount: 0 }, q2: { amount: 0 }, q3: { amount: 0 }, final: { amount: 0 } };
 
-  // --- STATS / PAYOUTS (CORRECT SEQUENTIAL ROLLOVER) ---
+    const history = game.payoutHistory || []; 
+    const ideal = {
+      q1: Math.floor(pot * 0.1),
+      q2: Math.floor(pot * 0.2),
+      q3: Math.floor(pot * 0.2),
+      final: pot - (Math.floor(pot * 0.1) + Math.floor(pot * 0.2) * 2),
+    };
+
+    const getQData = (qKey: string, idealAmt: number) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const record = history.find((p: any) => p.quarter === qKey);
+      if (record) return { amount: record.amount, winner: record.winnerName };
+      
+      const order = ['q1', 'q2', 'q3', 'final'];
+      const currentIdx = order.indexOf(game.currentPeriod || 'q1');
+      const targetIdx = order.indexOf(qKey);
+      
+      if (targetIdx < currentIdx) return { amount: 0, isRollover: true };
+      return { amount: idealAmt };
+    };
+
+    return {
+      q1: getQData('q1', ideal.q1),
+      q2: getQData('q2', ideal.q2),
+      q3: getQData('q3', ideal.q3),
+      final: getQData('final', ideal.final),
+    };
+  }, [game, pot]);
+
+  // 3. GAME STATS HOOK (Depends on payouts)
   const gameStats = useMemo(() => {
-    if (!game)
-      return {
-        payouts: { q1: 0, q2: 0, q3: 0, final: 0 },
-        winners: [],
-        currentPotential: 0,
-      };
-
-
-const payouts = useMemo(() => {
-  // Return dummy data if the game isn't loaded to prevent the 'length' crash
-  if (!game) return { 
-    q1: { amount: 0 }, q2: { amount: 0 }, q3: { amount: 0 }, final: { amount: 0 } 
-  };
-
-  // Fallback to empty array if payoutHistory is missing in DB
-  const history = game.payoutHistory || []; 
-  
-  const ideal = {
-    q1: Math.floor(pot * 0.1),
-    q2: Math.floor(pot * 0.2),
-    q3: Math.floor(pot * 0.2),
-    final: pot - (Math.floor(pot * 0.1) + Math.floor(pot * 0.2) * 2),
-  };
-
-  const getQData = (qKey: string, idealAmt: number) => {
-    const record = history.find(p => p.quarter === qKey);
-    if (record) return { amount: record.amount, winner: record.winnerName };
-    
-    const order = ['q1', 'q2', 'q3', 'final'];
-    const currentIdx = order.indexOf(game.currentPeriod || 'q1');
-    const targetIdx = order.indexOf(qKey);
-    
-    if (targetIdx < currentIdx) return { amount: 0, isRollover: true };
-    return { amount: idealAmt };
-  };
-
-  return {
-    q1: getQData('q1', ideal.q1),
-    q2: getQData('q2', ideal.q2),
-    q3: getQData('q3', ideal.q3),
-    final: getQData('final', ideal.final),
-  };
-}, [game, pot]);
+    if (!game) return { payouts: { q1: 0, q2: 0, q3: 0, final: 0 }, winners: [], currentPotential: 0 };
 
     const getOwner = (q: "q1" | "q2" | "q3" | "final") => {
-      const axis =
-        game.isScrambled && game.axis
-          ? game.axis[q]
-          : { row: defaultAxis, col: defaultAxis };
-      let sA = 0,
-        sB = 0;
-      if (q === "q1") {
-        sA = currentScores.q1.home;
-        sB = currentScores.q1.away;
-      } else if (q === "q2") {
-        sA = currentScores.q1.home + currentScores.q2.home;
-        sB = currentScores.q1.away + currentScores.q2.away;
-      } else if (q === "q3") {
-        sA =
-          currentScores.q1.home + currentScores.q2.home + currentScores.q3.home;
-        sB =
-          currentScores.q1.away + currentScores.q2.away + currentScores.q3.away;
-      } else {
-        sA = currentScores.final.home;
-        sB = currentScores.final.away;
-      }
+      const axis = game.isScrambled && game.axis ? game.axis[q] : { row: defaultAxis, col: defaultAxis };
+      let sA = 0, sB = 0;
+      if (q === "q1") { sA = currentScores.q1.home; sB = currentScores.q1.away; } 
+      else if (q === "q2") { sA = currentScores.q1.home + currentScores.q2.home; sB = currentScores.q1.away + currentScores.q2.away; } 
+      else if (q === "q3") { sA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home; sB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away; } 
+      else { sA = currentScores.final.home; sB = currentScores.final.away; }
 
       const r = axis.row.indexOf(sA % 10);
       const c = axis.col.indexOf(sB % 10);
       if (r === -1 || c === -1) return null;
       const cell = game.squares[r * 10 + c];
       if (Array.isArray(cell)) return cell.length > 0 ? cell[0] : null;
-      if (cell) return cell;
-      return null;
+      return cell || null;
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const status = (matchedGame as any)?.status;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const statusType = (matchedGame as any)?.statusDetail;
-
     const p = matchedGame?.period || 1;
-    const isFinal =
-      status === "post" || (statusType && statusType.includes("Final"));
-    const isHalf =
-      status === "halftime" || (statusType && statusType.includes("Halftime"));
+    const isFinal = status === "post" || (statusType && statusType.includes("Final"));
+    const isHalf = status === "halftime" || (statusType && statusType.includes("Halftime"));
 
-    // --- STREET SMART LOGIC: SEQUENTIAL ROLLOVER ---
     let activeRollover = 0;
     const results = [];
     const payoutMap = { q1: 0, q2: 0, q3: 0, final: 0 };
 
-    // --- Q1 ---
+    // Q1
     const q1Done = p > 1 || isHalf || isFinal;
     const w1 = getOwner("q1");
-    // We use payouts.q1.amount because the new structure is an object { amount, winner }
-    const q1Total = (payouts?.q1?.amount || 0) + activeRollover;
-
+    const q1Total = (payouts.q1.amount || 0) + activeRollover;
     if (q1Done) {
       if (w1) {
         payoutMap.q1 = q1Total;
-        results.push({
-          key: "q1",
-          label: "Q1",
-          winner: w1.displayName,
-          amount: q1Total,
-          rollover: false,
-        });
+        results.push({ key: "q1", label: "Q1", winner: w1.displayName, amount: q1Total, rollover: false });
         activeRollover = 0;
       } else {
         payoutMap.q1 = 0;
-        results.push({
-          key: "q1",
-          label: "Q1",
-          winner: "Rollover",
-          amount: 0,
-          rollover: true,
-        });
+        results.push({ key: "q1", label: "Q1", winner: "Rollover", amount: 0, rollover: true });
         activeRollover = q1Total;
       }
     } else {
@@ -426,32 +359,18 @@ const payouts = useMemo(() => {
       activeRollover = 0;
     }
 
-    // --- Q2 ---
-const q2Done = p > 2 || isFinal;
-const w2 = getOwner("q2");
-// Change base.q2 to payouts.q2.amount
-const q2Total = (payouts?.q2?.amount || 0) + activeRollover;
-
+    // Q2
+    const q2Done = p > 2 || isFinal;
+    const w2 = getOwner("q2");
+    const q2Total = (payouts.q2.amount || 0) + activeRollover;
     if (q2Done) {
       if (w2) {
         payoutMap.q2 = q2Total;
-        results.push({
-          key: "q2",
-          label: "Half",
-          winner: w2.displayName,
-          amount: q2Total,
-          rollover: false,
-        });
+        results.push({ key: "q2", label: "Half", winner: w2.displayName, amount: q2Total, rollover: false });
         activeRollover = 0;
       } else {
         payoutMap.q2 = 0;
-        results.push({
-          key: "q2",
-          label: "Half",
-          winner: "Rollover",
-          amount: 0,
-          rollover: true,
-        });
+        results.push({ key: "q2", label: "Half", winner: "Rollover", amount: 0, rollover: true });
         activeRollover = q2Total;
       }
     } else {
@@ -459,32 +378,18 @@ const q2Total = (payouts?.q2?.amount || 0) + activeRollover;
       activeRollover = 0;
     }
 
-    // --- Q3 ---
-const q3Done = p > 3 || isFinal;
-const w3 = getOwner("q3");
-// Change base.q3 to payouts.q3.amount
-const q3Total = (payouts?.q3?.amount || 0) + activeRollover;
-
+    // Q3
+    const q3Done = p > 3 || isFinal;
+    const w3 = getOwner("q3");
+    const q3Total = (payouts.q3.amount || 0) + activeRollover;
     if (q3Done) {
       if (w3) {
         payoutMap.q3 = q3Total;
-        results.push({
-          key: "q3",
-          label: "Q3",
-          winner: w3.displayName,
-          amount: q3Total,
-          rollover: false,
-        });
+        results.push({ key: "q3", label: "Q3", winner: w3.displayName, amount: q3Total, rollover: false });
         activeRollover = 0;
       } else {
         payoutMap.q3 = 0;
-        results.push({
-          key: "q3",
-          label: "Q3",
-          winner: "Rollover",
-          amount: 0,
-          rollover: true,
-        });
+        results.push({ key: "q3", label: "Q3", winner: "Rollover", amount: 0, rollover: true });
         activeRollover = q3Total;
       }
     } else {
@@ -492,119 +397,66 @@ const q3Total = (payouts?.q3?.amount || 0) + activeRollover;
       activeRollover = 0;
     }
 
-    // --- FINAL ---
-const wF = getOwner("final");
-// Change base.final to payouts.final.amount
-const finalTotal = (payouts?.final?.amount || 0) + activeRollover;
-
+    // Final
+    const finalTotal = (payouts.final.amount || 0) + activeRollover;
     if (isFinal) {
       const wFinal = getOwner("final");
-      if (wFinal)
-        results.push({
-          key: "final",
-          label: "Final",
-          winner: wFinal.displayName,
-          amount: finalTotal,
-          rollover: false,
-        });
-      else
-        results.push({
-          key: "final",
-          label: "Final",
-          winner: "No Winner",
-          amount: 0,
-          rollover: true,
-        });
+      if (wFinal) results.push({ key: "final", label: "Final", winner: wFinal.displayName, amount: finalTotal, rollover: false });
+      else results.push({ key: "final", label: "Final", winner: "No Winner", amount: 0, rollover: true });
     }
 
-    return {
-      payouts: payoutMap,
-      winners: results,
-      currentPotential: payoutMap[activeQuarter],
-    };
-  }, [game, currentScores, matchedGame, activeQuarter]);
+    return { payouts: payoutMap, winners: results, currentPotential: payoutMap[activeQuarter] };
+  }, [game, currentScores, matchedGame, activeQuarter, payouts]);
 
-  useEffect(() => {
-    if (id && typeof id === "string") {
-      setGameId(id);
-      if (typeof window !== "undefined")
-        localStorage.setItem("activeGameId", id);
-    }
-  }, [id, setGameId]);
-
-  // Handlers
+  // --- HANDLERS (Paste this between gameStats and the Safety Hatch) ---
   const handleSquareClick = (row: number, col: number) => {
     const index = row * 10 + col;
-
-    console.log('🎯 Square clicked:', { row, col, index, 
-                                         isScrambled: game?.isScrambled, 
-                                         isAdmin,
-                                         currentSelectedCell: selectedCell,
-                                         winningCell: winningCoordinates });
-
-    // 1. ALWAYS set selection first to trigger highlighting (for both viewing and claiming)
+    // 1. ALWAYS set selection first to trigger highlighting
     setSelectedCell({ row, col });
     setIsManualView(true);
 
-    // 2. If Game is Locked (Scrambled) and not Admin, ONLY allow viewing (no claiming)
-    if (game?.isScrambled && !isAdmin) {
-      console.log('🔒 Game locked - view only mode');
-      return;
-    }
+    // 2. If Game is Locked (Scrambled) and not Admin, ONLY allow viewing
+    if (game?.isScrambled && !isAdmin) return;
 
-    // 3. If the user is removing a square from their cart, let them (no checks needed)
+    // 3. Toggle logic for Cart
     if (pendingSquares.includes(index)) {
       setPendingSquares((prev) => prev.filter((i) => i !== index));
       return;
     }
 
-    // 4. --- RULE CHECKS START HERE --- //
-
-    // Check A: Is the user already in THIS specific square?
-    // FIX: Normalize data to ensure it is ALWAYS an array before checking
+    // 4. Validation Rules
     const rawData = game?.squares?.[`${row}-${col}`];
-    const usersInSquare = Array.isArray(rawData)
-      ? rawData
-      : rawData
-        ? [rawData]
-        : [];
-
-    const alreadyInSquare =
-      user && usersInSquare.some((u: any) => u.uid === user.uid);
-
+    const usersInSquare = Array.isArray(rawData) ? rawData : rawData ? [rawData] : [];
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const alreadyInSquare = user && usersInSquare.some((u: any) => u.uid === user.uid);
     if (alreadyInSquare) {
       alert("You already have a spot in this square!");
       return;
     }
 
-    // Check B: Has the user reached the 10-square limit?
     let ownedCount = 0;
     if (user && game?.squares) {
-      // Count how many squares I already own in the database
       Object.values(game.squares).forEach((sqUsers: any) => {
-        if (
-          Array.isArray(sqUsers) &&
-          sqUsers.some((u: any) => u.uid === user.uid)
-        ) {
+        if (Array.isArray(sqUsers) && sqUsers.some((u: any) => u.uid === user.uid)) {
           ownedCount++;
         }
       });
     }
 
-    // Owned + Currently in Cart must be < 10
     if (ownedCount + pendingSquares.length >= 10) {
       alert("Limit reached: You can only choose up to 10 squares.");
       return;
     }
 
-    // 5. If all rules pass, add to cart
-    console.log('✅ Adding square to cart');
     setPendingSquares((prev) => [...prev, index]);
   };
+
   const handleAuth = async () => {
     if (user) await logOut();
     else router.push("/?action=login");
   };
+
   const handleConfirmCart = async () => {
     if (!user) {
       await handleAuth();
@@ -617,12 +469,14 @@ const finalTotal = (payouts?.final?.amount || 0) + activeRollover;
       setPendingSquares([]);
       setSelectedCell(null);
     } catch (err) {
-      alert("Error");
+      alert("Error claiming squares");
     } finally {
       setIsSubmitting(false);
     }
   };
+
   const handleClearCart = () => setPendingSquares([]);
+
   const handleClaim = async () => {
     if (!selectedCell || !game) return;
     if (!user) {
@@ -637,15 +491,17 @@ const finalTotal = (payouts?.final?.amount || 0) + activeRollover;
     try {
       await claimSquare(selectedCell.row * 10 + selectedCell.col);
     } catch (err) {
-      alert("Failed.");
+      alert("Failed to claim.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
   const handleUnclaim = async () => {
     if (selectedCell)
       await unclaimSquare(selectedCell.row * 10 + selectedCell.col);
   };
+
   const copyCode = () => {
     if (game) {
       navigator.clipboard.writeText(game.id);
@@ -653,23 +509,22 @@ const finalTotal = (payouts?.final?.amount || 0) + activeRollover;
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
   const handleDelete = async () => {
-    if (confirm("Are you sure?")) {
+    if (confirm("Are you sure you want to delete this game?")) {
       await deleteGame();
       router.push("/");
     }
   };
-
-// --- THE SAFETY HATCH (Replace lines 390-405) ---
+  
+  // 4. THIS MUST BE LAST - The Loading Screen Logic
   if (!game) {
     if (loading) {
       return (
         <div className="flex h-screen items-center justify-center bg-[#0B0C15] text-cyan-400">
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="w-12 h-12 animate-spin text-indigo-500" />
-            <p className="animate-pulse font-black tracking-widest uppercase text-xs">
-              LOADING GAME DATA...
-            </p>
+            <p className="animate-pulse font-black tracking-widest uppercase text-xs">LOADING GAME DATA...</p>
           </div>
         </div>
       );
