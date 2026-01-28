@@ -1,240 +1,216 @@
-import React from 'react';
+"use client";
+
+import React from "react";
+import { Lock, Trophy } from "lucide-react";
 
 interface GridProps {
   rows: number[];
   cols: number[];
-  squares: Record<string, { uid: string, name: string }[]>;
+  squares: Record<string, { uid: string; name: string; claimedAt: number }[]>;
   onSquareClick: (row: number, col: number) => void;
   teamA: string;
   teamB: string;
   teamALogo?: string;
   teamBLogo?: string;
-  isScrambled?: boolean;
-  selectedCell?: { row: number, col: number } | null;
-  winningCell?: { row: number, col: number } | null;
-  pendingIndices?: number[];
+  isScrambled: boolean;
+  selectedCell: { row: number; col: number } | null;
+  winningCell?: { row: number; col: number } | null;
+  pendingIndices: number[];
   currentUserId?: string;
 }
 
-export default function Grid({ 
-  rows, cols, squares, onSquareClick, 
-  teamA, teamB, teamALogo, teamBLogo, isScrambled, 
-  selectedCell, winningCell, pendingIndices = [], currentUserId 
+export default function Grid({
+  rows,
+  cols,
+  squares,
+  onSquareClick,
+  teamA,
+  teamB,
+  isScrambled,
+  selectedCell,
+  winningCell,
+  pendingIndices,
+  currentUserId,
 }: GridProps) {
-
-  // 1. Helper to get data for a specific cell
-  const getCellData = (r: number, c: number) => squares[`${r}-${c}`]?.[0] || null;
-
-  // 2. Determine who is selected
-  const selectedOwnerData = selectedCell ? getCellData(selectedCell.row, selectedCell.col) : null;
-  const selectedUserIdToHighlight = selectedOwnerData?.uid || null;
-
-  // 3. THE FIX: Determine which Row/Col should be highlighted
-  // If user selected a cell, highlight THAT. Otherwise, highlight the WINNER.
-  const activeFocus = selectedCell ?? winningCell ?? null;
-
-  // Debug logging to verify highlighting works
-  /* 
-  React.useEffect(() => {
-    console.log('📊 Grid Render State:', { 
-      selectedCell, 
-      winningCell, 
-      activeFocus,
-      willHighlightRow: activeFocus?.row,
-      willHighlightCol: activeFocus?.col
-    });
-  }, [selectedCell, winningCell, activeFocus]);
-  */
-
-  // Debug state display
-  const [showDebug] = React.useState(false); // Set to true to show debug panel below grid
-
-  // 4. COLOR GENERATOR
+  
+  // 1. COLOR GENERATOR (Restored from your old code for vibrant squares)
   const getUserColor = (name: string) => {
-      const colors = [
-          "bg-red-500/20 text-red-200 border-red-500/30",
-          "bg-orange-500/20 text-orange-200 border-orange-500/30",
-          "bg-amber-500/20 text-amber-200 border-amber-500/30",
-          "bg-green-500/20 text-green-200 border-green-500/30",
-          "bg-emerald-500/20 text-emerald-200 border-emerald-500/30",
-          "bg-teal-500/20 text-teal-200 border-teal-500/30",
-          "bg-cyan-500/20 text-cyan-200 border-cyan-500/30",
-          "bg-sky-500/20 text-sky-200 border-sky-500/30",
-          "bg-blue-500/20 text-blue-200 border-blue-500/30",
-          "bg-indigo-500/20 text-indigo-200 border-indigo-500/30",
-          "bg-violet-500/20 text-violet-200 border-violet-500/30",
-          "bg-purple-500/20 text-purple-200 border-purple-500/30",
-          "bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-500/30",
-          "bg-pink-500/20 text-pink-200 border-pink-500/30",
-          "bg-rose-500/20 text-rose-200 border-rose-500/30",
-      ];
-      let hash = 0;
-      for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      return colors[Math.abs(hash) % colors.length];
+    const colors = [
+      "bg-red-500/20 text-red-200 border-red-500/30",
+      "bg-orange-500/20 text-orange-200 border-orange-500/30",
+      "bg-amber-500/20 text-amber-200 border-amber-500/30",
+      "bg-green-500/20 text-green-200 border-green-500/30",
+      "bg-emerald-500/20 text-emerald-200 border-emerald-500/30",
+      "bg-teal-500/20 text-teal-200 border-teal-500/30",
+      "bg-cyan-500/20 text-cyan-200 border-cyan-500/30",
+      "bg-sky-500/20 text-sky-200 border-sky-500/30",
+      "bg-blue-500/20 text-blue-200 border-blue-500/30",
+      "bg-indigo-500/20 text-indigo-200 border-indigo-500/30",
+      "bg-violet-500/20 text-violet-200 border-violet-500/30",
+      "bg-purple-500/20 text-purple-200 border-purple-500/30",
+      "bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-500/30",
+      "bg-pink-500/20 text-pink-200 border-pink-500/30",
+      "bg-rose-500/20 text-rose-200 border-rose-500/30",
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const isWinner = (rIndex: number, cIndex: number) => {
+    return winningCell?.row === rIndex && winningCell?.col === cIndex;
   };
 
   return (
-    <div className="grid grid-cols-11 border border-white/5 bg-[#0f111a] select-none">
-      
-      {/* HEADER ROW (TEAM B / COLUMNS) */}
-      <div className="contents">
-         {/* Top Left Corner */}
-         <div className="bg-[#0B0C15] border-r border-b border-white/5 flex items-center justify-center p-1 overflow-hidden relative">
-             {teamALogo && teamBLogo ? (
-                 <div className="relative w-full h-full opacity-50 grayscale">
-                     <img src={teamALogo} className="absolute top-0 left-0 w-4 h-4 object-contain" alt="" />
-                     <img src={teamBLogo} className="absolute bottom-0 right-0 w-4 h-4 object-contain" alt="" />
-                 </div>
-             ) : (
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[8px] text-slate-500 font-bold">VS</div>
-             )}
-         </div>
-
-         {cols.map((num, i) => {
-           // Highlight if this column matches the Active Focus (Selected OR Winner)
-           const isColHighlighted = activeFocus?.col === i;
-           
-           return (
-             <div key={`col-${i}`} className={`relative p-1 h-8 md:h-10 flex items-center justify-center border-b border-r border-white/5 bg-[#151725] transition-all duration-300 ${isColHighlighted ? 'bg-cyan-900/60 shadow-[inset_0_0_20px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.3)] z-40' : ''}`}>
-               {isColHighlighted && (
-                 <>
-                   <div className="absolute inset-0 border-b-4 border-cyan-400 animate-pulse"></div>
-                   <div className="absolute inset-0 bg-gradient-to-b from-cyan-400/20 to-transparent"></div>
-                 </>
-               )}
-               <span className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isColHighlighted ? 'text-cyan-300 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'text-cyan-600'}`}>{num}</span>
-             </div>
-           );
-         })}
+    <div className="w-full h-full flex flex-col select-none bg-[#0f111a] p-1 md:p-2">
+      {/* --- TOP HEADER (TEAM B - CYAN) --- */}
+      <div className="flex h-8 md:h-12 items-center mb-1">
+        {/* Corner Spacer */}
+        <div className="w-8 md:w-12 shrink-0 mr-1" />
+        
+        {/* Team B Name */}
+        <div className="flex-1 flex items-center justify-center bg-[#151725] rounded-t-lg border border-white/5 relative overflow-hidden">
+           <div className="absolute inset-0 bg-cyan-500/5" />
+           <span className="text-cyan-400 font-teko text-lg md:text-2xl tracking-[0.2em] uppercase z-10 font-bold drop-shadow-md">
+             {teamB}
+           </span>
+        </div>
       </div>
 
-      {/* GRID ROWS */}
-      {rows.map((rowNum, rIndex) => {
-        // Highlight if this row matches the Active Focus (Selected OR Winner)
-        const isRowHighlighted = activeFocus?.row === rIndex;
+      <div className="flex flex-1 relative">
+        {/* --- LEFT HEADER (TEAM A - PINK) --- */}
+        <div className="w-8 md:w-12 flex flex-col mr-1">
+           {/* Corner Box */}
+           <div className="h-8 md:h-10 mb-1 bg-[#151725] rounded-tl-lg border border-white/5 flex items-center justify-center text-slate-600">
+              {isScrambled ? <Lock className="w-3 h-3 md:w-4 md:h-4 opacity-50" /> : <div className="w-1 h-1 bg-slate-700 rounded-full" />}
+           </div>
 
-        return (
-            <div key={`row-${rIndex}`} className="contents">
-                {/* LEFT HEADER COLUMN (TEAM A / ROWS) */}
-                <div className={`relative w-8 md:w-10 flex items-center justify-center border-r border-b border-white/5 bg-[#151725] transition-all duration-300 ${isRowHighlighted ? 'bg-pink-900/60 shadow-[inset_0_0_20px_rgba(236,72,153,0.4),0_0_20px_rgba(236,72,153,0.3)] z-40' : ''}`}>
-                {isRowHighlighted && (
-                  <>
-                    <div className="absolute inset-0 border-r-4 border-pink-400 animate-pulse"></div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-pink-400/20 to-transparent"></div>
-                  </>
+           {/* Team A Name */}
+           <div className="flex-1 bg-[#151725] rounded-l-lg border border-white/5 relative overflow-hidden flex items-center justify-center">
+              <div className="absolute inset-0 bg-pink-500/5" />
+              <span className="text-pink-500 font-teko text-lg md:text-2xl tracking-[0.2em] uppercase -rotate-90 whitespace-nowrap z-10 font-bold drop-shadow-md">
+                {teamA}
+              </span>
+           </div>
+        </div>
+
+        {/* --- MAIN GRID --- */}
+        <div className="flex-1 flex flex-col min-w-0">
+          
+          {/* --- TOP NUMBERS --- */}
+          <div className="flex h-8 md:h-10 mb-1">
+            {cols.map((num, i) => (
+              <div
+                key={`col-${i}`}
+                className="flex-1 flex items-center justify-center bg-[#151725] border-r border-white/5 last:border-r-0 first:rounded-bl-lg relative overflow-hidden transition-colors duration-300"
+              >
+                {/* HIDE NUMBERS IF NOT SCRAMBLED */}
+                {isScrambled ? (
+                  <span className="text-cyan-400 font-teko text-xl md:text-3xl font-bold drop-shadow-sm">
+                    {num}
+                  </span>
+                ) : (
+                  <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-slate-800" />
                 )}
-                <span className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isRowHighlighted ? 'text-pink-300 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]' : 'text-pink-700'}`}>{rowNum}</span>
-                </div>
                 
-                {/* SQUARES */}
-                {cols.map((_, cIndex) => {
-                    const cellKey = `${rIndex}-${cIndex}`;
-                    const owner = getCellData(rIndex, cIndex);
-                    const isPending = pendingIndices.includes(rIndex * 10 + cIndex);
-                    
-                    // --- LOGIC STATES ---
-                    const isWinner = winningCell && winningCell.row === rIndex && winningCell.col === cIndex;
-                    const isExactSelected = selectedCell && selectedCell.row === rIndex && selectedCell.col === cIndex;
-                    const isTaken = !!owner;
-                    const belongsToSelectedUser = isTaken && selectedUserIdToHighlight && owner.uid === selectedUserIdToHighlight;
-                    const isMe = currentUserId && owner?.uid === currentUserId;
-
-                    // 🎯 NEW: Check if this square is in the highlighted row or column
-                    const isInHighlightedRow = activeFocus && activeFocus.row === rIndex;
-                    const isInHighlightedCol = activeFocus && activeFocus.col === cIndex;
-                    const isInCrosshair = isInHighlightedRow || isInHighlightedCol;
-
-                    // --- DYNAMIC STYLES ---
-                    let containerClass = "relative w-full aspect-square flex flex-col items-center justify-center cursor-pointer transition-all duration-300";
-                    let textClass = "text-[8px] md:text-[10px] font-bold truncate max-w-[90%] px-0.5";
-                    let borderClass = "border-r border-b border-white/5"; // Default border
-
-                    if (isWinner) {
-                        // 1. WINNER: Gold Background (Overrides everything)
-                        containerClass += " bg-yellow-500/20 shadow-[inset_0_0_15px_rgba(250,204,21,0.4)] z-30 border border-yellow-500";
-                        borderClass = ""; // Winner has its own border
-                        textClass += " text-yellow-200";
-                    } else if (isExactSelected) {
-                        // 2. SELECTED: Bright Indigo
-                        containerClass += " bg-indigo-500/80 z-20 scale-105 shadow-[0_0_20px_rgba(99,102,241,0.5)] border-2 border-white";
-                        borderClass = ""; // Selected has its own border
-                        textClass += " text-white";
-                    } else if (isInCrosshair) {
-                        // 🎯 CROSSHAIR HIGHLIGHTING - Subtle white glow with nearly invisible internal grid lines
-                        containerClass += " shadow-[inset_0_0_12px_rgba(255,255,255,0.2),0_0_10px_rgba(255,255,255,0.15)]";
-                        borderClass = "border-r border-b border-white/[0.02]"; // Almost invisible borders
-                        
-                        // Keep existing content visible on highlighted squares
-                        if (belongsToSelectedUser) {
-                            const userColor = getUserColor(owner.name);
-                            textClass += ` ${userColor.split(' ')[1]}`;
-                        } else if (isTaken) {
-                            // Don't fade taken squares in crosshair
-                        }
-                    } else if (belongsToSelectedUser) {
-                        // 3. FRIEND FILTER
-                        const userColor = getUserColor(owner.name); 
-                        containerClass += ` ${userColor.replace('/20', '/40')} z-10 scale-100 shadow-[inset_0_0_10px_rgba(255,255,255,0.1)] border border-indigo-400/50`;
-                        borderClass = ""; // Has its own border
-                    } else if (isPending) {
-                        // 4. CART
-                        containerClass += " bg-indigo-900/30 animate-pulse";
-                        textClass += " text-indigo-300";
-                    } else if (isTaken && selectedUserIdToHighlight) {
-                        // 5. FADED
-                        containerClass += " bg-[#0b0c15] opacity-20 grayscale"; 
-                        textClass += " text-slate-700";
-                    } else if (isTaken) {
-                        // 6. DEFAULT TAKEN
-                        const userColor = getUserColor(owner.name);
-                        containerClass += ` ${userColor}`; 
-                        if (isMe) {
-                            containerClass += " border border-indigo-500/40";
-                            borderClass = ""; // Has its own border
-                        }
-                    } else {
-                        // 7. EMPTY
-                        containerClass += " hover:bg-white/5";
-                    }
-
-                    return (
-                        <div key={cellKey} onClick={() => onSquareClick(rIndex, cIndex)} className={`${containerClass} ${borderClass}`}>
-                            {isWinner && <div className="absolute -top-1 -right-1 text-[8px]">👑</div>}
-                            
-                            {owner ? (
-                                <span className={textClass}>{owner.name.slice(0, 6)}</span>
-                            ) : isPending ? (
-                                <span className="text-[8px] font-bold text-indigo-400">PICK</span>
-                            ) : null}
-                            
-                            {isExactSelected && <div className="absolute top-0.5 right-0.5 w-1 h-1 bg-white rounded-full shadow-sm" />}
-                        </div>
-                    );
-                })}
-            </div>
-        );
-      })}
-
-      {/* DEBUG PANEL - Remove this after fixing */}
-      {showDebug && (
-        <div className="col-span-11 bg-yellow-500/10 border-t-2 border-yellow-500 p-2">
-          <div className="text-[10px] font-mono text-yellow-300 space-y-1">
-            <div className="font-bold text-yellow-400">🐛 DEBUG INFO:</div>
-            <div>Selected: {selectedCell ? `Row ${selectedCell.row}, Col ${selectedCell.col}` : '❌ None'}</div>
-            <div>Winning: {winningCell ? `Row ${winningCell.row}, Col ${winningCell.col}` : '❌ None'}</div>
-            <div className="font-bold text-green-400">
-              Active Highlight: {activeFocus ? `Row ${activeFocus.row}, Col ${activeFocus.col}` : '❌ NOTHING WILL HIGHLIGHT!'}
-            </div>
-            {activeFocus && (
-              <div className="text-[9px] text-green-300 mt-1 space-y-0.5">
-                <div>✅ Row {activeFocus.row}: All 10 squares should have faint WHITE glow</div>
-                <div>✅ Col {activeFocus.col}: All 10 squares should have faint WHITE glow</div>
-                <div>✅ Selected/Winning square: Bright highlight on top</div>
+                {/* Highlight Logic */}
+                {winningCell?.col === i && (
+                   <div className="absolute inset-0 bg-cyan-500/20 shadow-[inset_0_0_10px_#22d3ee] animate-pulse" />
+                )}
               </div>
-            )}
+            ))}
+          </div>
+
+          {/* --- ROWS --- */}
+          <div className="flex-1 flex flex-col">
+            {rows.map((rowNum, rIndex) => (
+              <div key={`row-${rIndex}`} className="flex-1 flex min-h-0">
+                
+                {/* --- SIDE NUMBERS --- */}
+                <div className="w-8 md:w-12 shrink-0 bg-[#151725] border-b border-white/5 flex items-center justify-center relative overflow-hidden transition-colors duration-300">
+                   {isScrambled ? (
+                      <span className="text-pink-500 font-teko text-xl md:text-3xl font-bold drop-shadow-sm">
+                        {rowNum}
+                      </span>
+                   ) : (
+                      <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-slate-800" />
+                   )}
+
+                   {winningCell?.row === rIndex && (
+                      <div className="absolute inset-0 bg-pink-500/20 shadow-[inset_0_0_10px_#ec4899] animate-pulse" />
+                   )}
+                </div>
+
+                {/* --- SQUARES --- */}
+                {cols.map((colNum, cIndex) => {
+                  const cellKey = `${rIndex}-${cIndex}`;
+                  const cellData = squares[cellKey];
+                  const owner = Array.isArray(cellData) ? cellData[0] : cellData;
+                  const isPending = pendingIndices.includes(rIndex * 10 + cIndex);
+                  const isSelected = selectedCell?.row === rIndex && selectedCell?.col === cIndex;
+                  const cellWinner = isWinner(rIndex, cIndex);
+
+                  // --- STYLE LOGIC ---
+                  let containerClass = "flex-1 relative cursor-pointer flex items-center justify-center transition-all duration-200 border-r border-b border-white/5";
+                  let textClass = "font-bold text-[8px] md:text-[10px] lg:text-xs uppercase tracking-wider truncate px-0.5 text-center w-full";
+
+                  if (cellWinner) {
+                    // Winner: Gold/Yellow Override
+                    containerClass += " bg-yellow-500/20 shadow-[inset_0_0_15px_rgba(250,204,21,0.4)] z-30 border border-yellow-500";
+                    textClass += " text-yellow-200";
+                  } else if (isSelected) {
+                    // Selected: Bright Indigo
+                    containerClass += " bg-indigo-500/80 z-20 scale-105 shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-white";
+                    textClass += " text-white";
+                  } else if (isPending) {
+                    // Cart: Pulsing Indigo
+                    containerClass += " bg-indigo-900/30 animate-pulse border-indigo-500/30 dashed";
+                    textClass += " text-indigo-300";
+                  } else if (owner) {
+                    // Taken: Use Vibrant User Color
+                    const userColor = getUserColor(owner.name);
+                    containerClass += ` ${userColor}`;
+                    // Highlight if it's Me
+                    if (owner.uid === currentUserId) {
+                       containerClass += " border border-indigo-400/50 shadow-inner";
+                    }
+                  } else {
+                    // Empty: Dark
+                    containerClass += " bg-[#0B0C15] hover:bg-white/5";
+                    textClass += " text-white/20";
+                  }
+
+                  return (
+                    <div
+                      key={cellKey}
+                      onClick={() => onSquareClick(rIndex, cIndex)}
+                      className={containerClass}
+                    >
+                      {/* Name Label */}
+                      <span className={textClass}>
+                        {owner ? (
+                           owner.name.split(' ')[0].slice(0, 8)
+                        ) : isPending ? (
+                           "PICK"
+                        ) : (
+                           ""
+                        )}
+                      </span>
+
+                      {/* Winner Crown */}
+                      {cellWinner && (
+                        <div className="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 text-yellow-400 drop-shadow-[0_2px_10px_rgba(250,204,21,0.8)] z-40 animate-bounce">
+                          <Trophy className="w-3 h-3 md:w-5 md:h-5 fill-yellow-400" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
