@@ -283,13 +283,39 @@ export default function GamePage() {
         currentPotential: 0,
       };
 
-      const pot = game.pot || game.totalPot || Object.keys(game.squares).length * game.price;
-    const base = {
-      q1: Math.floor(pot * 0.1),
-      q2: Math.floor(pot * 0.2),
-      q3: Math.floor(pot * 0.2),
-      final: pot - (Math.floor(pot * 0.1) + Math.floor(pot * 0.2) * 2),
-    };
+const pot = game.pot || game.totalPot || 0;
+
+const payouts = useMemo(() => {
+  const history = game.payoutHistory || [];
+  
+  // Default percentages
+  const ideal = {
+    q1: Math.floor(pot * 0.1),
+    q2: Math.floor(pot * 0.2),
+    q3: Math.floor(pot * 0.2),
+    final: pot - (Math.floor(pot * 0.1) + Math.floor(pot * 0.2) * 2),
+  };
+
+  const getQData = (qKey: string, idealAmt: number) => {
+    const record = history.find(p => p.quarter === qKey);
+    if (record) return { amount: record.amount, winner: record.winnerName };
+    
+    // Logic for Rollover: If the game has moved past this quarter but no winner exists
+    const order = ['q1', 'q2', 'q3', 'final'];
+    const currentIdx = order.indexOf(game.currentPeriod || 'q1');
+    const targetIdx = order.indexOf(qKey);
+    
+    if (targetIdx < currentIdx) return { amount: 0, isRollover: true };
+    return { amount: idealAmt };
+  };
+
+  return {
+    q1: getQData('q1', ideal.q1),
+    q2: getQData('q2', ideal.q2),
+    q3: getQData('q3', ideal.q3),
+    final: getQData('final', ideal.final),
+  };
+}, [game, pot]);
 
     const getOwner = (q: "q1" | "q2" | "q3" | "final") => {
       const axis =
@@ -342,7 +368,8 @@ export default function GamePage() {
     // --- Q1 ---
     const q1Done = p > 1 || isHalf || isFinal;
     const w1 = getOwner("q1");
-    const q1Total = base.q1 + activeRollover;
+    // We use payouts.q1.amount because the new structure is an object { amount, winner }
+    const q1Total = payouts.q1.amount + activeRollover;
 
     if (q1Done) {
       if (w1) {
@@ -372,9 +399,10 @@ export default function GamePage() {
     }
 
     // --- Q2 ---
-    const q2Done = p > 2 || isFinal;
-    const w2 = getOwner("q2");
-    const q2Total = base.q2 + activeRollover;
+const q2Done = p > 2 || isFinal;
+const w2 = getOwner("q2");
+// Change base.q2 to payouts.q2.amount
+const q2Total = payouts.q2.amount + activeRollover;
 
     if (q2Done) {
       if (w2) {
@@ -404,9 +432,10 @@ export default function GamePage() {
     }
 
     // --- Q3 ---
-    const q3Done = p > 3 || isFinal;
-    const w3 = getOwner("q3");
-    const q3Total = base.q3 + activeRollover;
+const q3Done = p > 3 || isFinal;
+const w3 = getOwner("q3");
+// Change base.q3 to payouts.q3.amount
+const q3Total = payouts.q3.amount + activeRollover;
 
     if (q3Done) {
       if (w3) {
@@ -436,8 +465,9 @@ export default function GamePage() {
     }
 
     // --- FINAL ---
-    const finalTotal = base.final + activeRollover;
-    payoutMap.final = finalTotal;
+const wF = getOwner("final");
+// Change base.final to payouts.final.amount
+const finalTotal = payouts.final.amount + activeRollover;
 
     if (isFinal) {
       const wFinal = getOwner("final");
