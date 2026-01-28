@@ -187,6 +187,7 @@ export default function GamePage() {
     }
     
     // --- MANUAL FALLBACK ---
+    // FIXED: Added safe navigation ?. to game.scores to prevent crash
     const manualHome = game.scores?.teamA || 0;
     const manualAway = game.scores?.teamB || 0;
     const manualObj = { home: manualHome, away: manualAway };
@@ -211,7 +212,6 @@ export default function GamePage() {
     const storedAway = game.scores?.teamB || 0;
 
     if (liveHome !== storedHome || liveAway !== storedAway) {
-       // Only sync if we have an active ESPN connection
        if (game.espnGameId && matchedGame) {
           console.log(`🔄 Syncing ESPN Scores (${liveHome}-${liveAway}) to Database...`);
           updateScores(liveHome, liveAway);
@@ -226,36 +226,25 @@ export default function GamePage() {
       ? game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }
       : { row: defaultAxis, col: defaultAxis };
 
-    let scoreA = 0,
-      scoreB = 0;
+    let scoreA = 0, scoreB = 0;
     if (activeQuarter === "q1") {
-      scoreA = currentScores.q1.home;
-      scoreB = currentScores.q1.away;
+      scoreA = currentScores.q1.home; scoreB = currentScores.q1.away;
     } else if (activeQuarter === "q2") {
-      scoreA = currentScores.q1.home + currentScores.q2.home;
-      scoreB = currentScores.q1.away + currentScores.q2.away;
+      scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away;
     } else if (activeQuarter === "q3") {
-      scoreA =
-        currentScores.q1.home + currentScores.q2.home + currentScores.q3.home;
-      scoreB =
-        currentScores.q1.away + currentScores.q2.away + currentScores.q3.away;
+      scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home;
+      scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away;
     } else {
-      scoreA = currentScores.final.home;
-      scoreB = currentScores.final.away;
+      scoreA = currentScores.final.home; scoreB = currentScores.final.away;
     }
 
     const rowIndex = axis.row.indexOf(scoreA % 10);
     const colIndex = axis.col.indexOf(scoreB % 10);
-    
-    if (rowIndex === -1 || colIndex === -1) {
-      return null;
-    }
-    
-    const result = { row: rowIndex, col: colIndex };
-    return result;
+    if (rowIndex === -1 || colIndex === -1) return null;
+    return { row: rowIndex, col: colIndex };
   }, [currentScores, activeQuarter, game]);
 
-  // Current axis for rendering the grid
+  // Current axis
   const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
   const currentAxis = game?.isScrambled
     ? game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }
@@ -319,7 +308,6 @@ export default function GamePage() {
     const results = [];
     const payoutMap = { q1: 0, q2: 0, q3: 0, final: 0 };
 
-    // Simplified Winners Logic for Sidebar display
     const q1Done = p > 1 || isHalf || isFinal;
     const w1 = getOwner("q1");
     if (q1Done && w1) results.push({ key: "q1", label: "Q1", winner: w1.displayName, amount: livePayouts.q1, rollover: false });
@@ -332,24 +320,19 @@ export default function GamePage() {
     const index = row * 10 + col;
     setSelectedCell({ row, col });
     setIsManualView(true);
-
     if (game?.isScrambled && !isAdmin) return;
-
     if (pendingSquares.includes(index)) {
       setPendingSquares((prev) => prev.filter((i) => i !== index));
       return;
     }
-
     const rawData = game?.squares?.[`${row}-${col}`];
     const usersInSquare = Array.isArray(rawData) ? rawData : rawData ? [rawData] : [];
-    
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const alreadyInSquare = user && usersInSquare.some((u: any) => u.uid === user.uid);
     if (alreadyInSquare) {
       alert("You already have a spot in this square!");
       return;
     }
-
     let ownedCount = 0;
     if (user && game?.squares) {
       Object.values(game.squares).forEach((sqUsers: any) => {
@@ -358,82 +341,37 @@ export default function GamePage() {
         }
       });
     }
-
     if (ownedCount + pendingSquares.length >= 10) {
       alert("Limit reached: You can only choose up to 10 squares.");
       return;
     }
-
     setPendingSquares((prev) => [...prev, index]);
   };
 
-  const handleAuth = async () => {
-    if (user) await logOut();
-    else router.push("/?action=login");
-  };
-
+  const handleAuth = async () => { if (user) await logOut(); else router.push("/?action=login"); };
   const handleConfirmCart = async () => {
-    if (!user) {
-      await handleAuth();
-      return;
-    }
+    if (!user) { await handleAuth(); return; }
     if (pendingSquares.length === 0) return;
     setIsSubmitting(true);
     try {
       for (const index of pendingSquares) await claimSquare(index);
-      setPendingSquares([]);
-      setSelectedCell(null);
-    } catch (err) {
-      alert("Error claiming squares");
-    } finally {
-      setIsSubmitting(false);
-    }
+      setPendingSquares([]); setSelectedCell(null);
+    } catch (err) { alert("Error claiming squares"); } finally { setIsSubmitting(false); }
   };
-
   const handleClearCart = () => setPendingSquares([]);
-
   const handleClaim = async () => {
     if (!selectedCell || !game) return;
-    if (!user) {
-      await handleAuth();
-      return;
-    }
-    if (game.isScrambled && !isAdmin) {
-      alert("Game is locked!");
-      return;
-    }
+    if (!user) { await handleAuth(); return; }
+    if (game.isScrambled && !isAdmin) { alert("Game is locked!"); return; }
     setIsSubmitting(true);
-    try {
-      await claimSquare(selectedCell.row * 10 + selectedCell.col);
-    } catch (err) {
-      alert("Failed to claim.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    try { await claimSquare(selectedCell.row * 10 + selectedCell.col); } catch (err) { alert("Failed to claim."); } finally { setIsSubmitting(false); }
   };
-
-  const handleUnclaim = async () => {
-    if (selectedCell)
-      await unclaimSquare(selectedCell.row * 10 + selectedCell.col);
-  };
-
-  const copyCode = () => {
-    if (game) {
-      navigator.clipboard.writeText(game.id);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (confirm("Are you sure you want to delete this game?")) {
-      await deleteGame();
-      router.push("/");
-    }
-  };
+  const handleUnclaim = async () => { if (selectedCell) await unclaimSquare(selectedCell.row * 10 + selectedCell.col); };
+  const copyCode = () => { if (game) { navigator.clipboard.writeText(game.id); setCopied(true); setTimeout(() => setCopied(false), 2000); } };
+  const handleDelete = async () => { if (confirm("Are you sure you want to delete this game?")) { await deleteGame(); router.push("/"); } };
    
-  // 4. Loading Screen (PARANOID SAFETY CHECK)
-  // Forces the loading spinner if game OR game.teamA is missing.
+  // 4. Loading Screen
+  // FIXED: Ensure game AND game.teamA exist
   if (!game || !game?.teamA) {
     if (loading) {
       return (
@@ -460,45 +398,19 @@ export default function GamePage() {
       <div className="flex-1 flex flex-col h-full overflow-y-auto no-scrollbar relative">
         {/* MOBILE HEADER */}
         <div className="lg:hidden p-4 bg-[#0B0C15]/95 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5">
-          <div
-            onClick={() => router.push("/")}
-            className="flex items-center gap-2 cursor-pointer"
-          >
+          <div onClick={() => router.push("/")} className="flex items-center gap-2 cursor-pointer">
             <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-white/20">
-              <Image
-                src="/SouperBowlDark.png"
-                alt="Logo"
-                fill
-                className="object-cover"
-              />
+              <Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" />
             </div>
-            <span className="font-bold text-white tracking-widest text-xs uppercase">
-              Souper Bowl Squares
-            </span>
+            <span className="font-bold text-white tracking-widest text-xs uppercase">Souper Bowl Squares</span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleAuth}
-              className="p-2 rounded-full bg-slate-800 border border-slate-700 text-slate-400"
-            >
-              {user ? (
-                <LogOut className="w-4 h-4 text-red-400" />
-              ) : (
-                <LogIn className="w-4 h-4 text-green-400" />
-              )}
+            <button onClick={handleAuth} className="p-2 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
+              {user ? <LogOut className="w-4 h-4 text-red-400" /> : <LogIn className="w-4 h-4 text-green-400" />}
             </button>
-            <button
-              onClick={copyCode}
-              className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700"
-            >
-              <span className="text-xs font-mono text-slate-400">
-                {game.id.slice(0, 6)}...
-              </span>
-              {copied ? (
-                <Check className="w-3 h-3 text-green-400" />
-              ) : (
-                <Copy className="w-3 h-3 text-slate-500" />
-              )}
+            <button onClick={copyCode} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
+              <span className="text-xs font-mono text-slate-400">{game.id.slice(0, 6)}...</span>
+              {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-slate-500" />}
             </button>
           </div>
         </div>
@@ -509,57 +421,34 @@ export default function GamePage() {
             <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
             <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 flex flex-col items-center shadow-2xl">
               <div className="flex w-full justify-between items-start mb-2 relative">
-                {/* TEAM A (LEFT) */}
+                {/* TEAM A */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <span className="text-pink-500 font-teko text-lg md:text-3xl tracking-widest uppercase mb-1 text-center leading-none text-balance w-full break-words px-1">
                     {game.teamA}
                   </span>
                   <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-1">
-                    {activeQuarter === "final"
-                      ? currentScores.final.home
-                      : activeQuarter === "q1"
-                        ? currentScores.q1.home
-                        : activeQuarter === "q2"
-                          ? currentScores.q1.home + currentScores.q2.home
-                          : currentScores.teamA}
+                    {activeQuarter === "final" ? currentScores.final.home : activeQuarter === "q1" ? currentScores.q1.home : activeQuarter === "q2" ? currentScores.q1.home + currentScores.q2.home : currentScores.teamA}
                   </span>
                 </div>
-
-                {/* CENTER CLOCK */}
+                {/* CLOCK */}
                 <div className="flex flex-col items-center w-[30%] shrink-0 z-10 pt-2">
                   <LiveGameClock game={matchedGame} />
-
                   <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100 mt-1">
                     {(["q1", "q2", "q3", "final"] as const).map((q) => (
-                      <button
-                        key={q}
-                        onClick={() => handleQuarterChange(q)}
-                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activeQuarter === q ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-white"}`}
-                      >
+                      <button key={q} onClick={() => handleQuarterChange(q)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activeQuarter === q ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-white"}`}>
                         {q === "final" ? "Final" : q.toUpperCase()}
                       </button>
                     ))}
                   </div>
-                  {isAdmin && (
-                    <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest animate-pulse">
-                      Host Control
-                    </span>
-                  )}
+                  {isAdmin && <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest animate-pulse">Host Control</span>}
                 </div>
-
-                {/* TEAM B (RIGHT) */}
+                {/* TEAM B */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <span className="text-cyan-400 font-teko text-lg md:text-3xl tracking-widest uppercase mb-1 text-center leading-none text-balance w-full break-words px-1">
                     {game.teamB}
                   </span>
                   <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-1">
-                    {activeQuarter === "final"
-                      ? currentScores.final.away
-                      : activeQuarter === "q1"
-                        ? currentScores.q1.away
-                        : activeQuarter === "q2"
-                          ? currentScores.q1.away + currentScores.q2.away
-                          : currentScores.teamB}
+                    {activeQuarter === "final" ? currentScores.final.away : activeQuarter === "q1" ? currentScores.q1.away : activeQuarter === "q2" ? currentScores.q1.away + currentScores.q2.away : currentScores.teamB}
                   </span>
                 </div>
               </div>
@@ -569,21 +458,7 @@ export default function GamePage() {
           {/* GRID */}
           <div className="w-full aspect-square shrink-0 relative z-10">
             <div className="h-full w-full bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 overflow-hidden">
-              <Grid
-                rows={currentAxis.row}
-                cols={currentAxis.col}
-                squares={formattedSquares}
-                onSquareClick={handleSquareClick}
-                teamA={game.teamA || "Home"} 
-                teamB={game.teamB || "Away"} 
-                teamALogo={getTeamLogo(game.teamA)}
-                teamBLogo={getTeamLogo(game.teamB)}
-                isScrambled={game.isScrambled}
-                selectedCell={selectedCell}
-                winningCell={winningCoordinates}
-                pendingIndices={pendingSquares}
-                currentUserId={user?.uid}
-              />
+              <Grid rows={currentAxis.row} cols={currentAxis.col} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamA || "Home"} teamB={game.teamB || "Away"} teamALogo={getTeamLogo(game.teamA)} teamBLogo={getTeamLogo(game.teamB)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} currentUserId={user?.uid} />
             </div>
           </div>
 
@@ -592,40 +467,13 @@ export default function GamePage() {
             <div className="w-full bg-[#151725] border border-indigo-500/50 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
-                    <ShoppingCart className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-indigo-300 font-bold uppercase tracking-widest">
-                      Selected Squares
-                    </span>
-                    <span className="text-xl font-black text-white">
-                      {pendingSquares.length}{" "}
-                      <span className="text-sm font-medium text-slate-400">
-                        Total: ${cartTotal}
-                      </span>
-                    </span>
-                  </div>
+                  <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30"><ShoppingCart className="w-5 h-5 text-white" /></div>
+                  <div className="flex flex-col"><span className="text-xs text-indigo-300 font-bold uppercase tracking-widest">Selected Squares</span><span className="text-xl font-black text-white">{pendingSquares.length} <span className="text-sm font-medium text-slate-400">Total: ${cartTotal}</span></span></div>
                 </div>
-                <button
-                  onClick={handleClearCart}
-                  className="text-xs text-slate-500 hover:text-white underline"
-                >
-                  Clear
-                </button>
+                <button onClick={handleClearCart} className="text-xs text-slate-500 hover:text-white underline">Clear</button>
               </div>
-              <button
-                onClick={handleConfirmCart}
-                disabled={isSubmitting}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] transition-transform disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : user ? (
-                  `Confirm & Claim ($${cartTotal})`
-                ) : (
-                  "Sign In to Claim"
-                )}
+              <button onClick={handleConfirmCart} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] transition-transform disabled:opacity-50 flex items-center justify-center gap-2">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : user ? `Confirm & Claim ($${cartTotal})` : "Sign In to Claim"}
               </button>
             </div>
           ) : (
@@ -633,102 +481,44 @@ export default function GamePage() {
             (() => {
                 const targetCell = selectedCell || winningCoordinates;
                 const isWinnerView = !selectedCell && winningCoordinates; 
-                
-                const isTargetWinning = winningCoordinates && targetCell && 
-                                        winningCoordinates.row === targetCell.row && 
-                                        winningCoordinates.col === targetCell.col;
-
+                const isTargetWinning = winningCoordinates && targetCell && winningCoordinates.row === targetCell.row && winningCoordinates.col === targetCell.col;
                 return (
-                    <div
-                      className={`w-full bg-[#151725] border ${
-                        isTargetWinning 
-                            ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" 
-                            : "border-white/10"
-                      } rounded-2xl p-3 shadow-xl shrink-0 transition-all`}
-                    >
+                    <div className={`w-full bg-[#151725] border ${isTargetWinning ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
                       <div className="flex items-center justify-between mb-2 border-b border-white/5 pb-1">
                         <div className="flex flex-col">
                           <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-2">
-                             {selectedCell ? (
-                                "Selected Square"
-                             ) : isWinnerView ? (
-                                <span className="text-yellow-400 flex items-center gap-1 animate-pulse">
-                                    <Trophy className="w-3 h-3" /> Winning Square
-                                </span>
-                             ) : (
-                                "Square Details"
-                             )}
+                             {selectedCell ? "Selected Square" : isWinnerView ? <span className="text-yellow-400 flex items-center gap-1 animate-pulse"><Trophy className="w-3 h-3" /> Winning Square</span> : "Square Details"}
                           </span>
                           <span className="text-lg font-black text-white flex items-center gap-2">
-                            {targetCell
-                              ? `Row ${currentAxis.row[targetCell.row]} • Col ${currentAxis.col[targetCell.col]}`
-                              : "Select a Square"}
-                            
-                            {isTargetWinning && (
-                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />
-                            )}
+                            {targetCell ? `Row ${currentAxis.row[targetCell.row]} • Col ${currentAxis.col[targetCell.col]}` : "Select a Square"}
+                            {isTargetWinning && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />}
                           </span>
                         </div>
-                        {selectedCell && (
-                          <button
-                            onClick={() => setSelectedCell(null)}
-                            className="p-1 rounded-full hover:bg-white/10 text-slate-500"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
+                        {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/10 text-slate-500"><X className="w-4 h-4" /></button>}
                       </div>
-
                       {targetCell ? (
                           (() => {
                              const cellKey = `${targetCell.row}-${targetCell.col}`;
                              const cellData = formattedSquares[cellKey] || [];
-                             
                              return (
                                 <div className="space-y-2">
                                   <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                                    {cellData.length === 0 ? (
-                                      <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg">
-                                        Empty Square
-                                      </div>
-                                    ) : (
+                                    {cellData.length === 0 ? <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg">Empty Square</div> : 
                                       cellData.map((p, i) => (
-                                        <div
-                                          key={i}
-                                          className={`flex justify-between items-center p-2 rounded-lg border ${p.uid === user?.uid ? "bg-indigo-600/20 border-indigo-500/30" : "bg-black/40 border-white/5"}`}
-                                        >
+                                        <div key={i} className={`flex justify-between items-center p-2 rounded-lg border ${p.uid === user?.uid ? "bg-indigo-600/20 border-indigo-500/30" : "bg-black/40 border-white/5"}`}>
                                           <div className="flex items-center gap-2">
-                                            <div
-                                              className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold ${p.uid === user?.uid ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}
-                                            >
-                                              {i + 1}
-                                            </div>
-                                            <span
-                                              className={`text-xs font-bold ${p.uid === user?.uid ? "text-indigo-200" : "text-slate-200"}`}
-                                            >
-                                              {p.name} {p.uid === user?.uid && "(You)"}
-                                            </span>
+                                            <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold ${p.uid === user?.uid ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}>{i + 1}</div>
+                                            <span className={`text-xs font-bold ${p.uid === user?.uid ? "text-indigo-200" : "text-slate-200"}`}>{p.name} {p.uid === user?.uid && "(You)"}</span>
                                           </div>
-                                          {(isAdmin || p.uid === user?.uid) && (
-                                            <button
-                                              onClick={handleUnclaim}
-                                              className="p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"
-                                            >
-                                              <Trash2 className="w-3 h-3" />
-                                            </button>
-                                          )}
+                                          {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"><Trash2 className="w-3 h-3" /></button>}
                                         </div>
                                       ))
-                                    )}
+                                    }
                                   </div>
                                 </div>
                              )
                           })()
-                       ) : (
-                        <div className="text-center py-4 text-slate-500 text-xs">
-                          Tap empty squares to build your cart.
-                        </div>
-                      )}
+                       ) : <div className="text-center py-4 text-slate-500 text-xs">Tap empty squares to build your cart.</div>}
                     </div>
                 )
             })()
@@ -745,14 +535,10 @@ export default function GamePage() {
               payouts={livePayouts}
               winners={gameStats?.winners || []}
               matchup={{ teamA: game.teamA || "Home", teamB: game.teamB || "Away" }}
-              scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
+              scores={{ teamA: game.scores?.teamA || 0, teamB: game.scores?.teamB || 0 }} 
               isAdmin={isAdmin}
               isScrambled={game.isScrambled}
-              eventDate={
-                matchedGame?.date ||
-                game.createdAt?.toDate?.()?.toString() ||
-                new Date().toISOString()
-              }
+              eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
               onUpdateScores={updateScores}
               onDeleteGame={handleDelete}
               onScrambleGridDigits={scrambleGrid}
@@ -767,59 +553,20 @@ export default function GamePage() {
       {/* DESKTOP SIDEBAR */}
       <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-[#0f111a] border-l border-white/5 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl relative">
         <div className="mb-6">
-          <div
-            onClick={() => router.push("/")}
-            className="cursor-pointer group"
-          >
+          <div onClick={() => router.push("/")} className="cursor-pointer group">
             <div className="relative w-full h-32 rounded-xl overflow-hidden border border-white/10 mb-4 shadow-xl group-hover:shadow-2xl transition-all">
-              <Image
-                src="/SouperBowlBanner.jpg"
-                alt="Banner"
-                fill
-                className="object-cover"
-              />
+              <Image src="/SouperBowlBanner.jpg" alt="Banner" fill className="object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0f111a] to-transparent/50" />
               <div className="absolute bottom-3 left-3 flex items-center gap-3">
-                <div className="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg">
-                  <Image
-                    src="/SouperBowlDark.png"
-                    alt="Logo"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div>
-                  <h1 className="text-white font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">
-                    Souper Bowl
-                  </h1>
-                  <h1 className="text-indigo-400 font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">
-                    Squares
-                  </h1>
-                </div>
+                <div className="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg"><Image src="/SouperBowlDark.png" alt="Logo" fill className="object-cover" /></div>
+                <div><h1 className="text-white font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Souper Bowl</h1><h1 className="text-indigo-400 font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Squares</h1></div>
               </div>
             </div>
-            <p className="text-slate-400 text-xs font-medium leading-relaxed border-l-2 border-indigo-500 pl-3 italic">
-              "Go Big or Go Home. Connect, compete, and win big with the
-              ultimate squares experience. Because with us, a Nguyen is always a
-              Win"
-            </p>
+            <p className="text-slate-400 text-xs font-medium leading-relaxed border-l-2 border-indigo-500 pl-3 italic">"Go Big or Go Home. Connect, compete, and win big with the ultimate squares experience. Because with us, a Nguyen is always a Win"</p>
           </div>
           <div className="mt-6 flex justify-between items-center border-t border-white/5 pt-4">
-            <button
-              onClick={handleAuth}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800 border border-slate-700 text-white font-bold text-xs uppercase hover:bg-slate-700 transition-colors"
-            >
-              {user ? (
-                <>
-                  <LogOut className="w-4 h-4 text-red-400" />
-                  <span>Log Out</span>
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4 text-green-400" />
-                  <span>Log In</span>
-                </>
-              )}
+            <button onClick={handleAuth} className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800 border border-slate-700 text-white font-bold text-xs uppercase hover:bg-slate-700 transition-colors">
+              {user ? <><LogOut className="w-4 h-4 text-red-400" /><span>Log Out</span></> : <><LogIn className="w-4 h-4 text-green-400" /><span>Log In</span></>}
             </button>
           </div>
         </div>
@@ -833,14 +580,10 @@ export default function GamePage() {
           payouts={livePayouts}
           winners={gameStats?.winners || []}
           matchup={{ teamA: game.teamA || "Home", teamB: game.teamB || "Away" }}
-          scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
+          scores={{ teamA: game.scores?.teamA || 0, teamB: game.scores?.teamB || 0 }}
           isAdmin={isAdmin}
           isScrambled={game.isScrambled}
-          eventDate={
-            matchedGame?.date ||
-            game.createdAt?.toDate?.()?.toString() ||
-            new Date().toISOString()
-          }
+          eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
           onUpdateScores={updateScores}
           onDeleteGame={handleDelete}
           onScrambleGridDigits={scrambleGrid}
