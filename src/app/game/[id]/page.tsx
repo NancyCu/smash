@@ -350,8 +350,9 @@ export default function GamePage() {
       const c = axis.col.indexOf(sB % 10);
       if (r === -1 || c === -1) return null;
       const cell = game.squares[r * 10 + c];
-      if (Array.isArray(cell)) return cell.length > 0 ? cell[0] : null;
-      return cell || null;
+      // Return all owners in the square
+      if (Array.isArray(cell)) return cell.length > 0 ? cell : null;
+      return cell ? [cell] : null;
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -395,10 +396,16 @@ export default function GamePage() {
         effectivePayouts[period] = effectiveAmount;
         
         if (periodComplete && winner) {
+          // Join all winner names with a separator
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const winnerNames = Array.isArray(winner) 
+            ? winner.map((w: any) => w.displayName || w.name).join(', ')
+            : (winner as any).displayName || (winner as any).name;
+          
           results.push({ 
             key: period, 
             label: getPeriodLabel(period, sportType), 
-            winner: winner.displayName, 
+            winner: winnerNames, 
             amount: effectiveAmount,
             baseAmount,
             rolloverAmount: rolloverCash,

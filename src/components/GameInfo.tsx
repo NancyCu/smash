@@ -125,8 +125,8 @@ export default function GameInfo({
                             {isRealWinner ? `$${winnerObj.amount}` : `$${p.amount}`}
                         </span>
 
-                        {/* Rollover Breakdown */}
-                        {hasRolloverBonus && (
+                        {/* Rollover Breakdown - Only show if > 0 */}
+                        {isRealWinner && winnerObj.rolloverAmount > 0 && (
                             <span className="text-[7px] text-yellow-400 font-bold mt-0.5">
                                 +${winnerObj.rolloverAmount} Bonus
                             </span>
@@ -134,7 +134,7 @@ export default function GameInfo({
 
                         {/* Footer Text */}
                         {isRealWinner ? (
-                            <span className="text-[9px] text-green-300 font-bold truncate max-w-full">{winnerObj.winner}</span>
+                            <span className="text-[9px] text-green-300 font-bold text-center leading-tight max-w-full break-words">{winnerObj.winner}</span>
                         ) : isRollover ? (
                             <span className="text-[7px] text-red-400 font-bold uppercase mt-1 tracking-wider">Rollover</span>
                         ) : null}
