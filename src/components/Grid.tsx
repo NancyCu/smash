@@ -70,89 +70,112 @@ export default function Grid({
   };
 
   return (
-    // OUTER CONTAINER - FLEX COLUMN
+    // OUTER CONTAINER - FLEX COLUMN (thin team bars like reference)
     <div className="flex flex-col h-full w-full bg-[#0f111a] select-none">
       {/* --- 1. TOP HEADER BAR (TEAM B - CYAN) --- */}
-      <div
-        className={`w-full flex items-center justify-center border-b border-white/5 transition-all duration-500 overflow-hidden relative ${isScrambled ? "h-6 md:h-8 bg-[#151725]" : "h-16 md:h-24 bg-cyan-950/30"}`}
-      >
-        {/* Watermark Logo */}
-        {teamBLogo && (
-          <img
-            src={teamBLogo}
-            className="absolute inset-0 w-full h-full object-cover opacity-[0.03] grayscale"
-            alt=""
-          />
-        )}
-
+      {isScrambled ? (
         <div
-          className={`flex items-center gap-2 transition-all duration-500 relative z-10 ${isScrambled ? "scale-75 opacity-80" : "scale-100 opacity-100"}`}
-        >
-          {teamBLogo && (
-            <img
-              src={teamBLogo}
-              className={`${isScrambled ? "w-4 h-4" : "w-10 h-10 md:w-16 md:h-16"} object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]`}
-              alt=""
-            />
-          )}
-          <span
-            className={`text-cyan-400 font-teko uppercase font-bold tracking-[0.2em] drop-shadow-[0_0_15px_rgba(34,211,238,0.4)] ${isScrambled ? "text-xs" : "text-3xl md:text-6xl"}`}
-          >
-            {teamB}
-          </span>
-          {teamBLogo && (
-            <img
-              src={teamBLogo}
-              className={`${isScrambled ? "w-4 h-4" : "w-10 h-10 md:w-16 md:h-16"} object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]`}
-              alt=""
-            />
-          )}
-        </div>
-      </div>
-
-      {/* MAIN CONTENT - FLEX ROW */}
-      <div className="flex flex-1 min-h-0 relative">
-        {/* --- 2. LEFT SIDEBAR (TEAM A - PINK) --- */}
-        <div
-          className={`h-full border-r border-white/5 flex items-center justify-center transition-all duration-500 relative overflow-hidden ${isScrambled ? "w-6 md:w-8 bg-[#151725]" : "w-16 md:w-24 bg-pink-950/30"}`}
+          className="relative w-full flex items-center justify-center border-b border-white/5 bg-[#151725] h-8 md:h-10 overflow-hidden"
         >
           {/* Watermark Logo */}
-          {teamALogo && (
+          {teamBLogo && (
             <img
-              src={teamALogo}
-              className="absolute inset-0 w-full h-full object-cover opacity-[0.03] grayscale"
+              src={teamBLogo}
+              className="absolute inset-0 w-full h-full object-cover opacity-[0.05] grayscale"
               alt=""
             />
           )}
 
           <div
-            className={`flex flex-col items-center gap-2 transition-all duration-500 relative z-10 h-full justify-center ${isScrambled ? "scale-75 opacity-80" : "scale-100 opacity-100"}`}
+            className="flex items-center gap-2 relative z-10 px-2"
           >
-            {teamALogo && (
+            {teamBLogo && (
               <img
-                src={teamALogo}
-                className={`${isScrambled ? "w-4 h-4" : "w-10 h-10 md:w-16 md:h-16"} object-contain drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]`}
+                src={teamBLogo}
+                className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
                 alt=""
               />
             )}
             <span
-              className={`text-pink-500 font-teko uppercase font-bold tracking-[0.2em] drop-shadow-[0_0_15px_rgba(236,72,153,0.4)] whitespace-nowrap [writing-mode:vertical-rl] rotate-180 ${isScrambled ? "text-xs" : "text-3xl md:text-6xl"}`}
+              className="text-cyan-400 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(34,211,238,0.4)] text-lg md:text-2xl truncate max-w-[80%]"
             >
-              {teamA}
+              {teamB}
             </span>
-            {teamALogo && (
+            {teamBLogo && (
               <img
-                src={teamALogo}
-                className={`${isScrambled ? "w-4 h-4" : "w-10 h-10 md:w-16 md:h-16"} object-contain drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]`}
+                src={teamBLogo}
+                className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
                 alt=""
               />
             )}
           </div>
         </div>
+      ) : null}
+
+      {/* MAIN CONTENT - FLEX ROW */}
+      <div className="flex flex-1 min-h-0 relative">
+        {/* --- 2. LEFT SIDEBAR (TEAM A - PINK) --- */}
+        {isScrambled ? (
+          <div
+            className="relative h-full border-r border-white/5 flex items-center justify-center bg-[#151725] w-8 md:w-10 overflow-hidden"
+          >
+            {/* Watermark Logo */}
+            {teamALogo && (
+              <img
+                src={teamALogo}
+                className="absolute inset-0 w-full h-full object-cover opacity-[0.05] grayscale"
+                alt=""
+              />
+            )}
+
+            <div
+              className="flex flex-col items-center gap-2 relative z-10 py-2 h-full justify-center"
+            >
+              {teamALogo && (
+                <img
+                  src={teamALogo}
+                  className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
+                  alt=""
+                />
+              )}
+              <span
+                className="text-pink-500 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(236,72,153,0.4)] whitespace-nowrap [writing-mode:vertical-rl] rotate-180 text-lg md:text-2xl truncate"
+              >
+                {teamA}
+              </span>
+              {teamALogo && (
+                <img
+                  src={teamALogo}
+                  className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
+                  alt=""
+                />
+              )}
+            </div>
+          </div>
+        ) : null}
 
         {/* --- 3. THE GRID --- */}
-        <div className="flex-1 h-full">
-          <div className="grid grid-cols-11 border-b border-r border-white/5 h-full w-full bg-[#0f111a]">
+        <div className={`${isScrambled ? "flex-1" : "w-full"} h-full`}>
+          <div className="relative h-full w-full">
+            {!isScrambled && (
+              <>
+                {/* Team B name overlay across the top header row (inside grid) */}
+                <div className="pointer-events-none absolute top-0 left-8 md:left-10 right-0 h-8 md:h-10 flex items-center justify-center z-50">
+                  <span className="text-cyan-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] text-sm md:text-base truncate max-w-[85%]">
+                    {teamB}
+                  </span>
+                </div>
+
+                {/* Team A name overlay down the left header column (inside grid) */}
+                <div className="pointer-events-none absolute top-8 md:top-10 left-0 w-8 md:w-10 bottom-0 flex items-center justify-center z-50">
+                  <span className="text-pink-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(236,72,153,0.5)] text-sm md:text-base whitespace-nowrap [writing-mode:vertical-rl] rotate-180 truncate">
+                    {teamA}
+                  </span>
+                </div>
+              </>
+            )}
+
+            <div className="grid grid-cols-11 border-b border-r border-white/5 h-full w-full bg-[#0f111a]">
             {/* HEADER ROW (COLUMNS) */}
             <div className="contents">
               {/* CORNER */}
@@ -194,6 +217,13 @@ export default function Grid({
                     key={`col-${i}`}
                     className={`relative p-1 h-8 md:h-10 flex items-center justify-center border-b border-r border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isColHighlighted ? "bg-cyan-900/60 shadow-[inset_0_0_20px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.3)] z-40" : ""}`}
                   >
+                    {!isScrambled && teamBLogo && (
+                      <img
+                        src={teamBLogo}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-contain opacity-[0.08] grayscale pointer-events-none"
+                      />
+                    )}
                     {isColHighlighted && (
                       <>
                         <div className="absolute inset-0 border-b-4 border-cyan-400 animate-pulse"></div>
@@ -223,6 +253,13 @@ export default function Grid({
                   <div
                     className={`relative w-8 md:w-10 flex items-center justify-center border-r border-b border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isRowHighlighted ? "bg-pink-900/60 shadow-[inset_0_0_20px_rgba(236,72,153,0.4),0_0_20px_rgba(236,72,153,0.3)] z-40" : ""}`}
                   >
+                    {!isScrambled && teamALogo && (
+                      <img
+                        src={teamALogo}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-contain opacity-[0.08] grayscale pointer-events-none"
+                      />
+                    )}
                     {isRowHighlighted && (
                       <>
                         <div className="absolute inset-0 border-r-4 border-pink-400 animate-pulse"></div>
@@ -367,6 +404,7 @@ export default function Grid({
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       </div>
