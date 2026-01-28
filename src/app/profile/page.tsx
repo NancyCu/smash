@@ -50,14 +50,12 @@ const handleEnterGame = async (gameId: string) => {
   if (!user) return;
   
   try {
-    // 1. Ensure the DB knows you're a participant
+    // 1. Still join the game in the DB to be safe
     await joinGame(gameId, undefined, user.uid);
     
-    // 2. THIS IS THE KEY: Prime the local storage for the Wormhole redirect
-    localStorage.setItem('lastActiveGameId', gameId);
-    
-    // 3. Redirect to the live path which handles the 'Wormhole' logic
-    router.push("/live"); 
+    // 2. Drive straight to the dynamic route
+    // This bypasses the lobby/wormhole logic entirely
+    router.push(`/game/${gameId}`); 
   } catch (error) {
     console.error("Failed to enter game:", error);
   }
