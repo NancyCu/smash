@@ -494,12 +494,12 @@ export default function GamePage() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-4 gap-1">
+        <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-4 gap-2 lg:gap-4">
           {/* SCOREBOARD */}
           <div className="w-full relative group z-20 shrink-0">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
-            <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 flex flex-col items-center shadow-2xl">
-              <div className="flex w-full justify-between items-start mb-2 relative">
+            <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 flex flex-col items-center shadow-2xl">
+              <div className="flex w-full justify-between items-start relative">
                 {/* TEAM A */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <div className="flex items-center gap-2 mb-1 justify-center w-full">
@@ -527,7 +527,7 @@ export default function GamePage() {
                 {/* CLOCK */}
                 <div className="flex flex-col items-center w-[30%] shrink-0 z-10 pt-2">
                   <LiveGameClock game={matchedGame} />
-                  <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100 mt-1">
+                  <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100">
                     {displayPeriods.map((period) => (
                       <button key={period} onClick={() => handlePeriodChange(period)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activePeriod === period ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-white"}`}>
                         {getPeriodLabel(period, sportType)}
@@ -536,14 +536,14 @@ export default function GamePage() {
                   </div>
                   {game.espnGameId ? (
                      espnError ? (
-                        <span className="text-[9px] text-red-500 font-bold uppercase mt-1 tracking-widest animate-pulse">Sync Error</span>
+                        <span className="text-[9px] text-red-500 font-bold uppercase tracking-widest animate-pulse">Sync Error</span>
                      ) : (
-                        <span className="flex items-center justify-center mt-1">
+                        <span className="flex items-center justify-center">
                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>
                         </span>
                      )
                   ) : (
-                     <span className="text-[9px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Manual Mode</span>
+                     <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Manual Mode</span>
                   )}
                 </div>
                 {/* TEAM B */}
