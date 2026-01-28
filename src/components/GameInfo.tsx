@@ -104,6 +104,9 @@ export default function GameInfo({
                 // 2. Rollover: Object exists with rollover=true OR amount is 0 w/ no winner
                 const isRollover = (winnerObj && winnerObj.rollover) || (p.amount === 0 && !isRealWinner && totalPot > 0);
                 
+                // Check if this winner has rollover money included
+                const hasRolloverBonus = isRealWinner && winnerObj.rolloverAmount && winnerObj.rolloverAmount > 0;
+                
                 return (
                     <div key={i} className={`flex flex-col items-center rounded-lg p-2 border relative overflow-hidden group transition-all ${
                         isRealWinner 
@@ -121,6 +124,13 @@ export default function GameInfo({
                         <span className={`text-sm font-black transition-colors ${isRollover ? "text-red-400 line-through decoration-2" : "text-white"}`}>
                             {isRealWinner ? `$${winnerObj.amount}` : `$${p.amount}`}
                         </span>
+
+                        {/* Rollover Breakdown */}
+                        {hasRolloverBonus && (
+                            <span className="text-[7px] text-yellow-400 font-bold mt-0.5">
+                                +${winnerObj.rolloverAmount} Bonus
+                            </span>
+                        )}
 
                         {/* Footer Text */}
                         {isRealWinner ? (

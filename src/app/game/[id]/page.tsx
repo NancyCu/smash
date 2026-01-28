@@ -311,7 +311,7 @@ export default function GamePage() {
 
   // --- SIDEBAR PAYOUTS (SPORT-AWARE) ---
   const livePot = Object.keys(game?.squares || {}).length * (game?.price || 10);
-  const livePayouts = useMemo(() => {
+  const basePayouts = useMemo(() => {
     const payoutMap: Record<string, number> = {};
     sportConfig.periods.forEach(period => {
       const percentage = sportConfig.payoutStructure[period];
@@ -320,9 +320,9 @@ export default function GamePage() {
     return payoutMap;
   }, [livePot, sportConfig]);
 
-  // 3. GAME STATS HOOK (SPORT-AWARE)
+  // 3. GAME STATS HOOK WITH ROLLOVER LOGIC (SPORT-AWARE)
   const gameStats = useMemo(() => {
-    if (!game) return { payouts: {}, winners: [], currentPotential: 0 };
+    if (!game) return { payouts: {}, winners: [], currentPotential: 0, effectivePayouts: {} };
 
     const getOwner = (period: PeriodKey) => {
       const axis = (game.isScrambled && game.axis && game.axis[period]) ? game.axis[period] : { row: defaultAxis, col: defaultAxis };
@@ -361,30 +361,66 @@ export default function GamePage() {
     const p = matchedGame?.period || 1;
     const isFinal = status === "post" || (statusType && statusType.includes("Final"));
 
-    const results: { key: PeriodKey | string; label: string; winner: string; amount: number; rollover: boolean }[] = [];
+    // --- CHRONOLOGICAL ROLLOVER LOGIC ---
+    let rolloverCash = 0;
+    const effectivePayouts: Record<string, number> = {};
+    const results: { key: PeriodKey | string; label: string; winner: string; amount: number; rollover: boolean; baseAmount: number; rolloverAmount: number }[] = [];
 
-    // Check which periods have payouts and which are complete
+    // Process periods in chronological order
     displayPeriods.forEach((period, idx) => {
       const periodComplete = sportType === 'soccer' 
         ? (period === 'p1' && p > 1) || (period === 'p2' && (p > 2 || isFinal)) || (period === 'final' && isFinal)
         : (idx < p - 1) || (period === 'final' && isFinal);
       
       const winner = getOwner(period);
-      const amount = livePayouts[period] || 0;
+      const baseAmount = basePayouts[period] || 0;
       
-      if (periodComplete && winner && amount > 0) {
+      // CONDITION A: Period is completed but has no winner -> rollover
+      if (periodComplete && !winner && baseAmount > 0) {
+        rolloverCash += baseAmount;
+        effectivePayouts[period] = 0;
         results.push({ 
           key: period, 
           label: getPeriodLabel(period, sportType), 
-          winner: winner.displayName, 
-          amount, 
-          rollover: false 
+          winner: '', 
+          amount: 0,
+          baseAmount,
+          rolloverAmount: 0,
+          rollover: true 
         });
+      }
+      // CONDITION B: Period has winner OR is pending/active -> apply rollover
+      else {
+        const effectiveAmount = baseAmount + rolloverCash;
+        effectivePayouts[period] = effectiveAmount;
+        
+        if (periodComplete && winner) {
+          results.push({ 
+            key: period, 
+            label: getPeriodLabel(period, sportType), 
+            winner: winner.displayName, 
+            amount: effectiveAmount,
+            baseAmount,
+            rolloverAmount: rolloverCash,
+            rollover: false 
+          });
+        }
+        
+        // Reset rollover after applying
+        rolloverCash = 0;
       }
     });
     
-    return { payouts: livePayouts, winners: results, currentPotential: livePayouts[activePeriod] || 0 };
-  }, [game, currentScores, matchedGame, activePeriod, livePayouts, sportType, displayPeriods]);
+    return { 
+      payouts: basePayouts, 
+      effectivePayouts,
+      winners: results, 
+      currentPotential: effectivePayouts[activePeriod] || basePayouts[activePeriod] || 0 
+    };
+  }, [game, currentScores, matchedGame, activePeriod, basePayouts, sportType, displayPeriods]);
+
+  // Use effective payouts for display
+  const livePayouts = gameStats.effectivePayouts;
 
   // --- HANDLERS ---
   const handleSquareClick = (row: number, col: number) => {
