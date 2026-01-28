@@ -25,9 +25,14 @@ import {
 import { useEspnScores } from "@/hooks/useEspnScores";
 
 export default function GamePage() {
-  const { id } = useParams();
   const router = useRouter();
+  const { id } = useParams(); // This is the 'id' you actually use
+
+  // 1. Hooks
+  const { user, logOut } = useAuth();
+  const { games: liveGames } = useEspnScores();
   const {
+    // REMOVED 'id' FROM HERE (it doesn't exist in useGame)
     game,
     setGameId,
     loading,
@@ -42,33 +47,26 @@ export default function GamePage() {
     setGamePhase,
   } = useGame();
 
-  // DELETE THE REDUNDANT LINES THAT WERE HERE (the second const { id } and const { game })
-
+  // 2. Data Fetching
   useEffect(() => {
     if (id) {
       setGameId(id as string);
     }
   }, [id, setGameId]);
 
-  // 1. Get a safe reference to squares to prevent the .length crash
+  // 3. Safety & Pot Logic
   const squares = game?.squares ?? {};
-
-  // 2. Define the ONE AND ONLY pot variable
   const pot = game?.pot || game?.totalPot || (Object.keys(squares).length * (game?.price || 0));
   
   // ... rest of the file
 
-
-  const { user, logOut } = useAuth();
-  const { games: liveGames } = useEspnScores();
-
+  // 4. Live Game Sync
   const matchedGame = useMemo(
-    () =>
-      game?.espnGameId ? liveGames.find((g) => g.id === game.espnGameId) : null,
-    [game, liveGames],
+    () => game?.espnGameId ? liveGames.find((g) => g.id === game.espnGameId) : null,
+    [game, liveGames]
   );
 
-  // --- STATE ---
+  // 5. State (Rest of your original logic)
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isManualView, setIsManualView] = useState(false);
