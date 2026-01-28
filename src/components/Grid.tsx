@@ -56,14 +56,14 @@ export default function Grid({
           <div className="relative h-full w-full">
             {/* Team B name overlay across the top header row (inside grid) */}
             <div className="pointer-events-none absolute -top-6 left-8 md:left-10 right-0 h-8 md:h-10 flex items-center justify-center z-50 mb-2">
-                <span className="text-cyan-200/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(34,211,238,0.9)] text-sm md:text-base truncate max-w-[85%] z-10 relative">
+                <span className="text-[#22d3ee]/90 font-teko font-black uppercase tracking-[0.25em] md:tracking-[0.3em] blur-[0.5px] drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] drop-shadow-[0_0_10px_rgba(34,211,238,0.6)] text-xs md:text-sm whitespace-nowrap overflow-visible z-10 relative">
                 {teamB}
                 </span>
             </div>
 
             {/* Team A name overlay down the left header column (inside grid) */}
             <div className="pointer-events-none absolute top-8 md:top-10 -left-6 w-8 md:w-10 bottom-0 flex items-center justify-center z-50">
-                <span className="text-pink-200/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(236,72,153,0.9)] text-sm md:text-base whitespace-nowrap [writing-mode:vertical-rl] rotate-180 truncate mr-2 z-10 relative">
+                <span className="text-[#db2777]/90 font-teko font-black uppercase tracking-[0.25em] md:tracking-[0.3em] blur-[0.5px] drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] drop-shadow-[0_0_10px_rgba(219,39,119,0.6)] text-xs md:text-sm whitespace-nowrap [writing-mode:vertical-rl] rotate-180 overflow-visible mr-2 z-10 relative">
                 {teamA}
                 </span>
             </div>
