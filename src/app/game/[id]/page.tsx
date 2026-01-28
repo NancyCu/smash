@@ -292,8 +292,8 @@ export default function GamePage() {
   const selectedSquareData = selectedCell ? formattedSquares[`${selectedCell.row}-${selectedCell.col}`] || [] : [];
   const isWinningSquare = winningCoordinates && selectedCell && winningCoordinates.row === selectedCell.row && winningCoordinates.col === selectedCell.col;
   const cartTotal = pendingSquares.length * game.price;
-  const currentWinningPlayer = selectedSquareData.length > 0 ? selectedSquareData[0].name : "Open";
-  const currentPotValue = gameStats.currentPotential || 0;
+  // const currentWinningPlayer = selectedSquareData.length > 0 ? selectedSquareData[0].name : "Open"; // Removed unused var
+  // const currentPotValue = gameStats.currentPotential || 0; // Removed unused var
 
   return (
     <main className="flex flex-col lg:flex-row h-screen w-full bg-[#0B0C15] overflow-hidden">
@@ -369,46 +369,8 @@ export default function GamePage() {
                   </div>
               </div>
 
-              {/* CURRENT WINNER & PURSE DISPLAY */}
-              <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-[#151725] border border-green-500/30 rounded-xl p-4 shadow-lg flex items-center justify-between relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-2"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" /></div>
-                      <div className="flex flex-col">
-                          <span className="text-[10px] text-green-400 font-bold uppercase tracking-widest mb-1 flex items-center gap-1">
-                              <Trophy className="w-3 h-3" /> Current Winning Square
-                          </span>
-                          <span className="text-xl font-black text-white truncate max-w-[150px]">{isWinningSquare ? currentWinningPlayer : "Nobody"}</span>
-                      </div>
-                      <div className="flex flex-col items-end">
-                          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Current Purse</span>
-                          <span className="text-2xl font-black text-white">${currentPotValue}</span>
-                      </div>
-                  </div>
-
-                  {/* PAST WINNERS / ROLLOVER LOG */}
-                  {gameStats?.winners && gameStats.winners.length > 0 && (
-                      <div className="bg-[#151725] border border-white/5 rounded-xl p-4 shadow-lg flex flex-col justify-center">
-                          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 border-b border-white/5 pb-1">History</span>
-                          <div className="space-y-1">
-                              {gameStats.winners.map((w: any, idx: number) => (
-                                  <div key={idx} className="flex justify-between text-xs items-center">
-                                      <span className="text-slate-400 font-bold">{w.label}</span>
-                                      <div className="flex items-center gap-2">
-                                          {w.rollover ? (
-                                              <span className="text-red-400 italic flex items-center gap-1"><Ban className="w-3 h-3"/> Rollover</span>
-                                          ) : (
-                                              <>
-                                                  <span className="text-white font-bold">{w.winner}</span>
-                                                  <span className="text-green-400 font-mono font-black">${w.amount}</span>
-                                              </>
-                                          )}
-                                      </div>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  )}
-              </div>
+              {/* REMOVED: CURRENT WINNER & PURSE DISPLAY */}
+              {/* REMOVED: PAST WINNERS / ROLLOVER LOG */}
 
               {/* GRID */}
               <div className="w-full aspect-square shrink-0 relative z-10">
@@ -444,40 +406,39 @@ export default function GamePage() {
                       </button>
                   </div>
               ) : (
-                  <div className={`w-full bg-[#151725] border ${isWinningSquare ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-4 shadow-xl shrink-0 transition-all`}>
-                    <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
+                  <div className={`w-full bg-[#151725] border ${isWinningSquare ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}> {/* Reduced padding to p-3 */}
+                    <div className="flex items-center justify-between mb-2 border-b border-white/5 pb-1"> {/* Reduced mb and pb */}
                         <div className="flex flex-col">
                             <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-2">
                                 Square Details {isWinningSquare && <span className="text-yellow-400 flex items-center gap-1 animate-pulse"><Trophy className="w-3 h-3" /> Winning Square</span>}
                             </span>
-                            <span className="text-lg font-black text-white">{selectedCell ? `Row ${currentAxis.row[selectedCell.row]} • Col ${currentAxis.col[selectedCell.col]}` : "Select a Square"}</span>
+                            <span className="text-lg font-black text-white flex items-center gap-2">
+                                {selectedCell ? `Row ${currentAxis.row[selectedCell.row]} • Col ${currentAxis.col[selectedCell.col]}` : "Select a Square"}
+                                {isWinningSquare && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />}
+                            </span>
                         </div>
                         {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/10 text-slate-500"><X className="w-4 h-4" /></button>}
                     </div>
                     {selectedCell ? (
-                        <div className="space-y-4">
-                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                            {selectedSquareData.length === 0 ? <div className="p-3 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg">Empty Square</div> : 
+                        <div className="space-y-2"> {/* Reduced spacing */}
+                            <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar"> {/* Reduced max-h */}
+                            {selectedSquareData.length === 0 ? <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg">Empty Square</div> : 
                                 selectedSquareData.map((p, i) => (
-                                    <div key={i} className={`flex justify-between items-center p-3 rounded-lg border ${p.uid === user?.uid ? "bg-indigo-600/20 border-indigo-500/30" : "bg-black/40 border-white/5"}`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold ${p.uid === user?.uid ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}>
+                                    <div key={i} className={`flex justify-between items-center p-2 rounded-lg border ${p.uid === user?.uid ? "bg-indigo-600/20 border-indigo-500/30" : "bg-black/40 border-white/5"}`}> {/* Reduced padding */}
+                                        <div className="flex items-center gap-2"> {/* Reduced gap */}
+                                            <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold ${p.uid === user?.uid ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}> {/* Reduced size */}
                                                 {i+1}
                                             </div>
-                                            <span className={`text-sm font-bold ${p.uid === user?.uid ? "text-indigo-200" : "text-slate-200"}`}>{p.name} {p.uid === user?.uid && "(You)"}</span>
+                                            <span className={`text-xs font-bold ${p.uid === user?.uid ? "text-indigo-200" : "text-slate-200"}`}>{p.name} {p.uid === user?.uid && "(You)"}</span> {/* Reduced font size */}
                                         </div>
-                                        {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"><Trash2 className="w-4 h-4" /></button>}
+                                        {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"><Trash2 className="w-3 h-3" /></button>} {/* Reduced padding and icon size */}
                                     </div>
                                 ))
                             }
                             </div>
-                            <div className="flex gap-3">
-                               <button onClick={handleClaim} disabled={(game.isScrambled && !isAdmin) || isSubmitting} className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin"/> : <><UserPlus className="w-4 h-4"/> {user ? `Add Name ($${game.price})` : "Sign In to Play"}</>}
-                               </button>
-                            </div>
+                            {/* REMOVED ADD NAME BUTTON */}
                         </div>
-                    ) : <div className="text-center py-6 text-slate-500 text-sm">Tap empty squares to build your cart.</div>}
+                    ) : <div className="text-center py-4 text-slate-500 text-xs">Tap empty squares to build your cart.</div>}
                   </div>
               )}
 
@@ -499,7 +460,7 @@ export default function GamePage() {
           </div>
       </div>
       
-      {/* DESKTOP SIDEBAR */}
+      {/* DESKTOP SIDEBAR (Kept same) */}
       <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-[#0f111a] border-l border-white/5 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl relative">
           <div className="mb-6">
                <div onClick={() => router.push('/')} className="cursor-pointer group">
