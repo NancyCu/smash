@@ -1,4 +1,5 @@
 import React from 'react';
+import { getUserColor } from '@/utils/colors'; // Make sure you created this file from the previous step!
 
 interface GridProps {
   rows: number[];
@@ -7,11 +8,9 @@ interface GridProps {
   onSquareClick: (row: number, col: number) => void;
   teamA: string;
   teamB: string;
-  // Added these back to fix the build error
   teamALogo?: string;
   teamBLogo?: string;
   isScrambled?: boolean; 
-  
   selectedCell?: { row: number, col: number } | null;
   winningCell?: { row: number, col: number } | null;
   pendingIndices?: number[];
@@ -20,52 +19,29 @@ interface GridProps {
 
 export default function Grid({ 
   rows, cols, squares, onSquareClick, 
-  teamA, teamB, teamALogo, teamBLogo, isScrambled, // Destructure them here
+  teamA, teamB, teamALogo, teamBLogo, isScrambled, 
   selectedCell, winningCell, pendingIndices = [], currentUserId 
 }: GridProps) {
 
-  // 1. Helper to get data for a specific cell
-  const getCellData = (r: number, c: number) => squares[`${r}-${c}`]?.[0] || null;
+  // 1. Helper to get ALL users for a specific cell
+  const getCellUsers = (r: number, c: number) => squares[`${r}-${c}`] || [];
 
-  // 2. Determine who is selected
-  const selectedOwnerData = selectedCell ? getCellData(selectedCell.row, selectedCell.col) : null;
-  const selectedUserIdToHighlight = selectedOwnerData?.uid || null;
-
-  // 3. COLOR GENERATOR
-  const getUserColor = (name: string) => {
-      const colors = [
-          "bg-red-500/20 text-red-200 border-red-500/30",
-          "bg-orange-500/20 text-orange-200 border-orange-500/30",
-          "bg-amber-500/20 text-amber-200 border-amber-500/30",
-          "bg-green-500/20 text-green-200 border-green-500/30",
-          "bg-emerald-500/20 text-emerald-200 border-emerald-500/30",
-          "bg-teal-500/20 text-teal-200 border-teal-500/30",
-          "bg-cyan-500/20 text-cyan-200 border-cyan-500/30",
-          "bg-sky-500/20 text-sky-200 border-sky-500/30",
-          "bg-blue-500/20 text-blue-200 border-blue-500/30",
-          "bg-indigo-500/20 text-indigo-200 border-indigo-500/30",
-          "bg-violet-500/20 text-violet-200 border-violet-500/30",
-          "bg-purple-500/20 text-purple-200 border-purple-500/30",
-          "bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-500/30",
-          "bg-pink-500/20 text-pink-200 border-pink-500/30",
-          "bg-rose-500/20 text-rose-200 border-rose-500/30",
-      ];
-      let hash = 0;
-      for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      return colors[Math.abs(hash) % colors.length];
-  };
+  // 2. Determine who is selected (Focus Mode logic)
+  // We'll use the first user of the selected cell to drive the "Highlight/Dim" logic for now
+  const selectedUsers = selectedCell ? getCellUsers(selectedCell.row, selectedCell.col) : [];
+  const selectedUserIdToHighlight = selectedUsers.length > 0 ? selectedUsers[0].uid : null;
 
   return (
     <div className="grid grid-cols-11 border border-white/5 bg-[#0f111a] select-none">
       
       {/* HEADER ROW */}
       <div className="contents">
-         {/* Top Left Corner: Show Logos if available, else VS */}
+         {/* Top Left Corner */}
          <div className="bg-[#0B0C15] border-r border-b border-white/5 flex items-center justify-center p-1 overflow-hidden relative">
              {teamALogo && teamBLogo ? (
                  <div className="relative w-full h-full opacity-50 grayscale">
-                     <img src={teamALogo} className="absolute top-0 left-0 w-4 h-4 object-contain" alt="" />
-                     <img src={teamBLogo} className="absolute bottom-0 right-0 w-4 h-4 object-contain" alt="" />
+                     <img src={teamALogo} className="absolute top-0 left-0 w-4 h-4 object-contain" alt="Team A" />
+                     <img src={teamBLogo} className="absolute bottom-0 right-0 w-4 h-4 object-contain" alt="Team B" />
                  </div>
              ) : (
                 <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[8px] text-slate-500 font-bold">VS</div>
@@ -91,62 +67,78 @@ export default function Grid({
             {/* SQUARES */}
             {cols.map((_, cIndex) => {
                const cellKey = `${rIndex}-${cIndex}`;
-               const owner = getCellData(rIndex, cIndex);
+               const users = getCellUsers(rIndex, cIndex);
                const isPending = pendingIndices.includes(rIndex * 10 + cIndex);
                
                // Logic
                const isWinner = winningCell && winningCell.row === rIndex && winningCell.col === cIndex;
                const isExactSelected = selectedCell && selectedCell.row === rIndex && selectedCell.col === cIndex;
-               const isTaken = !!owner;
-               const belongsToSelectedUser = isTaken && selectedUserIdToHighlight && owner.uid === selectedUserIdToHighlight;
-               const isMe = currentUserId && owner?.uid === currentUserId;
+               const hasUsers = users.length > 0;
 
-               // Base Classes
-               let containerClass = "relative w-full aspect-square flex flex-col items-center justify-center border-r border-b border-white/5 cursor-pointer transition-all duration-300";
-               let textClass = "text-[8px] md:text-[10px] font-bold truncate max-w-[90%] px-0.5";
-
-               // --- COLOR LOGIC ---
+               // Base Container Classes
+               let containerClass = "relative w-full aspect-square border-r border-b border-white/5 cursor-pointer transition-all duration-300";
+               
+               // High-Level Container Highlights (Winner/Selection)
                if (isWinner) {
-                   // 1. WINNER (Always Gold)
-                   containerClass += " bg-yellow-500/20 shadow-[inset_0_0_15px_rgba(250,204,21,0.4)] z-30 border border-yellow-500";
-                   textClass += " text-yellow-200";
+                   containerClass += " shadow-[inset_0_0_15px_rgba(250,204,21,0.4)] z-30 border-2 border-yellow-500";
                } else if (isExactSelected) {
-                   // 2. EXACT SELECTION (Brightest)
-                   containerClass += " bg-indigo-500/80 z-20 scale-105 shadow-[0_0_20px_rgba(99,102,241,0.5)] border-2 border-white";
-                   textClass += " text-white";
-               } else if (belongsToSelectedUser) {
-                   // 3. SIBLING HIGHLIGHT (Same User) - Keep their color but make it glow
-                   const userColor = getUserColor(owner.name); 
-                   containerClass += ` ${userColor.replace('/20', '/40')} z-10 scale-100 shadow-[inset_0_0_10px_rgba(255,255,255,0.1)] border border-indigo-400/50`;
+                   containerClass += " z-20 scale-105 shadow-[0_0_20px_rgba(99,102,241,0.5)] border-2 border-white";
                } else if (isPending) {
-                   // 4. CART
-                   containerClass += " bg-indigo-900/30 animate-pulse";
-                   textClass += " text-indigo-300";
-               } else if (isTaken && selectedUserIdToHighlight) {
-                   // 5. FADED (Someone else is selected) -> GREY OUT
-                   containerClass += " bg-[#0b0c15] opacity-20 grayscale"; 
-                   textClass += " text-slate-700";
-               } else if (isTaken) {
-                   // 6. DEFAULT TAKEN (Colorful Mode)
-                   const userColor = getUserColor(owner.name);
-                   containerClass += ` ${userColor}`; 
-                   if (isMe) containerClass += " border-indigo-500/40";
-               } else {
-                   // 7. EMPTY
+                   containerClass += " bg-indigo-900/30 animate-pulse flex items-center justify-center";
+               } else if (!hasUsers) {
                    containerClass += " hover:bg-white/5";
                }
 
                return (
                  <div key={cellKey} onClick={() => onSquareClick(rIndex, cIndex)} className={containerClass}>
-                    {isWinner && <div className="absolute -top-1 -right-1 text-[8px]">👑</div>}
+                    {/* WINNER CROWN */}
+                    {isWinner && <div className="absolute -top-2 -right-2 text-sm z-40">👑</div>}
                     
-                    {owner ? (
-                        <span className={textClass}>{owner.name.slice(0, 6)}</span>
-                    ) : isPending ? (
-                        <span className="text-[8px] font-bold text-indigo-400">PICK</span>
-                    ) : null}
-                    
-                    {isExactSelected && <div className="absolute top-0.5 right-0.5 w-1 h-1 bg-white rounded-full shadow-sm" />}
+                    {/* CASE 0: PENDING (Cart) */}
+                    {isPending && <span className="text-[8px] font-bold text-indigo-400">PICK</span>}
+
+                    {/* CASE 1: USERS EXIST */}
+                    {hasUsers && (
+                        <div className={`w-full h-full grid ${users.length === 1 ? 'grid-cols-1' : users.length === 2 ? 'grid-rows-2' : 'grid-cols-2 grid-rows-2'} overflow-hidden`}>
+                            {/* Slice to max 4 to prevent breaking layout */}
+                            {users.slice(0, 4).map((u, idx) => {
+                                const isMe = currentUserId === u.uid;
+                                const isFocus = selectedUserIdToHighlight && u.uid === selectedUserIdToHighlight;
+                                const isDimmed = selectedUserIdToHighlight && !isFocus;
+                                const color = getUserColor(u.name);
+                                
+                                // Dynamic Style for sub-cell
+                                const style = { backgroundColor: color };
+                                
+                                return (
+                                    <div 
+                                        key={idx} 
+                                        style={isDimmed ? {} : style} 
+                                        className={`
+                                            flex items-center justify-center 
+                                            ${isDimmed ? 'bg-[#0b0c15] grayscale opacity-20' : ''} 
+                                            ${users.length > 2 ? 'border-[0.5px] border-black/10' : ''}
+                                        `}
+                                    >
+                                        <span className={`
+                                            font-black truncate select-none
+                                            ${isDimmed ? 'text-slate-600' : 'text-slate-900'}
+                                            ${users.length > 2 ? 'text-[8px] px-[1px]' : 'text-[9px] md:text-[10px] px-1'}
+                                        `}>
+                                            {/* If crowded (4 users), show shorter name or initials */}
+                                            {users.length > 3 ? u.name.substring(0, 2).toUpperCase() : u.name}
+                                        </span>
+                                    </div>
+                                )
+                            })}
+                            {/* OVERFLOW INDICATOR (If > 4 users) */}
+                            {users.length > 4 && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-10 pointer-events-none">
+                                    <span className="text-white text-[10px] font-bold">+{users.length - 4}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                  </div>
                );
             })}
