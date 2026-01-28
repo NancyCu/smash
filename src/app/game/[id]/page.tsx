@@ -255,11 +255,11 @@ export default function GamePage() {
     } else {
         // ESPN Mode: Calculate cumulative scores based on sport type
         if (sportType === 'soccer') {
-          // Soccer: Halves don't cumulate, each half stands alone
+          // Soccer: Use current total score for each period check
           if (activePeriod === "p1") {
-            scoreA = currentScores.p1.home; scoreB = currentScores.p1.away;
+            scoreA = currentScores.teamA; scoreB = currentScores.teamB;
           } else if (activePeriod === 'p2') {
-            scoreA = currentScores.p2.home; scoreB = currentScores.p2.away;
+            scoreA = currentScores.teamA; scoreB = currentScores.teamB;
           } else {
             scoreA = currentScores.final.home; scoreB = currentScores.final.away;
           }
@@ -333,9 +333,9 @@ export default function GamePage() {
           sA = currentScores.teamA; sB = currentScores.teamB;
       } else {
           if (sportType === 'soccer') {
-            // Soccer: Each half stands alone
-            if (period === "p1") { sA = currentScores.p1.home; sB = currentScores.p1.away; }
-            else if (period === "p2") { sA = currentScores.p2.home; sB = currentScores.p2.away; }
+            // Soccer: Use current total score for each period
+            if (period === "p1") { sA = currentScores.teamA; sB = currentScores.teamB; }
+            else if (period === "p2") { sA = currentScores.teamA; sB = currentScores.teamB; }
             else { sA = currentScores.final.home; sB = currentScores.final.away; }
           } else {
             // Football/Basketball: Cumulative
@@ -515,7 +515,7 @@ export default function GamePage() {
                         : (activePeriod === "final" 
                             ? currentScores.final.home 
                             : sportType === 'soccer'
-                              ? (activePeriod === "p1" ? currentScores.p1.home : currentScores.p2.home)
+                              ? currentScores.teamA  // Soccer: Always show total score during live play
                               : (activePeriod === "p1" 
                                   ? currentScores.p1.home 
                                   : activePeriod === "p2" 
@@ -560,7 +560,7 @@ export default function GamePage() {
                         : (activePeriod === "final" 
                             ? currentScores.final.away 
                             : sportType === 'soccer'
-                              ? (activePeriod === "p1" ? currentScores.p1.away : currentScores.p2.away)
+                              ? currentScores.teamB  // Soccer: Always show total score during live play
                               : (activePeriod === "p1" 
                                   ? currentScores.p1.away 
                                   : activePeriod === "p2" 
