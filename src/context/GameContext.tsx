@@ -327,7 +327,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     let scoreA: number;
     let scoreB: number;
     
-    if (typeof teamAOrScores === 'object') {
+    if (typeof teamAOrScores === 'object' && teamAOrScores !== null) {
       // Object format: {teamA: 7, teamB: 3}
       scoreA = teamAOrScores.teamA;
       scoreB = teamAOrScores.teamB;
