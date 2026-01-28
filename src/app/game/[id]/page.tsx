@@ -281,6 +281,8 @@ const pot = game?.pot || game?.totalPot || (Object.keys(squares).length * (game?
     return result;
   }, [game]);
 
+  if (!game) return null; // Stops the 'length' crash before it starts
+
   // --- STATS / PAYOUTS (CORRECT SEQUENTIAL ROLLOVER) ---
   const gameStats = useMemo(() => {
     if (!game)
@@ -972,7 +974,7 @@ const finalTotal = (payouts?.final?.amount || 0) + activeRollover;
               host={game.host}
               pricePerSquare={game.price}
               totalPot={
-                game.pot || Object.keys(game.squares).length * game.price
+                game.pot || Object.keys(game?.squares ?? {}).length // The '?? {}' is your crash shield * game.price
               }
               payouts={gameStats?.payouts}
               winners={gameStats?.winners || []}
@@ -1060,7 +1062,7 @@ const finalTotal = (payouts?.final?.amount || 0) + activeRollover;
           gameName={game.name}
           host={game.host}
           pricePerSquare={game.price}
-          totalPot={game.pot || game.totalPot || Object.keys(game.squares).length * game.price}
+          totalPot={game.pot || game.totalPot || Object.keys(game?.squares ?? {}).length} // The '?? {}' is your crash shield * game.price}
           payouts={gameStats?.payouts}
           winners={gameStats?.winners || []}
           matchup={{ teamA: game.teamA, teamB: game.teamB }}
