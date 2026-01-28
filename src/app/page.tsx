@@ -67,7 +67,7 @@ function HomeContent() {
             className="w-full max-w-[320px] mx-auto mb-6 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.3)]"
           />
           <div className="text-center mt-6 mb-8 relative z-10">
-            <h1 className="font-russo text-5xl md:text-7xl tracking-tighter uppercase italic leading-[0.85]">
+            <h1 className="font-russo text-5xl md:text-7xl tracking-tighter uppercase italic leading-[0.95] overflow-visible pb-1">
               <span className="text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.9)]">
                 Souper Bowl
               </span>
