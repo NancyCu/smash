@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useGame } from "@/context/GameContext";
-import type { SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
@@ -18,9 +17,7 @@ import {
   Loader2,
   X,
   Trophy,
-  UserPlus,
   Trash2,
-  Ban,
 } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 
@@ -36,7 +33,6 @@ export default function GamePage() {
     game,
     setGameId,
     loading,
-    error,
     isAdmin,
     claimSquare,
     unclaimSquare,
@@ -56,7 +52,6 @@ export default function GamePage() {
 
   // 3. Safety & Pot Logic
   const squares = game?.squares ?? {};
-  // const pot = game?.pot || game?.totalPot || (Object.keys(squares).length * (game?.price || 0));
 
   // 4. Live Game Sync
   const matchedGame = useMemo(
@@ -151,8 +146,10 @@ export default function GamePage() {
     if (game.espnGameId && matchedGame && matchedGame.competitors) {
       const normalize = (s: string) =>
         s.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const targetA = normalize(game.teamA);
-      const targetB = normalize(game.teamB);
+      
+      // SAFETY FIX: Default to "Home" if teamA is momentarily missing
+      const targetA = normalize(game.teamA || "Home");
+      const targetB = normalize(game.teamB || "Away");
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let compA = matchedGame.competitors.find((c: any) => {
@@ -190,40 +187,39 @@ export default function GamePage() {
         teamB: Number(compB?.score || 0),
       };
     }
+    
+    // --- MANUAL FALLBACK (The Fix) ---
+    const manualHome = game.scores?.teamA || 0;
+    const manualAway = game.scores?.teamB || 0;
+    const manualObj = { home: manualHome, away: manualAway };
+
     return {
       ...base,
-      final: { home: game.scores?.teamA || 0, away: game.scores?.teamB || 0 },
-      teamA: game.scores?.teamA || 0,
-      teamB: game.scores?.teamB || 0,
+      q1: manualObj,   
+      q2: manualObj,   
+      q3: manualObj,   
+      final: manualObj,
+      teamA: manualHome,
+      teamB: manualAway,
     };
   }, [game, matchedGame]);
 
-  // ... inside GamePage component, after 'currentScores' is defined ...
-
   // --- AUTO-SYNC ENGINE ---
-  // This pushes live ESPN scores to Firebase so the "Winners Page" sees them too.
   useEffect(() => {
-    // 1. Safety Checks: Must have a game, a live match, and valid scores
-    if (!game || !matchedGame || !currentScores) return;
-
+    if (!game || !currentScores) return;
     const liveHome = currentScores.teamA;
     const liveAway = currentScores.teamB;
-    
-    // 2. Get what is currently saved in Firebase (Handle potential 0/undefined)
     const storedHome = game.scores?.teamA || 0;
     const storedAway = game.scores?.teamB || 0;
 
-    // 3. The "Smart" Check: Only write if the scores are DIFFERENT.
-    // This prevents infinite loops of updating the database.
     if (liveHome !== storedHome || liveAway !== storedAway) {
-       console.log(`🔄 Syncing ESPN Scores (${liveHome}-${liveAway}) to Database...`);
-       
-       // This calls the Context function we just fixed
-       updateScores(liveHome, liveAway);
+       // Only sync if we have an active ESPN connection
+       if (game.espnGameId && matchedGame) {
+          console.log(`🔄 Syncing ESPN Scores (${liveHome}-${liveAway}) to Database...`);
+          updateScores(liveHome, liveAway);
+       }
     }
-  }, [currentScores, game?.scores, matchedGame, updateScores]);
-
-// ... rest of your code ...
+  }, [currentScores, game?.scores, matchedGame, updateScores, game?.espnGameId]);
 
   // --- WINNING CELL ---
   const winningCoordinates = useMemo(() => {
@@ -268,7 +264,6 @@ export default function GamePage() {
     : { row: defaultAxis, col: defaultAxis };
 
   // --- GRID DATA ---
-// 1. GRID DATA HOOK
   const formattedSquares = useMemo(() => {
     if (!game?.squares) return {};
     const result: Record<string, { uid: string; name: string; claimedAt: number }[]> = {};
@@ -286,8 +281,7 @@ export default function GamePage() {
     return result;
   }, [game]);
 
-  // --- FIXED PAYOUT CALCULATIONS FOR SIDEBAR ---
-  // Calculates the theoretical payouts based on the *current* pot size
+  // --- SIDEBAR PAYOUTS ---
   const livePot = Object.keys(game?.squares || {}).length * (game?.price || 10);
   const livePayouts = {
     q1: livePot * 0.1,
@@ -296,7 +290,7 @@ export default function GamePage() {
     final: livePot * 0.5,
   };
 
-  // 3. GAME STATS HOOK (Depends on payouts)
+  // 3. GAME STATS HOOK
   const gameStats = useMemo(() => {
     if (!game) return { payouts: { q1: 0, q2: 0, q3: 0, final: 0 }, winners: [], currentPotential: 0 };
 
@@ -324,19 +318,14 @@ export default function GamePage() {
     const isFinal = status === "post" || (statusType && statusType.includes("Final"));
     const isHalf = status === "halftime" || (statusType && statusType.includes("Halftime"));
 
-    let activeRollover = 0;
     const results = [];
     const payoutMap = { q1: 0, q2: 0, q3: 0, final: 0 };
 
-    // This logic builds the "Winners" list
-    // It doesn't affect the sidebar "Potential Payouts" which we fixed above with `livePayouts`
+    // Simplified Winners Logic for Sidebar display
     const q1Done = p > 1 || isHalf || isFinal;
     const w1 = getOwner("q1");
     if (q1Done && w1) results.push({ key: "q1", label: "Q1", winner: w1.displayName, amount: livePayouts.q1, rollover: false });
     
-    // ... Simplified strictly for winners list ...
-    // Note: Kept brief here to rely on the livePayouts for the UI display
-
     return { payouts: payoutMap, winners: results, currentPotential: payoutMap[activeQuarter] };
   }, [game, currentScores, matchedGame, activeQuarter, livePayouts]);
 
@@ -445,8 +434,9 @@ export default function GamePage() {
     }
   };
    
-  // 4. THIS MUST BE LAST - The Loading Screen Logic
-  if (!game) {
+  // 4. Loading Screen (UPDATED SAFETY)
+  // We must wait until 'game' AND 'game.teamA' exist to prevent crashes
+  if (!game || !game.teamA) {
     if (loading) {
       return (
         <div className="flex h-screen items-center justify-center bg-[#0B0C15] text-cyan-400">
@@ -459,7 +449,7 @@ export default function GamePage() {
     }
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0B0C15] text-white font-teko text-2xl tracking-widest">
-        GAME NOT FOUND
+        GAME NOT FOUND (OR DATA INCOMPLETE)
       </div>
     );
   }
