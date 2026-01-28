@@ -31,7 +31,7 @@ export default function GamePage() {
   
   // --- STATE ---
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
-  const [isManualView, setIsManualView] = useState(false); // Track if user clicked a button
+  const [isManualView, setIsManualView] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
@@ -39,15 +39,14 @@ export default function GamePage() {
 
   // --- 1. CALCULATE LIVE QUARTER ---
   const liveQuarter = useMemo(() => {
-      // Priority 1: Game Over -> Final
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const status = (matchedGame as any)?.status;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const detail = (matchedGame as any)?.statusDetail;
       
       if (status === "post" || (detail && detail.includes("Final"))) {
           return 'final';
       }
-      // Priority 2: Game Live -> Use Period
       if (matchedGame?.isLive) {
           const p = matchedGame.period;
           if (p === 1) return 'q1';
@@ -55,7 +54,6 @@ export default function GamePage() {
           if (p === 3) return 'q3';
           if (p >= 4) return 'final'; 
       }
-      // Priority 3: Host Control (Fallback)
       return (game?.currentPeriod as 'q1'|'q2'|'q3'|'final') || 'q1';
   }, [matchedGame, game]);
 
@@ -78,7 +76,6 @@ export default function GamePage() {
 
   const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
       setActiveQuarter(q);
-      // If user clicks the current live quarter, stay live. Otherwise, start manual timer.
       if (q === liveQuarter) setIsManualView(false);
       else setIsManualView(true);
 
@@ -171,7 +168,7 @@ export default function GamePage() {
     return result;
   }, [game]);
 
-  // --- STATS / PAYOUTS (ROLLOVER LOGIC) ---
+  // --- STATS / PAYOUTS (CORRECT SEQUENTIAL ROLLOVER) ---
   const gameStats = useMemo(() => {
       if (!game) return { payouts: { q1: 0, q2: 0, q3: 0, final: 0 }, winners: [], currentPotential: 0 };
       
@@ -209,36 +206,75 @@ export default function GamePage() {
       const isFinal = status === "post" || (statusType && statusType.includes("Final"));
       const isHalf = status === "halftime" || (statusType && statusType.includes("Halftime"));
 
-      let currentRollover = 0;
+      // --- STREET SMART LOGIC: SEQUENTIAL ROLLOVER ---
+      let activeRollover = 0;
       const results = [];
       const payoutMap = { q1: 0, q2: 0, q3: 0, final: 0 };
 
-      // Q1
+      // --- Q1 ---
       const q1Done = p > 1 || isHalf || isFinal;
       const w1 = getOwner('q1');
-      if (q1Done && !w1) { currentRollover += base.q1; payoutMap.q1 = 0; results.push({ key: 'q1', label: 'Q1', winner: 'Rollover', amount: 0, rollover: true }); } 
-      else if (q1Done && w1) { payoutMap.q1 = base.q1; results.push({ key: 'q1', label: "Q1", winner: w1.displayName, amount: base.q1, rollover: false }); currentRollover = 0; } 
-      else { payoutMap.q1 = base.q1; }
+      const q1Total = base.q1 + activeRollover; 
 
-      // Q2
+      if (q1Done) {
+          if (w1) {
+              payoutMap.q1 = q1Total;
+              results.push({ key: 'q1', label: "Q1", winner: w1.displayName, amount: q1Total, rollover: false });
+              activeRollover = 0; 
+          } else {
+              payoutMap.q1 = 0;
+              results.push({ key: 'q1', label: 'Q1', winner: 'Rollover', amount: 0, rollover: true });
+              activeRollover = q1Total; 
+          }
+      } else {
+          payoutMap.q1 = q1Total;
+          activeRollover = 0; 
+      }
+
+      // --- Q2 ---
       const q2Done = p > 2 || isFinal;
       const w2 = getOwner('q2');
-      const q2Total = base.q2 + currentRollover;
-      if (q2Done && !w2) { currentRollover = q2Total; payoutMap.q2 = 0; results.push({ key: 'q2', label: 'Half', winner: 'Rollover', amount: 0, rollover: true }); } 
-      else if (q2Done && w2) { payoutMap.q2 = q2Total; results.push({ key: 'q2', label: "Half", winner: w2.displayName, amount: q2Total, rollover: false }); currentRollover = 0; } 
-      else { payoutMap.q2 = q2Total; }
+      const q2Total = base.q2 + activeRollover; 
 
-      // Q3
+      if (q2Done) {
+          if (w2) {
+              payoutMap.q2 = q2Total;
+              results.push({ key: 'q2', label: "Half", winner: w2.displayName, amount: q2Total, rollover: false });
+              activeRollover = 0;
+          } else {
+              payoutMap.q2 = 0;
+              results.push({ key: 'q2', label: 'Half', winner: 'Rollover', amount: 0, rollover: true });
+              activeRollover = q2Total;
+          }
+      } else {
+          payoutMap.q2 = q2Total;
+          activeRollover = 0; 
+      }
+
+      // --- Q3 ---
       const q3Done = p > 3 || isFinal;
       const w3 = getOwner('q3');
-      const q3Total = base.q3 + currentRollover;
-      if (q3Done && !w3) { currentRollover = q3Total; payoutMap.q3 = 0; results.push({ key: 'q3', label: 'Q3', winner: 'Rollover', amount: 0, rollover: true }); } 
-      else if (q3Done && w3) { payoutMap.q3 = q3Total; results.push({ key: 'q3', label: "Q3", winner: w3.displayName, amount: q3Total, rollover: false }); currentRollover = 0; } 
-      else { payoutMap.q3 = q3Total; }
+      const q3Total = base.q3 + activeRollover;
 
-      // Final
-      const finalTotal = base.final + currentRollover;
+      if (q3Done) {
+          if (w3) {
+              payoutMap.q3 = q3Total;
+              results.push({ key: 'q3', label: "Q3", winner: w3.displayName, amount: q3Total, rollover: false });
+              activeRollover = 0;
+          } else {
+              payoutMap.q3 = 0;
+              results.push({ key: 'q3', label: 'Q3', winner: 'Rollover', amount: 0, rollover: true });
+              activeRollover = q3Total;
+          }
+      } else {
+          payoutMap.q3 = q3Total;
+          activeRollover = 0;
+      }
+
+      // --- FINAL ---
+      const finalTotal = base.final + activeRollover;
       payoutMap.final = finalTotal;
+      
       if (isFinal) {
           const wFinal = getOwner('final');
           if (wFinal) results.push({ key: 'final', label: "Final", winner: wFinal.displayName, amount: finalTotal, rollover: false });
@@ -246,6 +282,7 @@ export default function GamePage() {
       }
 
       return { payouts: payoutMap, winners: results, currentPotential: payoutMap[activeQuarter] };
+
   }, [game, currentScores, matchedGame, activeQuarter]);
 
 
@@ -292,8 +329,6 @@ export default function GamePage() {
   const selectedSquareData = selectedCell ? formattedSquares[`${selectedCell.row}-${selectedCell.col}`] || [] : [];
   const isWinningSquare = winningCoordinates && selectedCell && winningCoordinates.row === selectedCell.row && winningCoordinates.col === selectedCell.col;
   const cartTotal = pendingSquares.length * game.price;
-  // const currentWinningPlayer = selectedSquareData.length > 0 ? selectedSquareData[0].name : "Open"; // Removed unused var
-  // const currentPotValue = gameStats.currentPotential || 0; // Removed unused var
 
   return (
     <main className="flex flex-col lg:flex-row h-screen w-full bg-[#0B0C15] overflow-hidden">
@@ -318,12 +353,14 @@ export default function GamePage() {
               </div>
           </div>
 
-          <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-6 gap-6">
+          {/* UPDATED: Reduced gap from gap-6 to gap-3 and lg:p-6 to lg:p-4 */}
+          <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-4 gap-3">
               
-              {/* SCOREBOARD (FIXED OVERLAP & WRAPPING) */}
+              {/* SCOREBOARD */}
               <div className="w-full relative group z-20 shrink-0">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
-                  <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-2xl">
+                  {/* UPDATED: Reduced padding from p-4 to p-3 */}
+                  <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 flex flex-col items-center shadow-2xl">
                       
                       <div className="flex w-full justify-between items-start mb-2 relative">
                           
@@ -369,9 +406,6 @@ export default function GamePage() {
                   </div>
               </div>
 
-              {/* REMOVED: CURRENT WINNER & PURSE DISPLAY */}
-              {/* REMOVED: PAST WINNERS / ROLLOVER LOG */}
-
               {/* GRID */}
               <div className="w-full aspect-square shrink-0 relative z-10">
                   <div className="h-full w-full bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 overflow-hidden">
@@ -406,8 +440,8 @@ export default function GamePage() {
                       </button>
                   </div>
               ) : (
-                  <div className={`w-full bg-[#151725] border ${isWinningSquare ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}> {/* Reduced padding to p-3 */}
-                    <div className="flex items-center justify-between mb-2 border-b border-white/5 pb-1"> {/* Reduced mb and pb */}
+                  <div className={`w-full bg-[#151725] border ${isWinningSquare ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
+                    <div className="flex items-center justify-between mb-2 border-b border-white/5 pb-1">
                         <div className="flex flex-col">
                             <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-2">
                                 Square Details {isWinningSquare && <span className="text-yellow-400 flex items-center gap-1 animate-pulse"><Trophy className="w-3 h-3" /> Winning Square</span>}
@@ -420,23 +454,22 @@ export default function GamePage() {
                         {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/10 text-slate-500"><X className="w-4 h-4" /></button>}
                     </div>
                     {selectedCell ? (
-                        <div className="space-y-2"> {/* Reduced spacing */}
-                            <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar"> {/* Reduced max-h */}
+                        <div className="space-y-2">
+                            <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
                             {selectedSquareData.length === 0 ? <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg">Empty Square</div> : 
                                 selectedSquareData.map((p, i) => (
-                                    <div key={i} className={`flex justify-between items-center p-2 rounded-lg border ${p.uid === user?.uid ? "bg-indigo-600/20 border-indigo-500/30" : "bg-black/40 border-white/5"}`}> {/* Reduced padding */}
-                                        <div className="flex items-center gap-2"> {/* Reduced gap */}
-                                            <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold ${p.uid === user?.uid ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}> {/* Reduced size */}
+                                    <div key={i} className={`flex justify-between items-center p-2 rounded-lg border ${p.uid === user?.uid ? "bg-indigo-600/20 border-indigo-500/30" : "bg-black/40 border-white/5"}`}>
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold ${p.uid === user?.uid ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}>
                                                 {i+1}
                                             </div>
-                                            <span className={`text-xs font-bold ${p.uid === user?.uid ? "text-indigo-200" : "text-slate-200"}`}>{p.name} {p.uid === user?.uid && "(You)"}</span> {/* Reduced font size */}
+                                            <span className={`text-xs font-bold ${p.uid === user?.uid ? "text-indigo-200" : "text-slate-200"}`}>{p.name} {p.uid === user?.uid && "(You)"}</span>
                                         </div>
-                                        {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"><Trash2 className="w-3 h-3" /></button>} {/* Reduced padding and icon size */}
+                                        {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"><Trash2 className="w-3 h-3" /></button>}
                                     </div>
                                 ))
                             }
                             </div>
-                            {/* REMOVED ADD NAME BUTTON */}
                         </div>
                     ) : <div className="text-center py-4 text-slate-500 text-xs">Tap empty squares to build your cart.</div>}
                   </div>
