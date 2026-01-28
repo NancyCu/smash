@@ -133,58 +133,65 @@ function WinnersContent() {
   };
 
   // --- 3. ROBUST ROLLOVER LOGIC (Matches Page.tsx) ---
+// --- 3. ROBUST ROLLOVER LOGIC ---
   const rolloverResults = useMemo(() => {
     if (!game) return [];
-
+    
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const matchedGame = liveGames.find((g) => g.id === game.espnGameId) as any;
+    const matchedGame = liveGames.find(g => g.id === game.espnGameId) as any;
+    
+    // SAFEGUARDS: If data isn't loaded yet, default to reasonable fallbacks
     const status = matchedGame?.status;
-    const p = status?.period || 1;
-    const isFinal = status?.type?.completed;
-    const isHalf =
-      status?.type?.name === "STATUS_HALFTIME" ||
-      status?.type?.shortDetail === "Halftime";
+    const p = status?.period || 0;
+    
+    // AGGRESSIVE FINAL CHECK: Check multiple flags to ensure we catch the end of the game
+    const isFinal = status?.type?.completed || 
+                    status?.type?.state === 'post' || 
+                    status?.type?.description === 'Final' ||
+                    status?.type?.shortDetail?.toLowerCase().includes('final');
 
-    const pot = game.pot || Object.keys(game.squares).length * game.price;
+    const isHalf = status?.type?.name === "STATUS_HALFTIME" || 
+                   status?.type?.shortDetail === "Halftime" ||
+                   p === 2 && status?.clock === 0.0; // Clock hitting 0 in Q2 is halftime
 
-    // Fixed percentages to ensure we hit that $400 total correctly
+    const pot = game.pot || (Object.keys(game.squares).length * game.price);
+    
     const basePayouts = {
-      q1: pot * 0.1,
-      q2: pot * 0.2,
-      q3: pot * 0.2,
-      final: pot * 0.5,
+      q1: pot * 0.10,
+      q2: pot * 0.20,
+      q3: pot * 0.20,
+      final: pot * 0.50
     };
 
     let currentRollover = 0;
     const results: any[] = [];
+
     // --- Process Q1, Q2, Q3, FINAL in sequence ---
+    // If isFinal is true, EVERYTHING is done.
     const stages = [
-      { key: "q1", label: "1st Quarter", done: p > 1 || isHalf || isFinal },
-      { key: "q2", label: "Halftime", done: p > 2 || isHalf || isFinal },
-      { key: "q3", label: "3rd Quarter", done: p > 3 || isFinal },
-      { key: "final", label: "Final Score", done: isFinal },
+      { key: 'q1', label: "1st Quarter", done: p > 1 || isHalf || isFinal },
+      { key: 'q2', label: "Halftime", done: p > 2 || isFinal || (p === 2 && isHalf) },
+      { key: 'q3', label: "3rd Quarter", done: p > 3 || isFinal },
+      { key: 'final', label: "Final Score", done: isFinal }
     ];
 
     stages.forEach((stage) => {
       const result = getWinnerForQuarter(stage.key as any);
       const hasWinner = result && result.winners !== null;
-
+      
       // Calculate what this quarter SHOULD pay out (Base + whatever rolled over)
-      let displayAmount =
-        basePayouts[stage.key as keyof typeof basePayouts] + currentRollover;
+      let displayAmount = basePayouts[stage.key as keyof typeof basePayouts] + currentRollover;
       let rolloverActive = false;
 
-      // If the stage is finished and NO ONE won, push the money to the next stage
+      // Logic: If stage is done and NO WINNER, move money to next bucket
       if (stage.done && !hasWinner) {
-        // We don't roll over the "Final" score, it just stays $0/Unclaimed
-        if (stage.key !== "final") {
+        if (stage.key !== 'final') {
           currentRollover = displayAmount;
           displayAmount = 0;
           rolloverActive = true;
         }
       } else if (stage.done && hasWinner) {
-        // Someone won! Reset the snowball for the next quarter
-        currentRollover = 0;
+        currentRollover = 0; // Reset snowball
       }
 
       results.push({
@@ -194,7 +201,7 @@ function WinnersContent() {
         finalPayout: displayAmount,
         isRollover: rolloverActive,
         hasWinner: hasWinner,
-        isFinished: stage.done,
+        isFinished: stage.done
       });
     });
 
