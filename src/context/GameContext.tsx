@@ -176,26 +176,35 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     return docRef.id;
   };
 
+// REPLACE YOUR EXISTING updateScores FUNCTION WITH THIS:
+
 const updateScores = async (home: any, away?: any) => {
-    if (!gameId) return;
+  if (!gameId) return;
 
-    // FIX: Detect if we received (7, 3) or ({teamA: 7, teamB: 3})
-    let newScores;
-    if (typeof home === 'object' && home !== null) {
-        newScores = home;
-    } else {
-        newScores = { 
-            teamA: Number(home), 
-            teamB: Number(away) 
-        };
-    }
+  // 1. Determine if we received (7, 3) or ({teamA: 7, teamB: 3})
+  let newScores;
+  
+  // Check if the first argument is already the full object
+  if (typeof home === 'object' && home !== null && 'teamA' in home) {
+      newScores = home;
+  } 
+  // Otherwise, treat arguments as (Home, Away) numbers
+  else {
+      newScores = { 
+          teamA: Number(home), 
+          teamB: Number(away || 0) // Default to 0 if away is missing
+      };
+  }
 
-    try {
-        await updateDoc(doc(db, "games", gameId), { scores: newScores });
-    } catch (err) {
-        console.error("Failed to update scores:", err);
-    }
-  };
+  try {
+      await updateDoc(doc(db, "games", gameId), { scores: newScores });
+      console.log("✅ Scores updated manually:", newScores);
+  } catch (err) {
+      console.error("❌ Failed to update scores:", err);
+      // Optional: Add a toast notification here if you have one
+  }
+};
+
   const setGamePhase = async (period: string) => {
   if (gameId) {
     await updateDoc(doc(db, "games", gameId), { currentPeriod: period });
