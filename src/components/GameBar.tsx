@@ -35,7 +35,7 @@ export default function GameBar() {
   if (!user || games.length === 0) return null;
 
   return (
-    <div className="w-full shrink-0 flex overflow-x-auto gap-2 no-scrollbar py-1 px-4 bg-[#0B0C15] border-b border-white/5 relative items-center h-12">
+    <div className="w-full shrink-0 flex overflow-x-auto gap-2 no-scrollbar py-1 px-4 bg-white/10 backdrop-blur-md border-b border-white/20 relative items-center h-12 shadow-sm z-30">
       {games.map((g) => {
         const isActive = g.id === params.id;
         // Determine Winning State (Simple Approximation)
@@ -65,8 +65,8 @@ export default function GameBar() {
               relative shrink-0 flex flex-row items-center gap-2 px-3 pl-3 pr-4 rounded-full transition-all duration-200 h-8
               border
               ${isActive 
-                ? "bg-cyan-400/20 border-cyan-400 text-white shadow-[0_0_10px_rgba(34,211,238,0.2)]" 
-                : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-slate-200"
+                ? "bg-cyan-400/30 border-cyan-400/50 text-white shadow-[0_0_10px_rgba(34,211,238,0.2)]" 
+                : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/80"
               }
             `}
           >
@@ -81,13 +81,13 @@ export default function GameBar() {
                 <span className={`text-xs font-bold truncate ${isActive ? "text-cyan-100" : ""}`}>
                 {g.teamA} vs {g.teamB}
                 </span>
-                <span className={`text-[10px] font-medium whitespace-nowrap ${isActive ? "text-cyan-200" : "text-slate-500"}`}>
+                <span className={`text-[10px] font-medium whitespace-nowrap ${isActive ? "text-cyan-200" : "text-white/40"}`}>
                 • ${g.pot || g.totalPot || 0}
                 </span>
             </div>
             
             {isHost && (
-                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ml-1 ${isActive ? "bg-cyan-500/20 text-cyan-300" : "bg-white/10 text-slate-500"}`}>
+                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ml-1 ${isActive ? "bg-cyan-500/20 text-cyan-200" : "bg-white/10 text-white/40"}`}>
                     YOU
                 </span>
             )}

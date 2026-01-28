@@ -21,7 +21,7 @@ export default function BottomNav() {
   const getLinkClass = (path: string) => {
     const isActive = pathname === path;
     return `flex flex-col items-center justify-center w-full transition-all duration-200 ${
-      isActive ? "text-cyan-400 scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" : "text-gray-500 hover:text-gray-300"
+      isActive ? "text-cyan-200 scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" : "text-white/40 hover:text-white/80"
     }`;
   };
 
@@ -38,7 +38,7 @@ export default function BottomNav() {
   const isLiveActive = pathname.startsWith('/game/');
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 h-24 pb-safe bg-[#0B0C15]/80 backdrop-blur-md border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+    <div className="fixed bottom-0 left-0 right-0 z-50 h-24 pb-safe bg-white/10 backdrop-blur-xl border-t border-white/20 shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
       <div className="flex justify-between items-center h-full px-2 max-w-lg mx-auto w-full">
         
         {/* 1. HOME */}
@@ -61,14 +61,14 @@ export default function BottomNav() {
             aria-label="Live Game"
         >
           <div className={`
-            p-5 rounded-full border-4 border-[#0B0C15] shadow-lg transition-transform duration-200 group-hover:scale-105
+            p-5 rounded-full border-4 border-white/10 shadow-lg transition-transform duration-200 group-hover:scale-105 backdrop-blur-md
             ${isLiveActive 
               ? "bg-gradient-to-tr from-cyan-400 to-blue-600 shadow-[0_0_25px_rgba(34,211,238,0.7)]" 
-              : "bg-gray-700 group-hover:bg-gray-600 group-hover:shadow-[0_0_18px_rgba(34,211,238,0.45)]"}
+              : "bg-white/20 group-hover:bg-white/30 group-hover:shadow-[0_0_18px_rgba(34,211,238,0.45)]"}
           `}>
             <Zap size={36} color="white" className={isLiveActive ? "fill-white" : ""} />
           </div>
-          <span className={`absolute bottom-5 left-1/2 -translate-x-1/2 text-xs font-bold ${isLiveActive ? "text-cyan-400" : "text-gray-400"} group-hover:text-white`}>
+          <span className={`absolute bottom-5 left-1/2 -translate-x-1/2 text-xs font-bold ${isLiveActive ? "text-cyan-200" : "text-white/40"} group-hover:text-white`}>
             LIVE
           </span>
         </button>

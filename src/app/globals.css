@@ -12,10 +12,14 @@
 
 /* 2. BASE STYLES */
 body {
-  background-color: var(--background);
+  /* Neon Vaporwave Gradient: Pink/Purple/Cyan mix */
+  background: radial-gradient(at top center, #2a1b3d, #0B0C15, #1a1625); /* Fallback */
+  background: linear-gradient(135deg, rgba(219, 39, 119, 0.3), #1e1b4b, rgba(34, 211, 238, 0.3));
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
 /* 3. UTILITIES (The Glass Effect) */

@@ -526,19 +526,19 @@ export default function GamePage() {
   const cartTotal = pendingSquares.length * game.price;
 
   return (
-    <main className="flex flex-col lg:flex-row h-dvh w-full bg-[#0B0C15] overflow-hidden">
+    <main className="flex flex-col lg:flex-row h-dvh w-full overflow-hidden">
       {/* 1. MAIN AREA */}
       <div className="flex-1 flex flex-col h-full relative overflow-hidden">
         {/* MOBILE HEADER */}
-        <div className="lg:hidden p-2 bg-[#0B0C15]/95 shrink-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5">
+        <div className="lg:hidden p-2 bg-white/10 shrink-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/20 shadow-lg">
           <div onClick={() => router.push("/")} className="flex items-center gap-2 cursor-pointer">
-            <div className="relative h-8 w-auto rounded-lg overflow-hidden">
+            <div className="relative h-8 w-auto rounded-lg overflow-hidden shadow-md">
               <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-8 w-auto object-contain" />
             </div>
-            <span className="font-bold text-white tracking-widest text-[10px] uppercase">Souper Bowl Squares</span>
+            <span className="font-bold text-white tracking-widest text-[10px] uppercase drop-shadow-md">Souper Bowl Squares</span>
           </div>
-          <button onClick={handleAuth} className="p-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
-            {user ? <LogOut className="w-3 h-3 text-red-400" /> : <LogIn className="w-3 h-3 text-green-400" />}
+          <button onClick={handleAuth} className="p-1.5 rounded-full bg-white/20 border border-white/30 text-slate-100 backdrop-blur-sm shadow-sm hover:bg-white/30 transition-all">
+            {user ? <LogOut className="w-3 h-3 text-red-300" /> : <LogIn className="w-3 h-3 text-green-300" />}
           </button>
         </div>
         
@@ -548,14 +548,14 @@ export default function GamePage() {
         <div className="flex-1 w-full min-h-0 overflow-y-auto no-scrollbar flex flex-col items-center max-w-4xl mx-auto px-2 py-1 lg:p-2 gap-1">
           {/* SCOREBOARD */}
           <div className="w-full relative group z-20 shrink-0">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/10 via-indigo-500/5 to-cyan-500/10 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition duration-1000"></div>
-            <div className="relative w-full bg-[#0B0C15]/95 backdrop-blur-xl border border-white/5 rounded-xl px-2 pt-1 pb-0.5 flex flex-col items-center shadow-xl">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/30 via-indigo-500/20 to-cyan-500/30 rounded-2xl blur-lg opacity-60 group-hover:opacity-80 transition duration-1000"></div>
+            <div className="relative w-full bg-white/20 backdrop-blur-xl border border-white/30 rounded-xl px-2 pt-1 pb-0.5 flex flex-col items-center shadow-xl">
               <div className="flex w-full justify-between items-start relative">
                 {/* TEAM A */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <div className="flex items-center gap-1 mb-0.5 justify-center w-full">
                     <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
-                    <span className="text-pink-500 font-teko text-[10px] md:text-lg tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px]">
+                    <span className="text-pink-200 font-teko text-[10px] md:text-lg tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] drop-shadow-sm">
                       {game.teamA}
                     </span>
                   </div>
@@ -578,29 +578,29 @@ export default function GamePage() {
                 {/* CLOCK */}
                 <div className="flex flex-col items-center w-[30%] shrink-0 z-10 pt-0.5">
                   <LiveGameClock game={matchedGame} />
-                  <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100">
+                  <div className="flex bg-black/20 rounded-full p-1 border border-white/20 scale-75 md:scale-100 backdrop-blur-sm">
                     {displayPeriods.map((period) => (
-                      <button key={period} onClick={() => handlePeriodChange(period)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activePeriod === period ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-white"}`}>
+                      <button key={period} onClick={() => handlePeriodChange(period)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activePeriod === period ? "bg-indigo-500/90 text-white shadow-lg ring-1 ring-indigo-400" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
                         {getPeriodLabel(period, sportType)}
                       </button>
                     ))}
                   </div>
                   {game.espnGameId ? (
                      espnError ? (
-                        <span className="text-[9px] text-red-500 font-bold uppercase tracking-widest animate-pulse">Sync Error</span>
+                        <span className="text-[9px] text-red-300 font-bold uppercase tracking-widest animate-pulse drop-shadow-sm">Sync Error</span>
                      ) : (
                         <span className="flex items-center justify-center">
-                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>
+                           <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_5px_#4ade80]"/>
                         </span>
                      )
                   ) : (
-                     <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Manual Mode</span>
+                     <span className="text-[9px] text-slate-300 font-bold uppercase tracking-widest drop-shadow-sm">Manual Mode</span>
                   )}
                 </div>
                 {/* TEAM B */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <div className="flex items-center gap-1 mb-0.5 justify-center w-full">
-                    <span className="text-cyan-400 font-teko text-[10px] md:text-lg tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px]">
+                    <span className="text-cyan-200 font-teko text-[10px] md:text-lg tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] drop-shadow-sm">
                       {game.teamB}
                     </span>
                     <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
@@ -625,22 +625,22 @@ export default function GamePage() {
 
           {/* GRID */}
           <div className="w-full shrink-0 aspect-square max-w-[500px] z-10 flex flex-col justify-center my-1">
-            <div className="w-full h-full bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 overflow-hidden">
+            <div className="w-full h-full bg-white/10 backdrop-blur-md rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)] border border-white/20 overflow-hidden ring-1 ring-white/10">
               <Grid rows={currentAxis.row} cols={currentAxis.col} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamA || "Home"} teamB={game.teamB || "Away"} teamALogo={getTeamLogo(game.teamA)} teamBLogo={getTeamLogo(game.teamB)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} currentUserId={user?.uid} />
             </div>
           </div>
 
           {/* CART / DETAILS BOX */}
           {pendingSquares.length > 0 ? (
-            <div className="w-full bg-[#151725] border border-indigo-500/50 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
+            <div className="w-full bg-white/20 backdrop-blur-xl border border-indigo-400/30 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30"><ShoppingCart className="w-5 h-5 text-white" /></div>
-                  <div className="flex flex-col"><span className="text-xs text-indigo-300 font-bold uppercase tracking-widest">Selected Squares</span><span className="text-xl font-black text-white">{pendingSquares.length} <span className="text-sm font-medium text-slate-400">Total: ${cartTotal}</span></span></div>
+                  <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/40"><ShoppingCart className="w-5 h-5 text-white" /></div>
+                  <div className="flex flex-col"><span className="text-xs text-indigo-100 font-bold uppercase tracking-widest">Selected Squares</span><span className="text-xl font-black text-white">{pendingSquares.length} <span className="text-sm font-medium text-white/70">Total: ${cartTotal}</span></span></div>
                 </div>
-                <button onClick={handleClearCart} className="text-xs text-slate-500 hover:text-white underline">Clear</button>
+                <button onClick={handleClearCart} className="text-xs text-white/70 hover:text-white underline shadow-sm">Clear</button>
               </div>
-              <button onClick={handleConfirmCart} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] transition-transform disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleConfirmCart} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-500/30 hover:scale-[1.02] transition-transform disabled:opacity-50 flex items-center justify-center gap-2 border border-white/20">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : user ? `Confirm & Claim ($${cartTotal})` : "Sign In to Claim"}
               </button>
             </div>
@@ -651,7 +651,7 @@ export default function GamePage() {
                 const isWinnerView = !selectedCell && winningCoordinates; 
                 const isTargetWinning = winningCoordinates && targetCell && winningCoordinates.row === targetCell.row && winningCoordinates.col === targetCell.col;
                 return (
-                    <div className={`w-full bg-[#151725] border ${isTargetWinning ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
+                    <div className={`w-full bg-white/20 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/20"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
                       <div className="flex items-start justify-between">
                         <div className="flex flex-col flex-1">
                           {/* OWNERS AT TOP - THE HERO */}
@@ -661,9 +661,9 @@ export default function GamePage() {
                              return cellData.length > 0 ? (
                                 <div className="flex flex-row flex-wrap gap-2 items-center mb-2">
                                   {cellData.map((p, i) => (
-                                    <div key={i} className="flex items-center gap-1.5">
-                                      <span className={`text-xl font-bold ${p.uid === user?.uid ? "text-indigo-300" : "text-white"}`}>{p.name}</span>
-                                      {!isWinnerView && (isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-400 transition-colors text-slate-500"><Trash2 className="w-3.5 h-3.5" /></button>}
+                                    <div key={i} className="flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-md border border-white/10">
+                                      <span className={`text-xl font-bold ${p.uid === user?.uid ? "text-cyan-200 drop-shadow-sm" : "text-white"}`}>{p.name}</span>
+                                      {!isWinnerView && (isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-300 transition-colors text-white/50"><Trash2 className="w-3.5 h-3.5" /></button>}
                                     </div>
                                   ))}
                                 </div>
@@ -671,28 +671,28 @@ export default function GamePage() {
                           })()}
                           
                           {/* METADATA BELOW - REDUCED PROMINENCE */}
-                          <div className="flex items-center gap-2 text-xs text-gray-400">
-                            {isWinnerView && <><Trophy className="w-3 h-3 text-yellow-500" /><span>Winning Square</span></>}
-                            {selectedCell && <span className="text-slate-500">Selected Square</span>}
+                          <div className="flex items-center gap-2 text-xs text-white/70 font-medium">
+                            {isWinnerView && <><Trophy className="w-3 h-3 text-yellow-300" /><span className="text-yellow-100">Winning Square</span></>}
+                            {selectedCell && <span className="text-white/60">Selected Square</span>}
                             {targetCell && (
                               <span className="flex items-center gap-1">
                                 (Row {currentAxis.row[targetCell.row]} • Col {currentAxis.col[targetCell.col]})
-                                {isTargetWinning && <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />}
+                                {isTargetWinning && <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />}
                               </span>
                             )}
-                            {!targetCell && <span className="text-slate-500">Select a Square</span>}
+                            {!targetCell && <span className="text-white/50">Select a Square</span>}
                           </div>
                         </div>
-                        {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/10 text-slate-500 ml-2"><X className="w-4 h-4" /></button>}
+                        {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/20 text-white/70 ml-2"><X className="w-4 h-4" /></button>}
                       </div>
                       {targetCell && (() => {
                          const cellKey = `${targetCell.row}-${targetCell.col}`;
                          const cellData = formattedSquares[cellKey] || [];
                          return cellData.length === 0 ? (
-                            <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg mt-2">Empty Square</div>
+                            <div className="p-2 text-center text-xs text-white/40 border border-dashed border-white/20 rounded-lg mt-2">Empty Square</div>
                          ) : null;
                       })()}
-                      {!targetCell && <div className="text-center py-4 text-slate-500 text-xs">Tap empty squares to build your cart.</div>}
+                      {!targetCell && <div className="text-center py-4 text-white/50 text-xs font-medium">Tap empty squares to build your cart.</div>}
                     </div>
                 )
             })()
@@ -726,24 +726,24 @@ export default function GamePage() {
       </div>
 
       {/* DESKTOP SIDEBAR */}
-      <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-[#0f111a] border-l border-white/5 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl relative">
+      <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-white/10 backdrop-blur-xl border-l border-white/20 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl relative">
         <div className="mb-6">
           <div onClick={() => router.push("/")} className="cursor-pointer group">
-            <div className="relative w-full h-32 rounded-xl overflow-hidden border border-white/10 mb-4 shadow-xl group-hover:shadow-2xl transition-all">
-              <Image src="/SouperBowlBanner.jpg" alt="Banner" fill className="object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0f111a] to-transparent/50" />
+            <div className="relative w-full h-32 rounded-xl overflow-hidden border border-white/20 mb-4 shadow-xl group-hover:shadow-2xl transition-all">
+              <Image src="/SouperBowlBanner.jpg" alt="Banner" fill className="object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1e1b4b]/80 to-transparent/30" />
               <div className="absolute bottom-3 left-3 flex items-center gap-3">
-                <div className="relative h-16 w-auto rounded-xl overflow-hidden shadow-lg">
+                <div className="relative h-16 w-auto rounded-xl overflow-hidden shadow-lg ring-1 ring-white/10">
                   <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-16 w-auto object-contain" />
                 </div>
-                <div><h1 className="text-white font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Souper Bowl</h1><h1 className="text-indigo-400 font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Squares</h1></div>
+                <div><h1 className="text-white font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Souper Bowl</h1><h1 className="text-indigo-300 font-black text-xl tracking-wider uppercase leading-none drop-shadow-md">Squares</h1></div>
               </div>
             </div>
-            <p className="text-slate-400 text-xs font-medium leading-relaxed border-l-2 border-indigo-500 pl-3 italic">"Go Big or Go Home. Connect, compete, and win big with the ultimate squares experience. Because with us, a Nguyen is always a Win"</p>
+            <p className="text-indigo-200 text-xs font-medium leading-relaxed border-l-2 border-indigo-400 pl-3 italic">"Go Big or Go Home. Connect, compete, and win big with the ultimate squares experience. Because with us, a Nguyen is always a Win"</p>
           </div>
-          <div className="mt-6 flex justify-between items-center border-t border-white/5 pt-4">
-            <button onClick={handleAuth} className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800 border border-slate-700 text-white font-bold text-xs uppercase hover:bg-slate-700 transition-colors">
-              {user ? <><LogOut className="w-4 h-4 text-red-400" /><span>Log Out</span></> : <><LogIn className="w-4 h-4 text-green-400" /><span>Log In</span></>}
+          <div className="mt-6 flex justify-between items-center border-t border-white/10 pt-4">
+            <button onClick={handleAuth} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs uppercase transition-colors backdrop-blur-sm shadow-sm opacity-90 hover:opacity-100">
+              {user ? <><LogOut className="w-4 h-4 text-red-300" /><span>Log Out</span></> : <><LogIn className="w-4 h-4 text-green-300" /><span>Log In</span></>}
             </button>
           </div>
         </div>

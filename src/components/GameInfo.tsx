@@ -123,33 +123,33 @@ export default function GameInfo({
                 return (
                     <div key={i} className={`flex flex-col items-center rounded-lg p-2 border relative overflow-hidden group transition-all ${
                         isRealWinner 
-                        ? "bg-green-900/20 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.2)]" 
+                        ? "bg-green-500/20 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.3)] backdrop-blur-sm" 
                         : isRollover 
-                            ? "bg-red-900/10 border-red-500/20 opacity-70" 
-                            : "bg-black/20 border-white/5"
+                            ? "bg-red-500/20 border-red-500/30 backdrop-blur-sm" 
+                            : "bg-white/5 border-white/10 backdrop-blur-sm"
                     }`}>
                         {/* Winner Dot */}
-                        {isRealWinner && <div className="absolute top-0 right-0 p-1"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/></div>}
+                        {isRealWinner && <div className="absolute top-0 right-0 p-1"><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_5px_#4ade80]"/></div>}
                         
-                        <span className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isRealWinner ? "text-green-400" : "text-slate-500"}`}>{p.label}</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isRealWinner ? "text-green-300" : "text-white/50"}`}>{p.label}</span>
                         
                         {/* Amount - Strikethrough if Rollover */}
-                        <span className={`text-sm font-black transition-colors ${isRollover ? "text-red-400 line-through decoration-2" : "text-white"}`}>
+                        <span className={`text-sm font-black transition-colors ${isRollover ? "text-red-300 line-through decoration-white/30" : "text-white"}`}>
                             {isRealWinner ? `$${winnerObj.amount}` : `$${p.amount}`}
                         </span>
 
                         {/* Rollover Breakdown - Only show if > 0 */}
                         {isRealWinner && winnerObj.rolloverAmount > 0 && (
-                            <span className="text-[7px] text-yellow-400 font-bold mt-0.5">
+                            <span className="text-[7px] text-yellow-300 font-bold mt-0.5 shadow-black/50 drop-shadow-sm">
                                 +${winnerObj.rolloverAmount} Bonus
                             </span>
                         )}
 
                         {/* Footer Text */}
                         {isRealWinner ? (
-                            <span className="text-[9px] text-green-300 font-bold text-center leading-tight max-w-full break-words">{winnerObj.winner}</span>
+                            <span className="text-[9px] text-green-200 font-bold text-center leading-tight max-w-full break-words mt-1">{winnerObj.winner}</span>
                         ) : isRollover ? (
-                            <span className="text-[7px] text-red-400 font-bold uppercase mt-1 tracking-wider">Rollover</span>
+                            <span className="text-[7px] text-red-300 font-bold uppercase mt-1 tracking-wider">Rollover</span>
                         ) : null}
                     </div>
                 );
@@ -159,30 +159,30 @@ export default function GameInfo({
   };
 
   return (
-    <div className="bg-[#151725] border border-white/10 rounded-2xl p-6 shadow-xl space-y-6">
+    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl space-y-6">
         
         {/* GAME HEADER */}
         <div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-wide leading-none">{gameName}</h2>
-            <div className="flex items-center gap-2 mt-2 text-xs text-slate-400 font-mono">
+            <h2 className="text-2xl font-black text-white uppercase tracking-wide leading-none drop-shadow-md">{gameName}</h2>
+            <div className="flex items-center gap-2 mt-2 text-xs text-white/60 font-mono">
                 <span>ID: {gameId.slice(0, 8)}...</span>
                 <button onClick={handleShare} className="hover:text-white transition-colors flex items-center gap-1">
                     {copied ? <Check className="w-3 h-3 text-green-400" /> : <Share2 className="w-3 h-3" />}
                     <span className="text-[10px] uppercase font-bold underline">Share</span>
                 </button>
             </div>
-            <div className="mt-1 text-xs text-slate-500">
-                Host: <span className="text-slate-300 font-bold">{host === user?.uid ? "You" : "User"}</span>
+            <div className="mt-1 text-xs text-white/50">
+                Host: <span className="text-white/90 font-bold">{host === user?.uid ? "You" : "User"}</span>
             </div>
         </div>
 
         {/* POT INFO */}
-        <div className="bg-gradient-to-r from-indigo-900/20 to-purple-900/20 rounded-xl p-4 border border-indigo-500/20">
+        <div className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-xl p-4 border border-indigo-400/30 shadow-[inset_0_0_20px_rgba(99,102,241,0.1)]">
             <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-bold text-indigo-300 uppercase tracking-widest">Total Pot</span>
-                <span className="text-3xl font-black text-white">${totalPot}</span>
+                <span className="text-xs font-bold text-indigo-200 uppercase tracking-widest text-shadow-sm">Total Pot</span>
+                <span className="text-3xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">${totalPot}</span>
             </div>
-            <div className="text-xs text-slate-400 flex justify-between border-t border-white/5 pt-2 mt-1">
+            <div className="text-xs text-white/40 flex justify-between border-t border-white/10 pt-2 mt-1">
                 <span>Price per Square:</span>
                 <span className="text-white font-bold">${pricePerSquare}</span>
             </div>
@@ -190,8 +190,8 @@ export default function GameInfo({
 
         {/* PAYOUTS */}
         <div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-2">
-                <Trophy className="w-3 h-3 text-yellow-500" /> Payout Schedule
+            <h3 className="text-xs font-bold text-white/60 uppercase tracking-widest flex items-center gap-2 mb-2">
+                <Trophy className="w-3 h-3 text-yellow-400 drop-shadow-md" /> Payout Schedule
             </h3>
             {renderPayouts()}
         </div>
@@ -199,40 +199,40 @@ export default function GameInfo({
         {/* ADMIN TOOLS */}
         {isAdmin && (
             <div className="border-t border-white/10 pt-4 mt-4 space-y-3">
-                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest block mb-2">Host Controls</span>
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest block mb-2">Host Controls</span>
                 
                 {/* SCRAMBLE TOGGLE */}
-                <div className="flex items-center justify-between bg-black/20 p-3 rounded-xl border border-white/5">
+                <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
                     <div className="flex items-center gap-2">
-                        <Shuffle className="w-4 h-4 text-pink-500" />
-                        <span className="text-xs font-bold text-slate-300">Lock & Scramble</span>
+                        <Shuffle className="w-4 h-4 text-pink-400" />
+                        <span className="text-xs font-bold text-white/80">Lock & Scramble</span>
                     </div>
                     <button 
                         onClick={handleToggleScramble}
-                        className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-full transition-colors ${isScrambled ? "bg-red-500 text-white" : "bg-green-500 text-white"}`}
+                        className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-full transition-colors shadow-lg ${isScrambled ? "bg-red-500/80 text-white shadow-red-500/20" : "bg-green-500/80 text-white shadow-green-500/20"}`}
                     >
                         {isScrambled ? "Locked" : "Open"}
                     </button>
                 </div>
 
                 {/* SCORE KEEPER */}
-                <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                <div className="bg-white/5 p-3 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
                     <div className="flex justify-between items-center mb-2">
                         <div className="flex items-center gap-2">
                             <Edit2 className="w-4 h-4 text-cyan-400" />
-                            <span className="text-xs font-bold text-slate-300">Manual Scores</span>
+                            <span className="text-xs font-bold text-white/80">Manual Scores</span>
                         </div>
-                        <button onClick={() => isEditingScores ? handleSaveScores() : setIsEditingScores(true)} className="text-xs text-indigo-400 hover:text-white">
+                        <button onClick={() => isEditingScores ? handleSaveScores() : setIsEditingScores(true)} className="text-xs text-indigo-300 hover:text-white transition-colors">
                             {isEditingScores ? <Save className="w-4 h-4" /> : "Edit"}
                         </button>
                     </div>
                     {isEditingScores ? (
                         <div className="flex gap-2">
-                             <input type="number" value={editScores.teamA} onChange={e => setEditScores({...editScores, teamA: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-white text-center font-mono" placeholder="Team A"/>
-                             <input type="number" value={editScores.teamB} onChange={e => setEditScores({...editScores, teamB: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-white text-center font-mono" placeholder="Team B"/>
+                             <input type="number" value={editScores.teamA} onChange={e => setEditScores({...editScores, teamA: Number(e.target.value)})} className="w-full bg-black/20 border border-white/20 rounded px-2 py-1 text-white text-center font-mono focus:outline-none focus:border-cyan-400" placeholder="Team A"/>
+                             <input type="number" value={editScores.teamB} onChange={e => setEditScores({...editScores, teamB: Number(e.target.value)})} className="w-full bg-black/20 border border-white/20 rounded px-2 py-1 text-white text-center font-mono focus:outline-none focus:border-cyan-400" placeholder="Team B"/>
                         </div>
                     ) : (
-                        <div className="flex justify-between text-xs text-slate-500 font-mono px-2">
+                        <div className="flex justify-between text-xs text-white/60 font-mono px-2">
                             <span>{matchup.teamA}: {scores.teamA}</span>
                             <span>{matchup.teamB}: {scores.teamB}</span>
                         </div>
@@ -240,7 +240,7 @@ export default function GameInfo({
                 </div>
 
                 {/* DELETE */}
-                <button onClick={onDeleteGame} className="w-full py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
+                <button onClick={onDeleteGame} className="w-full py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border border-red-500/10 hover:border-red-500/30">
                     <Trash2 className="w-4 h-4" /> Delete Game
                 </button>
             </div>
@@ -248,8 +248,8 @@ export default function GameInfo({
 
         {/* NAVIGATION LINKS */}
         <div className="grid grid-cols-2 gap-2 pt-2">
-            <button onClick={() => router.push(`/winners?id=${gameId}`)} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 uppercase">View Winners</button>
-            <button onClick={() => router.push(`/payments?id=${gameId}`)} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 uppercase">Payment Ledger</button>
+            <button onClick={() => router.push(`/winners?id=${gameId}`)} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 uppercase border border-white/5 hover:border-white/20 transition-all">View Winners</button>
+            <button onClick={() => router.push(`/payments?id=${gameId}`)} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 uppercase border border-white/5 hover:border-white/20 transition-all">Payment Ledger</button>
         </div>
 
     </div>
