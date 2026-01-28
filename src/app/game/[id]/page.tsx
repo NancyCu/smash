@@ -42,6 +42,13 @@ export default function GamePage() {
     setGamePhase,
   } = useGame();
 
+  // 1. Get a safe reference to squares to prevent the .length crash
+const squares = game?.squares ?? {};
+
+// 2. Define the ONE AND ONLY pot variable
+const pot = game?.pot || game?.totalPot || (Object.keys(squares).length * (game?.price || 0));
+
+
   const { user, logOut } = useAuth();
   const { games: liveGames } = useEspnScores();
 
@@ -283,7 +290,6 @@ export default function GamePage() {
         currentPotential: 0,
       };
 
-const pot = game.pot || game.totalPot || 0;
 
 const payouts = useMemo(() => {
   // Return dummy data if the game isn't loaded to prevent the 'length' crash
@@ -291,7 +297,6 @@ const payouts = useMemo(() => {
     q1: { amount: 0 }, q2: { amount: 0 }, q3: { amount: 0 }, final: { amount: 0 } 
   };
 
-  const pot = game.pot || game.totalPot || 0;
   // Fallback to empty array if payoutHistory is missing in DB
   const history = game.payoutHistory || []; 
   
