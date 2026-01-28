@@ -75,7 +75,7 @@ export default function Grid({
       {/* --- 1. TOP HEADER BAR (TEAM B - CYAN) --- */}
       {isScrambled ? (
         <div
-          className="relative w-full flex items-center justify-center border-b border-white/5 bg-[#151725] h-8 md:h-10 overflow-hidden"
+          className="relative w-full flex items-center justify-center border-b border-white/5 bg-[#151725] h-6 md:h-8 overflow-hidden"
         >
           {/* Watermark Logo */}
           {teamBLogo && (
@@ -92,19 +92,19 @@ export default function Grid({
             {teamBLogo && (
               <img
                 src={teamBLogo}
-                className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
+                className="w-3 h-3 md:w-4 md:h-4 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
                 alt=""
               />
             )}
             <span
-              className="text-cyan-400 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(34,211,238,0.4)] text-lg md:text-2xl truncate max-w-[80%]"
+              className="text-cyan-400 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(34,211,238,0.4)] text-xs md:text-sm truncate max-w-[80%]"
             >
               {teamB}
             </span>
             {teamBLogo && (
               <img
                 src={teamBLogo}
-                className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
+                className="w-3 h-3 md:w-4 md:h-4 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
                 alt=""
               />
             )}
@@ -117,7 +117,7 @@ export default function Grid({
         {/* --- 2. LEFT SIDEBAR (TEAM A - PINK) --- */}
         {isScrambled ? (
           <div
-            className="relative h-full border-r border-white/5 flex items-center justify-center bg-[#151725] w-8 md:w-10 overflow-hidden"
+            className="relative h-full border-r border-white/5 flex items-center justify-center bg-[#151725] w-6 md:w-8 overflow-hidden"
           >
             {/* Watermark Logo */}
             {teamALogo && (
@@ -134,19 +134,19 @@ export default function Grid({
               {teamALogo && (
                 <img
                   src={teamALogo}
-                  className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
+                  className="w-3 h-3 md:w-4 md:h-4 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
                   alt=""
                 />
               )}
               <span
-                className="text-pink-500 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(236,72,153,0.4)] whitespace-nowrap [writing-mode:vertical-rl] rotate-180 text-lg md:text-2xl truncate"
+                className="text-pink-500 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(236,72,153,0.4)] whitespace-nowrap [writing-mode:vertical-rl] rotate-180 text-xs md:text-sm truncate"
               >
                 {teamA}
               </span>
               {teamALogo && (
                 <img
                   src={teamALogo}
-                  className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
+                  className="w-3 h-3 md:w-4 md:h-4 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
                   alt=""
                 />
               )}
@@ -175,11 +175,11 @@ export default function Grid({
               </>
             )}
 
-            <div className="grid grid-cols-11 border-b border-r border-white/5 h-full w-full bg-[#0f111a]">
+            <div className="grid grid-cols-[auto_repeat(10,1fr)] border-b border-r border-white/5 h-full w-full bg-[#0f111a]">
             {/* HEADER ROW (COLUMNS) */}
             <div className="contents">
               {/* CORNER */}
-              <div className="bg-[#0B0C15] border-r border-b border-white/5 flex items-center justify-center p-1 relative z-20">
+              <div className="bg-[#0B0C15] border-r border-b border-white/5 flex items-center justify-center p-1 relative z-20 w-8 md:w-10">
                 {isScrambled ? (
                   teamALogo && teamBLogo ? (
                     <div className="relative w-full h-full opacity-80">
@@ -232,7 +232,7 @@ export default function Grid({
                     )}
                     {isScrambled ? (
                       <span
-                        className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isColHighlighted ? "text-cyan-300 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" : "text-cyan-600"}`}
+                        className={`font-mono font-bold text-base md:text-2xl transition-all relative z-10 ${isColHighlighted ? "text-cyan-300 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" : "text-cyan-600"}`}
                       >
                         {num}
                       </span>
@@ -268,7 +268,7 @@ export default function Grid({
                     )}
                     {isScrambled ? (
                       <span
-                        className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isRowHighlighted ? "text-pink-300 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" : "text-pink-700"}`}
+                        className={`font-mono font-bold text-base md:text-2xl transition-all relative z-10 ${isRowHighlighted ? "text-pink-300 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" : "text-pink-700"}`}
                       >
                         {rowNum}
                       </span>

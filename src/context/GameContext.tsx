@@ -215,7 +215,29 @@ const updateScores = async (home: any, away?: any) => {
     await deleteDoc(doc(db, "games", gameId));
   }
 };
-  const scrambleGrid = async () => {/* existing scramble logic */}
+  const scrambleGrid = async () => {
+      if (!gameId) return;
+      const shuffle = (array: number[]) => {
+          const newArr = [...array];
+          for (let i = newArr.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+          }
+          return newArr;
+      };
+      
+      const newAxis = {
+        q1: { row: shuffle([0,1,2,3,4,5,6,7,8,9]), col: shuffle([0,1,2,3,4,5,6,7,8,9]) },
+        q2: { row: shuffle([0,1,2,3,4,5,6,7,8,9]), col: shuffle([0,1,2,3,4,5,6,7,8,9]) },
+        q3: { row: shuffle([0,1,2,3,4,5,6,7,8,9]), col: shuffle([0,1,2,3,4,5,6,7,8,9]) },
+        final: { row: shuffle([0,1,2,3,4,5,6,7,8,9]), col: shuffle([0,1,2,3,4,5,6,7,8,9]) }
+      };
+  
+      await updateDoc(doc(db, "games", gameId), { 
+          isScrambled: true, 
+          axis: newAxis 
+      });
+  };
   const resetGrid = async () => { 
   if (gameId) {
     // This removes the scrambled axes and sets the flag back to false
