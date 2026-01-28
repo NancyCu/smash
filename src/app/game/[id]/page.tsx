@@ -83,7 +83,6 @@ export default function GamePage() {
   // --- 2. SNAP BACK TIMER ---
   useEffect(() => {
       let timer: NodeJS.Timeout;
-      
       if (isManualView) {
           timer = setTimeout(() => {
               setSelectedCell(null); 
@@ -95,7 +94,6 @@ export default function GamePage() {
               setActiveQuarter(liveQuarter);
           }
       }
-
       return () => {
           if (timer) clearTimeout(timer);
       };
@@ -104,7 +102,6 @@ export default function GamePage() {
   // --- 3. HANDLE QUARTER TAB CLICK ---
   const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
       setActiveQuarter(q);
-      
       if (q === liveQuarter) {
           setIsManualView(false);
           setSelectedCell(null); 
@@ -112,23 +109,25 @@ export default function GamePage() {
           setIsManualView(true);
           setSelectedCell(null); 
       }
-
       if (isAdmin) setGamePhase(q);
   };
 
   // --- LOGO HELPER ---
-  const getTeamLogo = (teamName: string) => {
+  const getTeamLogo = (teamName: string | undefined) => {
+    // PARANOID FIX: Handle undefined input immediately
+    const safeName = teamName || "Generic";
+    
     if (matchedGame?.competitors) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const comp = matchedGame.competitors.find(
         (c: any) =>
-          c.team.name.toLowerCase().includes(teamName.toLowerCase()) ||
-          c.team.abbreviation.toLowerCase() === teamName.toLowerCase(),
+          c.team.name.toLowerCase().includes(safeName.toLowerCase()) ||
+          c.team.abbreviation.toLowerCase() === safeName.toLowerCase(),
       );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (comp && (comp as any).team?.logo) return (comp as any).team.logo;
     }
-    return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/${teamName.toLowerCase().slice(0, 3)}.png&h=200&w=200`;
+    return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/${safeName.toLowerCase().slice(0, 3)}.png&h=200&w=200`;
   };
 
   // --- SCORES ---
@@ -144,12 +143,11 @@ export default function GamePage() {
     if (!game) return base;
 
     if (game.espnGameId && matchedGame && matchedGame.competitors) {
-      const normalize = (s: string) =>
-        s.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
       
-      // SAFETY FIX: Default to "Home" if teamA is momentarily missing
-      const targetA = normalize(game.teamA || "Home");
-      const targetB = normalize(game.teamB || "Away");
+      // PARANOID FIX: Use Optional Chaining AND Default Values
+      const targetA = normalize(game?.teamA || "Home");
+      const targetB = normalize(game?.teamB || "Away");
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let compA = matchedGame.competitors.find((c: any) => {
@@ -188,7 +186,7 @@ export default function GamePage() {
       };
     }
     
-    // --- MANUAL FALLBACK (The Fix) ---
+    // --- MANUAL FALLBACK ---
     const manualHome = game.scores?.teamA || 0;
     const manualAway = game.scores?.teamB || 0;
     const manualObj = { home: manualHome, away: manualAway };
@@ -434,9 +432,9 @@ export default function GamePage() {
     }
   };
    
-  // 4. Loading Screen (UPDATED SAFETY)
-  // We must wait until 'game' AND 'game.teamA' exist to prevent crashes
-  if (!game || !game.teamA) {
+  // 4. Loading Screen (PARANOID SAFETY CHECK)
+  // Forces the loading spinner if game OR game.teamA is missing.
+  if (!game || !game?.teamA) {
     if (loading) {
       return (
         <div className="flex h-screen items-center justify-center bg-[#0B0C15] text-cyan-400">
@@ -576,8 +574,8 @@ export default function GamePage() {
                 cols={currentAxis.col}
                 squares={formattedSquares}
                 onSquareClick={handleSquareClick}
-                teamA={game.teamA}
-                teamB={game.teamB}
+                teamA={game.teamA || "Home"} 
+                teamB={game.teamB || "Away"} 
                 teamALogo={getTeamLogo(game.teamA)}
                 teamBLogo={getTeamLogo(game.teamB)}
                 isScrambled={game.isScrambled}
@@ -746,7 +744,7 @@ export default function GamePage() {
               totalPot={livePot}
               payouts={livePayouts}
               winners={gameStats?.winners || []}
-              matchup={{ teamA: game.teamA, teamB: game.teamB }}
+              matchup={{ teamA: game.teamA || "Home", teamB: game.teamB || "Away" }}
               scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
               isAdmin={isAdmin}
               isScrambled={game.isScrambled}
@@ -834,7 +832,7 @@ export default function GamePage() {
           totalPot={livePot}
           payouts={livePayouts}
           winners={gameStats?.winners || []}
-          matchup={{ teamA: game.teamA, teamB: game.teamB }}
+          matchup={{ teamA: game.teamA || "Home", teamB: game.teamB || "Away" }}
           scores={{ teamA: game.scores.teamA, teamB: game.scores.teamB }}
           isAdmin={isAdmin}
           isScrambled={game.isScrambled}
