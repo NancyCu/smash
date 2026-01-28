@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import { Copy, Check, Trophy, Trash2, Edit2, Shuffle, Save } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -41,6 +43,16 @@ export default function GameInfo({
      teamB: scores?.teamB || 0 
   });
 
+  // Sync edit state with props when they change
+  useEffect(() => {
+    if (scores) {
+        setEditScores({
+            teamA: scores.teamA || 0,
+            teamB: scores.teamB || 0
+        });
+    }
+  }, [scores]);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(gameId);
     setCopied(true);
@@ -50,6 +62,19 @@ export default function GameInfo({
   const handleSaveScores = async () => {
     await onUpdateScores(editScores);
     setIsEditingScores(false);
+  };
+
+  // --- FIXED SCRAMBLE HANDLER ---
+  const handleToggleScramble = async () => {
+      if (isScrambled) {
+          // Safety check before resetting (Unlocking)
+          if (confirm("⚠️ Unlock Grid? This will reset the row and column numbers. Are you sure?")) {
+              await onResetGridDigits();
+          }
+      } else {
+          // No confirm needed to Lock & Scramble
+          await onScrambleGridDigits();
+      }
   };
 
   // --- DYNAMIC PAYOUT RENDERER ---
@@ -164,7 +189,7 @@ export default function GameInfo({
                         <span className="text-xs font-bold text-slate-300">Lock & Scramble</span>
                     </div>
                     <button 
-                        onClick={isScrambled ? onResetGridDigits : onScrambleGridDigits}
+                        onClick={handleToggleScramble}
                         className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-full transition-colors ${isScrambled ? "bg-red-500 text-white" : "bg-green-500 text-white"}`}
                     >
                         {isScrambled ? "Locked" : "Open"}
