@@ -494,7 +494,7 @@ export default function GamePage() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-4 gap-3">
+        <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-4 gap-1">
           {/* SCOREBOARD */}
           <div className="w-full relative group z-20 shrink-0">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
@@ -538,8 +538,8 @@ export default function GamePage() {
                      espnError ? (
                         <span className="text-[9px] text-red-500 font-bold uppercase mt-1 tracking-widest animate-pulse">Sync Error</span>
                      ) : (
-                        <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest flex items-center gap-1">
-                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/> Live Sync Active
+                        <span className="flex items-center justify-center mt-1">
+                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>
                         </span>
                      )
                   ) : (
