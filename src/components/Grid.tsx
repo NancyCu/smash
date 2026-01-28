@@ -361,27 +361,42 @@ export default function Grid({
                           </div>
                         )}
                         {isMulti ? (
-                          <div className="w-full h-full grid grid-cols-2 grid-rows-2">
-                            {owners.slice(0, 4).map((o, idx) => (
-                              <div
-                                key={idx}
-                                className={`flex items-center justify-center ${getUserColor(o.name)} !border-0 overflow-hidden`}
-                              >
-                                <span className="text-[6px] md:text-[8px] font-bold leading-none text-white/90">
-                                  {o.name.slice(0, 2).toUpperCase()}
-                                </span>
-                              </div>
-                            ))}
-                            {owners.length > 4 && (
-                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="bg-black/70 backdrop-blur-sm rounded-full w-4 h-4 flex items-center justify-center border border-white/20">
-                                  <span className="text-[6px] font-bold text-white">
-                                    +{owners.length - 4}
+                          owners.length <= 4 ? (
+                            <div className="w-full h-full flex flex-col">
+                              {owners.map((o, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`flex-1 flex items-center justify-center ${getUserColor(o.name)} !border-0 overflow-hidden min-h-0 bg-blend-soft-light`}
+                                >
+                                  <span className="text-[6px] md:text-[8px] font-bold leading-none text-white/95 truncate px-0.5 max-w-full tracking-tight">
+                                    {o.name}
                                   </span>
                                 </div>
-                              </div>
-                            )}
-                          </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+                              {owners.slice(0, 9).map((o, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`flex items-center justify-center ${getUserColor(o.name)} !border-0 overflow-hidden`}
+                                >
+                                  <span className="text-[4px] md:text-[6px] font-bold leading-none text-white/90">
+                                    {o.name.slice(0, 2).toUpperCase()}
+                                  </span>
+                                </div>
+                              ))}
+                              {owners.length > 9 && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="bg-black/80 backdrop-blur-sm rounded-full w-4 h-4 md:w-5 md:h-5 flex items-center justify-center border border-white/20 shadow-lg z-10">
+                                    <span className="text-[6px] md:text-[8px] font-bold text-white">
+                                      +{owners.length - 9}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
                         ) : (
                           <>
                             {owners.length === 1 ? (

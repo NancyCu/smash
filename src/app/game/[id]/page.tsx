@@ -20,6 +20,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
+import { getSportConfig, getDisplayPeriods, getPeriodLabel, type PeriodKey, type SportType } from "@/lib/sport-config";
 
 export default function GamePage() {
   const router = useRouter();
@@ -60,25 +61,38 @@ export default function GamePage() {
   );
    
   // 5. State
-  const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
+  const [activePeriod, setActivePeriod] = useState<PeriodKey>('p1');
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isManualView, setIsManualView] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // --- 1. CALCULATE LIVE QUARTER ---
-  const liveQuarter = useMemo(() => {
-      if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) return 'final';
+  // Get sport configuration
+  const sportType: SportType = game?.sport || 'default';
+  const sportConfig = getSportConfig(sportType);
+  const displayPeriods = getDisplayPeriods(sportType);
+
+  // --- 1. CALCULATE LIVE PERIOD ---
+  const livePeriod = useMemo(() => {
+      if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) return 'final' as PeriodKey;
       if (matchedGame?.isLive) {
           const p = matchedGame.period;
-          if (p === 1) return 'q1';
-          if (p === 2) return 'q2';
-          if (p === 3) return 'q3';
-          if (p >= 4) return 'final';
+          // Map ESPN period numbers to our period keys based on sport
+          if (sportType === 'soccer') {
+            if (p === 1) return 'p1' as PeriodKey; // 1st Half
+            if (p === 2) return 'p2' as PeriodKey; // 2nd Half
+            if (p >= 3) return 'final' as PeriodKey; // Extra time/shootout counts as final
+          } else {
+            // Football/Basketball: standard quarter mapping
+            if (p === 1) return 'p1' as PeriodKey;
+            if (p === 2) return 'p2' as PeriodKey;
+            if (p === 3) return 'p3' as PeriodKey;
+            if (p >= 4) return 'final' as PeriodKey;
+          }
       }
-      return (game?.currentPeriod as 'q1'|'q2'|'q3'|'final') || 'q1';
-  }, [matchedGame, game]);
+      return (game?.currentPeriod as PeriodKey) || 'p1';
+  }, [matchedGame, game, sportType]);
 
   // --- 2. SNAP BACK TIMER ---
   useEffect(() => {
@@ -87,29 +101,29 @@ export default function GamePage() {
           timer = setTimeout(() => {
               setSelectedCell(null); 
               setIsManualView(false);
-              setActiveQuarter(liveQuarter); 
+              setActivePeriod(livePeriod); 
           }, 10000);
       } else {
-          if (activeQuarter !== liveQuarter) {
-              setActiveQuarter(liveQuarter);
+          if (activePeriod !== livePeriod) {
+              setActivePeriod(livePeriod);
           }
       }
       return () => {
           if (timer) clearTimeout(timer);
       };
-  }, [isManualView, liveQuarter, activeQuarter]);
+  }, [isManualView, livePeriod, activePeriod]);
 
-  // --- 3. HANDLE QUARTER TAB CLICK ---
-  const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
-      setActiveQuarter(q);
-      if (q === liveQuarter) {
+  // --- 3. HANDLE PERIOD TAB CLICK ---
+  const handlePeriodChange = (p: PeriodKey) => {
+      setActivePeriod(p);
+      if (p === livePeriod) {
           setIsManualView(false);
           setSelectedCell(null); 
       } else {
           setIsManualView(true);
           setSelectedCell(null); 
       }
-      if (isAdmin) setGamePhase(q);
+      if (isAdmin) setGamePhase(p);
   };
 
   // --- LOGO HELPER ---
@@ -131,9 +145,10 @@ export default function GamePage() {
   // --- SCORES ---
   const currentScores = useMemo(() => {
     const base = {
-      q1: { home: 0, away: 0 },
-      q2: { home: 0, away: 0 },
-      q3: { home: 0, away: 0 },
+      p1: { home: 0, away: 0 },
+      p2: { home: 0, away: 0 },
+      p3: { home: 0, away: 0 },
+      p4: { home: 0, away: 0 },
       final: { home: 0, away: 0 },
       teamA: 0,
       teamB: 0,
@@ -170,9 +185,10 @@ export default function GamePage() {
         c?.linescores?.[i]?.value ? Number(c.linescores[i].value) : 0;
 
       return {
-        q1: { home: getScore(compA, 0), away: getScore(compB, 0) },
-        q2: { home: getScore(compA, 1), away: getScore(compB, 1) },
-        q3: { home: getScore(compA, 2), away: getScore(compB, 2) },
+        p1: { home: getScore(compA, 0), away: getScore(compB, 0) },
+        p2: { home: getScore(compA, 1), away: getScore(compB, 1) },
+        p3: { home: getScore(compA, 2), away: getScore(compB, 2) },
+        p4: { home: getScore(compA, 3), away: getScore(compB, 3) },
         final: {
           home: Number(compA?.score || 0),
           away: Number(compB?.score || 0),
@@ -189,9 +205,10 @@ export default function GamePage() {
 
     return {
       ...base,
-      q1: manualObj,   
-      q2: manualObj,   
-      q3: manualObj,   
+      p1: manualObj,   
+      p2: manualObj,   
+      p3: manualObj,
+      p4: manualObj,   
       final: manualObj,
       teamA: manualHome,
       teamB: manualAway,
@@ -214,31 +231,43 @@ export default function GamePage() {
     }
   }, [currentScores, game?.scores, matchedGame, updateScores, game?.espnGameId]);
 
-  // --- WINNING CELL (FIXED) ---
+  // --- WINNING CELL (SPORT-AWARE) ---
   const winningCoordinates = useMemo(() => {
     const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     const axis = game?.isScrambled
-      ? game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }
+      ? game.axis?.[activePeriod] || { row: defaultAxis, col: defaultAxis }
       : { row: defaultAxis, col: defaultAxis };
 
     let scoreA = 0, scoreB = 0;
 
-    // BUG FIX: If Manual Mode (!game.espnGameId), DO NOT sum the quarters.
-    // Use the total score directly from the manual entry.
+    // Manual Mode: Use total score for all periods
     if (!game?.espnGameId) {
         scoreA = currentScores.teamA;
         scoreB = currentScores.teamB;
     } else {
-        // ESPN Mode: Use line score logic
-        if (activeQuarter === "q1") {
-          scoreA = currentScores.q1.home; scoreB = currentScores.q1.away;
-        } else if (activeQuarter === "q2") {
-          scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away;
-        } else if (activeQuarter === "q3") {
-          scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home;
-          scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away;
+        // ESPN Mode: Calculate cumulative scores based on sport type
+        if (sportType === 'soccer') {
+          // Soccer: Halves don't cumulate, each half stands alone
+          if (activePeriod === "p1") {
+            scoreA = currentScores.p1.home; scoreB = currentScores.p1.away;
+          } else if (activePeriod === 'p2') {
+            scoreA = currentScores.p2.home; scoreB = currentScores.p2.away;
+          } else {
+            scoreA = currentScores.final.home; scoreB = currentScores.final.away;
+          }
         } else {
-          scoreA = currentScores.final.home; scoreB = currentScores.final.away;
+          // Football/Basketball: Cumulative scoring
+          if (activePeriod === "p1") {
+            scoreA = currentScores.p1.home; scoreB = currentScores.p1.away;
+          } else if (activePeriod === "p2") {
+            scoreA = currentScores.p1.home + currentScores.p2.home;
+            scoreB = currentScores.p1.away + currentScores.p2.away;
+          } else if (activePeriod === "p3") {
+            scoreA = currentScores.p1.home + currentScores.p2.home + currentScores.p3.home;
+            scoreB = currentScores.p1.away + currentScores.p2.away + currentScores.p3.away;
+          } else {
+            scoreA = currentScores.final.home; scoreB = currentScores.final.away;
+          }
         }
     }
 
@@ -246,12 +275,12 @@ export default function GamePage() {
     const colIndex = axis.col.indexOf(scoreB % 10);
     if (rowIndex === -1 || colIndex === -1) return null;
     return { row: rowIndex, col: colIndex };
-  }, [currentScores, activeQuarter, game]);
+  }, [currentScores, activePeriod, game, sportType]);
 
   // Current axis
   const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
   const currentAxis = game?.isScrambled
-    ? game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }
+    ? game.axis?.[activePeriod] || { row: defaultAxis, col: defaultAxis }
     : { row: defaultAxis, col: defaultAxis };
 
   // --- GRID DATA ---
@@ -272,31 +301,41 @@ export default function GamePage() {
     return result;
   }, [game]);
 
-  // --- SIDEBAR PAYOUTS ---
+  // --- SIDEBAR PAYOUTS (SPORT-AWARE) ---
   const livePot = Object.keys(game?.squares || {}).length * (game?.price || 10);
-  const livePayouts = {
-    q1: livePot * 0.1,
-    q2: livePot * 0.2,
-    q3: livePot * 0.2,
-    final: livePot * 0.5,
-  };
+  const livePayouts = useMemo(() => {
+    const payoutMap: Record<string, number> = {};
+    sportConfig.periods.forEach(period => {
+      const percentage = sportConfig.payoutStructure[period];
+      payoutMap[period] = Math.floor(livePot * percentage);
+    });
+    return payoutMap;
+  }, [livePot, sportConfig]);
 
-  // 3. GAME STATS HOOK
+  // 3. GAME STATS HOOK (SPORT-AWARE)
   const gameStats = useMemo(() => {
-    if (!game) return { payouts: { q1: 0, q2: 0, q3: 0, final: 0 }, winners: [], currentPotential: 0 };
+    if (!game) return { payouts: {}, winners: [], currentPotential: 0 };
 
-    const getOwner = (q: "q1" | "q2" | "q3" | "final") => {
-      const axis = game.isScrambled && game.axis ? game.axis[q] : { row: defaultAxis, col: defaultAxis };
+    const getOwner = (period: PeriodKey) => {
+      const axis = (game.isScrambled && game.axis && game.axis[period]) ? game.axis[period] : { row: defaultAxis, col: defaultAxis };
       let sA = 0, sB = 0;
       
-      // FIX: Apply same manual logic to Payout Calculator
+      // Apply sport-specific scoring logic
       if (!game.espnGameId) {
           sA = currentScores.teamA; sB = currentScores.teamB;
       } else {
-          if (q === "q1") { sA = currentScores.q1.home; sB = currentScores.q1.away; } 
-          else if (q === "q2") { sA = currentScores.q1.home + currentScores.q2.home; sB = currentScores.q1.away + currentScores.q2.away; } 
-          else if (q === "q3") { sA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home; sB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away; } 
-          else { sA = currentScores.final.home; sB = currentScores.final.away; }
+          if (sportType === 'soccer') {
+            // Soccer: Each half stands alone
+            if (period === "p1") { sA = currentScores.p1.home; sB = currentScores.p1.away; }
+            else if (period === "p2") { sA = currentScores.p2.home; sB = currentScores.p2.away; }
+            else { sA = currentScores.final.home; sB = currentScores.final.away; }
+          } else {
+            // Football/Basketball: Cumulative
+            if (period === "p1") { sA = currentScores.p1.home; sB = currentScores.p1.away; } 
+            else if (period === "p2") { sA = currentScores.p1.home + currentScores.p2.home; sB = currentScores.p1.away + currentScores.p2.away; } 
+            else if (period === "p3") { sA = currentScores.p1.home + currentScores.p2.home + currentScores.p3.home; sB = currentScores.p1.away + currentScores.p2.away + currentScores.p3.away; } 
+            else { sA = currentScores.final.home; sB = currentScores.final.away; }
+          }
       }
 
       const r = axis.row.indexOf(sA % 10);
@@ -313,17 +352,31 @@ export default function GamePage() {
     const statusType = (matchedGame as any)?.statusDetail;
     const p = matchedGame?.period || 1;
     const isFinal = status === "post" || (statusType && statusType.includes("Final"));
-    const isHalf = status === "halftime" || (statusType && statusType.includes("Halftime"));
 
-    const results = [];
-    const payoutMap = { q1: 0, q2: 0, q3: 0, final: 0 };
+    const results: { key: PeriodKey | string; label: string; winner: string; amount: number; rollover: boolean }[] = [];
 
-    const q1Done = p > 1 || isHalf || isFinal;
-    const w1 = getOwner("q1");
-    if (q1Done && w1) results.push({ key: "q1", label: "Q1", winner: w1.displayName, amount: livePayouts.q1, rollover: false });
+    // Check which periods have payouts and which are complete
+    displayPeriods.forEach((period, idx) => {
+      const periodComplete = sportType === 'soccer' 
+        ? (period === 'p1' && p > 1) || (period === 'p2' && (p > 2 || isFinal)) || (period === 'final' && isFinal)
+        : (idx < p - 1) || (period === 'final' && isFinal);
+      
+      const winner = getOwner(period);
+      const amount = livePayouts[period] || 0;
+      
+      if (periodComplete && winner && amount > 0) {
+        results.push({ 
+          key: period, 
+          label: getPeriodLabel(period, sportType), 
+          winner: winner.displayName, 
+          amount, 
+          rollover: false 
+        });
+      }
+    });
     
-    return { payouts: payoutMap, winners: results, currentPotential: payoutMap[activeQuarter] };
-  }, [game, currentScores, matchedGame, activeQuarter, livePayouts]);
+    return { payouts: livePayouts, winners: results, currentPotential: livePayouts[activePeriod] || 0 };
+  }, [game, currentScores, matchedGame, activePeriod, livePayouts, sportType, displayPeriods]);
 
   // --- HANDLERS ---
   const handleSquareClick = (row: number, col: number) => {
@@ -335,22 +388,31 @@ export default function GamePage() {
       setPendingSquares((prev) => prev.filter((i) => i !== index));
       return;
     }
-    const rawData = game?.squares?.[`${row}-${col}`];
+
+    // FIX: Access using index (0-99), not "row-col" string
+    const rawData = game?.squares?.[index];
     const usersInSquare = Array.isArray(rawData) ? rawData : rawData ? [rawData] : [];
+    
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const alreadyInSquare = user && usersInSquare.some((u: any) => u.uid === user.uid);
     if (alreadyInSquare) {
       alert("You already have a spot in this square!");
       return;
     }
+
     let ownedCount = 0;
     if (user && game?.squares) {
-      Object.values(game.squares).forEach((sqUsers: any) => {
-        if (Array.isArray(sqUsers) && sqUsers.some((u: any) => u.uid === user.uid)) {
+      // FIX: Handle both array and single object data structure for counting
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Object.values(game.squares).forEach((sqValue: any) => {
+        const sqUsers = Array.isArray(sqValue) ? sqValue : [sqValue];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (sqUsers.some((u: any) => u.uid === user.uid)) {
           ownedCount++;
         }
       });
     }
+
     if (ownedCount + pendingSquares.length >= 10) {
       alert("Limit reached: You can only choose up to 10 squares.");
       return;
@@ -436,10 +498,18 @@ export default function GamePage() {
                     {game.teamA}
                   </span>
                   <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-1">
-                    {/* FIXED: Display logic now respects Manual Totals for all quarters */}
-                    {(!game.espnGameId) 
+                    {/* Sport-aware score display */}
+                    {!game.espnGameId 
                         ? currentScores.teamA 
-                        : (activeQuarter === "final" ? currentScores.final.home : activeQuarter === "q1" ? currentScores.q1.home : activeQuarter === "q2" ? currentScores.q1.home + currentScores.q2.home : currentScores.teamA)
+                        : (activePeriod === "final" 
+                            ? currentScores.final.home 
+                            : sportType === 'soccer'
+                              ? (activePeriod === "p1" ? currentScores.p1.home : currentScores.p2.home)
+                              : (activePeriod === "p1" 
+                                  ? currentScores.p1.home 
+                                  : activePeriod === "p2" 
+                                    ? currentScores.p1.home + currentScores.p2.home 
+                                    : currentScores.p1.home + currentScores.p2.home + currentScores.p3.home))
                     }
                   </span>
                 </div>
@@ -447,9 +517,9 @@ export default function GamePage() {
                 <div className="flex flex-col items-center w-[30%] shrink-0 z-10 pt-2">
                   <LiveGameClock game={matchedGame} />
                   <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100 mt-1">
-                    {(["q1", "q2", "q3", "final"] as const).map((q) => (
-                      <button key={q} onClick={() => handleQuarterChange(q)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activeQuarter === q ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-white"}`}>
-                        {q === "final" ? "Final" : q.toUpperCase()}
+                    {displayPeriods.map((period) => (
+                      <button key={period} onClick={() => handlePeriodChange(period)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activePeriod === period ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-white"}`}>
+                        {getPeriodLabel(period, sportType)}
                       </button>
                     ))}
                   </div>
@@ -461,10 +531,17 @@ export default function GamePage() {
                     {game.teamB}
                   </span>
                   <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-1">
-                    {(!game.espnGameId) 
+                    {!game.espnGameId 
                         ? currentScores.teamB 
-                        : (activeQuarter === "final" ? currentScores.final.away : activeQuarter === "q1" ? currentScores.q1.away : activeQuarter === "q2" ? currentScores.q1.away + currentScores.q2.away : currentScores.teamB)
-                    }
+                        : (activePeriod === "final" 
+                            ? currentScores.final.away 
+                            : sportType === 'soccer'
+                              ? (activePeriod === "p1" ? currentScores.p1.away : currentScores.p2.away)
+                              : (activePeriod === "p1" 
+                                  ? currentScores.p1.away 
+                                  : activePeriod === "p2" 
+                                    ? currentScores.p1.away + currentScores.p2.away 
+                                    : currentScores.p1.away + currentScores.p2.away + currentScores.p3.away))}
                   </span>
                 </div>
               </div>

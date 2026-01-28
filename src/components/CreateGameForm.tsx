@@ -50,6 +50,7 @@ export default function CreateGameForm() {
         teamA: formData.teamA,
         teamB: formData.teamB,
         espnGameId: formData.espnGameId || null,
+        league: selectedGame?.league || null, // Pass league for sport detection
         payouts: {
             q1: price * 10,   
             q2: price * 20,

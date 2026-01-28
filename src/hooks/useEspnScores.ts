@@ -53,6 +53,11 @@ export function useEspnScores() {
             key: "NCAAM", 
             url: "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard", 
             daysToCheck: 7  // Keep NCAA list clean (1 week only)
+          },
+          { 
+            key: "UEFA", 
+            url: "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard", 
+            daysToCheck: 7  // Keep UEFA Champions League list clean (1 week only)
           }
         ];
 

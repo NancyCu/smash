@@ -7,6 +7,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthContext";
+import { detectSportType, getSportConfig, type SportType, type PeriodKey } from "@/lib/sport-config";
 
 // --- TYPE DEFINITIONS ---
 export type SquareData = {
@@ -41,6 +42,8 @@ export interface GameData { // Changed 'type' to 'export interface'
   payouts: any;
   createdAt: any;
   espnGameId?: string;
+  league?: string; // Store league for sport detection
+  sport?: SportType; // Store detected sport type
   axis?: any;
   participants: string[]; 
   playerIds: string[];  
@@ -163,9 +166,14 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   // Helper functions
   const createGame = async (data: any) => {
     if (!user) throw new Error("Logged in only");
+    
+    // Detect sport type from league if espnGameId is provided
+    const sportType = data.league ? detectSportType(data.league) : 'default';
+    
     const docRef = await addDoc(collection(db, "games"), {
       ...data,
       host: user.uid,
+      sport: sportType,
       squares: {},
       participants: [user.uid],
       playerIds: [user.uid],
@@ -216,7 +224,8 @@ const updateScores = async (home: any, away?: any) => {
   }
 };
   const scrambleGrid = async () => {
-      if (!gameId) return;
+      if (!gameId || !game) return;
+      
       const shuffle = (array: number[]) => {
           const newArr = [...array];
           for (let i = newArr.length - 1; i > 0; i--) {
@@ -226,12 +235,17 @@ const updateScores = async (home: any, away?: any) => {
           return newArr;
       };
       
-      const newAxis = {
-        q1: { row: shuffle([0,1,2,3,4,5,6,7,8,9]), col: shuffle([0,1,2,3,4,5,6,7,8,9]) },
-        q2: { row: shuffle([0,1,2,3,4,5,6,7,8,9]), col: shuffle([0,1,2,3,4,5,6,7,8,9]) },
-        q3: { row: shuffle([0,1,2,3,4,5,6,7,8,9]), col: shuffle([0,1,2,3,4,5,6,7,8,9]) },
-        final: { row: shuffle([0,1,2,3,4,5,6,7,8,9]), col: shuffle([0,1,2,3,4,5,6,7,8,9]) }
-      };
+      // Get sport type and create axes for all periods
+      const sportType = game.sport || 'default';
+      const config = getSportConfig(sportType);
+      
+      const newAxis: Record<string, { row: number[]; col: number[] }> = {};
+      config.periods.forEach(period => {
+        newAxis[period] = {
+          row: shuffle([0,1,2,3,4,5,6,7,8,9]),
+          col: shuffle([0,1,2,3,4,5,6,7,8,9])
+        };
+      });
   
       await updateDoc(doc(db, "games", gameId), { 
           isScrambled: true, 
