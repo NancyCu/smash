@@ -28,7 +28,7 @@ export default function GamePage() {
 
   // 1. Hooks
   const { user, logOut } = useAuth();
-  const { games: liveGames } = useEspnScores();
+  const { games: liveGames, error: espnError } = useEspnScores();
 
   const {
     game,
@@ -75,7 +75,13 @@ export default function GamePage() {
 
   // --- 1. CALCULATE LIVE PERIOD ---
   const livePeriod = useMemo(() => {
+      // 1. Final Game -> Show Final
       if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) return 'final' as PeriodKey;
+
+      // 2. Pre/Scheduled Game -> Force 1st Half/Quarter (Ignore Admin Override if synced)
+      if (matchedGame?.status === "pre" || matchedGame?.status === "scheduled") return 'p1' as PeriodKey;
+      
+      // 3. Live Game -> Use API Period
       if (matchedGame?.isLive) {
           const p = matchedGame.period;
           // Map ESPN period numbers to our period keys based on sport
@@ -91,6 +97,8 @@ export default function GamePage() {
             if (p >= 4) return 'final' as PeriodKey;
           }
       }
+      
+      // 4. Manual/Fallback -> Use DB State
       return (game?.currentPeriod as PeriodKey) || 'p1';
   }, [matchedGame, game, sportType]);
 
@@ -123,7 +131,7 @@ export default function GamePage() {
           setIsManualView(true);
           setSelectedCell(null); 
       }
-      if (isAdmin) setGamePhase(p);
+      // Host control removed: Setting DB phase is no longer manual here
   };
 
   // --- LOGO HELPER ---
@@ -494,9 +502,12 @@ export default function GamePage() {
               <div className="flex w-full justify-between items-start mb-2 relative">
                 {/* TEAM A */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
-                  <span className="text-pink-500 font-teko text-lg md:text-3xl tracking-widest uppercase mb-1 text-center leading-none text-balance w-full break-words px-1">
-                    {game.teamA}
-                  </span>
+                  <div className="flex items-center gap-2 mb-1 justify-center w-full">
+                    <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
+                    <span className="text-pink-500 font-teko text-lg md:text-3xl tracking-widest uppercase text-center leading-none text-balance break-words">
+                      {game.teamA}
+                    </span>
+                  </div>
                   <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-1">
                     {/* Sport-aware score display */}
                     {!game.espnGameId 
@@ -523,13 +534,26 @@ export default function GamePage() {
                       </button>
                     ))}
                   </div>
-                  {isAdmin && <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest animate-pulse">Host Control</span>}
+                  {game.espnGameId ? (
+                     espnError ? (
+                        <span className="text-[9px] text-red-500 font-bold uppercase mt-1 tracking-widest animate-pulse">Sync Error</span>
+                     ) : (
+                        <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest flex items-center gap-1">
+                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/> Live Sync Active
+                        </span>
+                     )
+                  ) : (
+                     <span className="text-[9px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Manual Mode</span>
+                  )}
                 </div>
                 {/* TEAM B */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
-                  <span className="text-cyan-400 font-teko text-lg md:text-3xl tracking-widest uppercase mb-1 text-center leading-none text-balance w-full break-words px-1">
-                    {game.teamB}
-                  </span>
+                  <div className="flex items-center gap-2 mb-1 justify-center w-full">
+                    <span className="text-cyan-400 font-teko text-lg md:text-3xl tracking-widest uppercase text-center leading-none text-balance break-words">
+                      {game.teamB}
+                    </span>
+                    <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
+                  </div>
                   <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-1">
                     {!game.espnGameId 
                         ? currentScores.teamB 
@@ -638,6 +662,7 @@ export default function GamePage() {
               onResetGridDigits={resetGrid}
               selectedEventId={game.espnGameId}
               availableGames={liveGames}
+              sportType={sportType}
             />
           </div>
         </div>
@@ -683,6 +708,7 @@ export default function GamePage() {
           onResetGridDigits={resetGrid}
           selectedEventId={game.espnGameId}
           availableGames={liveGames}
+          sportType={sportType}
         />
       </div>
     </main>

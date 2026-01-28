@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Copy, Check, Trophy, Trash2, Edit2, Shuffle, Save } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { getDisplayPeriods, getPeriodLabel, type SportType } from "@/lib/sport-config";
 
 interface GameInfoProps {
   gameId: string;
@@ -24,13 +25,14 @@ interface GameInfoProps {
   onResetGridDigits: () => Promise<void>;
   selectedEventId?: string;
   availableGames?: any[];
+  sportType?: SportType;
 }
 
 export default function GameInfo({
   gameId, gameName, host, pricePerSquare, totalPot,
   payouts, winners, matchup, scores, isAdmin, isScrambled,
   eventDate, onUpdateScores, onDeleteGame,
-  onScrambleGridDigits, onResetGridDigits
+  onScrambleGridDigits, onResetGridDigits, sportType = 'default'
 }: GameInfoProps) {
   
   const { user } = useAuth();
@@ -79,26 +81,19 @@ export default function GameInfo({
 
   // --- DYNAMIC PAYOUT RENDERER ---
   const renderPayouts = () => {
-      // Default Base Splits (10/20/20/50)
-      let displayPayouts = [
-          { key: 'q1', label: "Q1", amount: Math.floor(totalPot * 0.10) },
-          { key: 'q2', label: "Half", amount: Math.floor(totalPot * 0.20) },
-          { key: 'q3', label: "Q3", amount: Math.floor(totalPot * 0.20) },
-          { key: 'final', label: "Final", amount: totalPot - (Math.floor(totalPot * 0.10) + Math.floor(totalPot * 0.20) * 2) },
-      ];
+      const periods = getDisplayPeriods(sportType);
+      
+      const displayPayouts = periods.map(key => ({
+          key,
+          label: getPeriodLabel(key, sportType),
+          amount: payouts?.[key] ?? 0
+      }));
 
-      // If Parent sends calculated cascading values, use them!
-      if (payouts && typeof payouts.q1 === 'number') {
-          displayPayouts = [
-              { key: 'q1', label: "Q1", amount: payouts.q1 },
-              { key: 'q2', label: "Half", amount: payouts.q2 },
-              { key: 'q3', label: "Q3", amount: payouts.q3 },
-              { key: 'final', label: "Final", amount: payouts.final },
-          ];
-      }
+      // Dynamic grid columns based on period count
+      const gridClass = periods.length === 3 ? "grid-cols-3" : "grid-cols-4";
 
       return (
-        <div className="grid grid-cols-4 gap-2 mt-2">
+        <div className={`grid ${gridClass} gap-2 mt-2`}>
             {displayPayouts.map((p, i) => {
                 const winnerObj = winners?.find(w => w.key === p.key);
                 
