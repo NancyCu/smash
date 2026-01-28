@@ -286,18 +286,14 @@ export default function GamePage() {
 const pot = game.pot || game.totalPot || 0;
 
 const payouts = useMemo(() => {
-  // 1. Safety Guard: Return zeros if game data isn't ready
-  if (!game || !game.payoutHistory) {
-    return {
-      q1: { amount: 0 },
-      q2: { amount: 0 },
-      q3: { amount: 0 },
-      final: { amount: 0 }
-    };
-  }
+  // Return dummy data if the game isn't loaded to prevent the 'length' crash
+  if (!game) return { 
+    q1: { amount: 0 }, q2: { amount: 0 }, q3: { amount: 0 }, final: { amount: 0 } 
+  };
 
   const pot = game.pot || game.totalPot || 0;
-  const history = game.payoutHistory;
+  // Fallback to empty array if payoutHistory is missing in DB
+  const history = game.payoutHistory || []; 
   
   const ideal = {
     q1: Math.floor(pot * 0.1),
@@ -324,7 +320,7 @@ const payouts = useMemo(() => {
     q3: getQData('q3', ideal.q3),
     final: getQData('final', ideal.final),
   };
-}, [game, game?.payoutHistory, game?.pot, game?.totalPot]);
+}, [game, pot]);
 
     const getOwner = (q: "q1" | "q2" | "q3" | "final") => {
       const axis =
@@ -378,7 +374,7 @@ const payouts = useMemo(() => {
     const q1Done = p > 1 || isHalf || isFinal;
     const w1 = getOwner("q1");
     // We use payouts.q1.amount because the new structure is an object { amount, winner }
-    const q1Total = payouts.q1.amount + activeRollover;
+    const q1Total = (payouts?.q1?.amount || 0) + activeRollover;
 
     if (q1Done) {
       if (w1) {
@@ -411,7 +407,7 @@ const payouts = useMemo(() => {
 const q2Done = p > 2 || isFinal;
 const w2 = getOwner("q2");
 // Change base.q2 to payouts.q2.amount
-const q2Total = payouts.q2.amount + activeRollover;
+const q2Total = (payouts?.q2?.amount || 0) + activeRollover;
 
     if (q2Done) {
       if (w2) {
@@ -444,7 +440,7 @@ const q2Total = payouts.q2.amount + activeRollover;
 const q3Done = p > 3 || isFinal;
 const w3 = getOwner("q3");
 // Change base.q3 to payouts.q3.amount
-const q3Total = payouts.q3.amount + activeRollover;
+const q3Total = (payouts?.q3?.amount || 0) + activeRollover;
 
     if (q3Done) {
       if (w3) {
@@ -476,7 +472,7 @@ const q3Total = payouts.q3.amount + activeRollover;
     // --- FINAL ---
 const wF = getOwner("final");
 // Change base.final to payouts.final.amount
-const finalTotal = payouts.final.amount + activeRollover;
+const finalTotal = (payouts?.final?.amount || 0) + activeRollover;
 
     if (isFinal) {
       const wFinal = getOwner("final");
