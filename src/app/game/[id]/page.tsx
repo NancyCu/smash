@@ -504,7 +504,7 @@ export default function GamePage() {
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <div className="flex items-center gap-2 mb-1 justify-center w-full">
                     <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
-                    <span className="text-pink-500 font-teko text-lg md:text-3xl tracking-widest uppercase text-center leading-none text-balance break-words">
+                    <span className="text-pink-500 font-teko text-xs md:text-xl tracking-wide uppercase text-center leading-tight whitespace-normal break-words max-w-[80px] md:max-w-none">
                       {game.teamA}
                     </span>
                   </div>
@@ -549,7 +549,7 @@ export default function GamePage() {
                 {/* TEAM B */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <div className="flex items-center gap-2 mb-1 justify-center w-full">
-                    <span className="text-cyan-400 font-teko text-lg md:text-3xl tracking-widest uppercase text-center leading-none text-balance break-words">
+                    <span className="text-cyan-400 font-teko text-xs md:text-xl tracking-wide uppercase text-center leading-tight whitespace-normal break-words max-w-[80px] md:max-w-none">
                       {game.teamB}
                     </span>
                     <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
