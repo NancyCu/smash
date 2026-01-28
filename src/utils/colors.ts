@@ -1,19 +1,22 @@
 // src/utils/colors.ts
 
-// A curated list of bright neon pastel colors
-const NEON_PASTEL_PALETTE = [
-  '#FF9FF3', // Neon Pink
-  '#F368E0', // Magenta
-  '#54A0FF', // Electric Blue
-  '#2E86DE', // Deep Sky
-  '#00D2D3', // Cyan
-  '#1DD1A1', // Neo Mint
-  '#Feca57', // Pastel Orange
-  '#FF6B6B', // Pastel Red
-  '#48DBFB', // Bright Sky
-  '#A3CB38', // Lime
-  '#9B59B6', // Amethyst
-  '#FDA7DF', // Bubblegum
+// A curated list of bright, distinct neon/pastel colors suited for dark mode
+const NEON_PALETTE = [
+  '#FF00FF', // Magenta
+  '#00FFFF', // Cyan
+  '#FFD700', // Gold
+  '#FF4500', // Orange Red
+  '#32CD32', // Lime Green
+  '#1E90FF', // Dodger Blue
+  '#FF1493', // Deep Pink
+  '#00FA9A', // Medium Spring Green
+  '#9370DB', // Medium Purple
+  '#FF6347', // Tomato
+  '#40E0D0', // Turquoise
+  '#DA70D6', // Orchid
+  '#7FFF00', // Chartreuse
+  '#8A2BE2', // Blue Violet
+  '#FF8C00', // Dark Orange
 ];
 
 export const getUserColor = (name: string): string => {
@@ -25,6 +28,20 @@ export const getUserColor = (name: string): string => {
   }
   
   // Use the larger palette length for better distribution
-  const index = Math.abs(hash) % NEON_PASTEL_PALETTE.length;
-  return NEON_PASTEL_PALETTE[index];
+  const index = Math.abs(hash) % NEON_PALETTE.length;
+  return NEON_PALETTE[index];
 };
+
+// Helper to convert Hex to RGBA for glassy effect
+export const hexToRgba = (hex: string, opacity: number) => {
+    let c: any;
+    if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+        c= hex.substring(1).split('');
+        if(c.length== 3){
+            c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+        }
+        c= '0x'+c.join('');
+        return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+opacity+')';
+    }
+    return `rgba(255,255,255,${opacity})`; // Fallback
+}
