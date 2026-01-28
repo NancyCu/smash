@@ -601,41 +601,47 @@ export default function GamePage() {
                 const isTargetWinning = winningCoordinates && targetCell && winningCoordinates.row === targetCell.row && winningCoordinates.col === targetCell.col;
                 return (
                     <div className={`w-full bg-[#151725] border ${isTargetWinning ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
-                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                      <div className="flex items-start justify-between">
                         <div className="flex flex-col flex-1">
-                          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-2">
-                             {selectedCell ? "Selected Square" : isWinnerView ? <span className="text-yellow-400 flex items-center gap-1 animate-pulse"><Trophy className="w-3 h-3" /> Winning Square</span> : "Square Details"}
-                          </span>
-                          <span className="text-lg font-black text-white flex items-center gap-2">
-                            {targetCell ? `Row ${currentAxis.row[targetCell.row]} • Col ${currentAxis.col[targetCell.col]}` : "Select a Square"}
-                            {isTargetWinning && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />}
-                          </span>
+                          {/* OWNERS AT TOP - THE HERO */}
                           {targetCell && (() => {
                              const cellKey = `${targetCell.row}-${targetCell.col}`;
                              const cellData = formattedSquares[cellKey] || [];
                              return cellData.length > 0 ? (
-                                <div className="flex flex-row flex-wrap gap-1.5 mt-2">
+                                <div className="flex flex-row flex-wrap gap-2 items-center mb-2">
                                   {cellData.map((p, i) => (
-                                    <div key={i} className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${p.uid === user?.uid ? "bg-indigo-500/30 text-indigo-200" : "bg-white/10 text-slate-300"}`}>
-                                      <span>{p.name}</span>
-                                      {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></button>}
+                                    <div key={i} className="flex items-center gap-1.5">
+                                      <span className={`text-xl font-bold ${p.uid === user?.uid ? "text-indigo-300" : "text-white"}`}>{p.name}</span>
+                                      {(isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-400 transition-colors text-slate-500"><Trash2 className="w-3.5 h-3.5" /></button>}
                                     </div>
                                   ))}
                                 </div>
                              ) : null;
                           })()}
+                          
+                          {/* METADATA BELOW - REDUCED PROMINENCE */}
+                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                            {isWinnerView && <><Trophy className="w-3 h-3 text-yellow-500" /><span>Winning Square</span></>}
+                            {selectedCell && <span className="text-slate-500">Selected Square</span>}
+                            {targetCell && (
+                              <span className="flex items-center gap-1">
+                                (Row {currentAxis.row[targetCell.row]} • Col {currentAxis.col[targetCell.col]})
+                                {isTargetWinning && <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />}
+                              </span>
+                            )}
+                            {!targetCell && <span className="text-slate-500">Select a Square</span>}
+                          </div>
                         </div>
-                        {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/10 text-slate-500"><X className="w-4 h-4" /></button>}
+                        {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/10 text-slate-500 ml-2"><X className="w-4 h-4" /></button>}
                       </div>
-                      {targetCell ? (
-                          (() => {
-                             const cellKey = `${targetCell.row}-${targetCell.col}`;
-                             const cellData = formattedSquares[cellKey] || [];
-                             return cellData.length === 0 ? (
-                                <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg mt-2">Empty Square</div>
-                             ) : null;
-                          })()
-                       ) : <div className="text-center py-4 text-slate-500 text-xs">Tap empty squares to build your cart.</div>}
+                      {targetCell && (() => {
+                         const cellKey = `${targetCell.row}-${targetCell.col}`;
+                         const cellData = formattedSquares[cellKey] || [];
+                         return cellData.length === 0 ? (
+                            <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg mt-2">Empty Square</div>
+                         ) : null;
+                      })()}
+                      {!targetCell && <div className="text-center py-4 text-slate-500 text-xs">Tap empty squares to build your cart.</div>}
                     </div>
                 )
             })()
