@@ -114,9 +114,7 @@ export default function GamePage() {
 
   // --- LOGO HELPER ---
   const getTeamLogo = (teamName: string | undefined) => {
-    // PARANOID FIX: Handle undefined input immediately
     const safeName = teamName || "Generic";
-    
     if (matchedGame?.competitors) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const comp = matchedGame.competitors.find(
@@ -144,10 +142,8 @@ export default function GamePage() {
 
     if (game.espnGameId && matchedGame && matchedGame.competitors) {
       const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-      
-      // PARANOID FIX: Use Optional Chaining AND Default Values
-      const targetA = normalize(game?.teamA || "Home");
-      const targetB = normalize(game?.teamB || "Away");
+      const targetA = normalize(game.teamA || "Home");
+      const targetB = normalize(game.teamB || "Away");
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let compA = matchedGame.competitors.find((c: any) => {
@@ -187,7 +183,6 @@ export default function GamePage() {
     }
     
     // --- MANUAL FALLBACK ---
-    // FIXED: Added safe navigation ?. to game.scores to prevent crash
     const manualHome = game.scores?.teamA || 0;
     const manualAway = game.scores?.teamB || 0;
     const manualObj = { home: manualHome, away: manualAway };
@@ -219,7 +214,7 @@ export default function GamePage() {
     }
   }, [currentScores, game?.scores, matchedGame, updateScores, game?.espnGameId]);
 
-  // --- WINNING CELL ---
+  // --- WINNING CELL (FIXED) ---
   const winningCoordinates = useMemo(() => {
     const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     const axis = game?.isScrambled
@@ -227,15 +222,24 @@ export default function GamePage() {
       : { row: defaultAxis, col: defaultAxis };
 
     let scoreA = 0, scoreB = 0;
-    if (activeQuarter === "q1") {
-      scoreA = currentScores.q1.home; scoreB = currentScores.q1.away;
-    } else if (activeQuarter === "q2") {
-      scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away;
-    } else if (activeQuarter === "q3") {
-      scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home;
-      scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away;
+
+    // BUG FIX: If Manual Mode (!game.espnGameId), DO NOT sum the quarters.
+    // Use the total score directly from the manual entry.
+    if (!game?.espnGameId) {
+        scoreA = currentScores.teamA;
+        scoreB = currentScores.teamB;
     } else {
-      scoreA = currentScores.final.home; scoreB = currentScores.final.away;
+        // ESPN Mode: Use line score logic
+        if (activeQuarter === "q1") {
+          scoreA = currentScores.q1.home; scoreB = currentScores.q1.away;
+        } else if (activeQuarter === "q2") {
+          scoreA = currentScores.q1.home + currentScores.q2.home; scoreB = currentScores.q1.away + currentScores.q2.away;
+        } else if (activeQuarter === "q3") {
+          scoreA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home;
+          scoreB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away;
+        } else {
+          scoreA = currentScores.final.home; scoreB = currentScores.final.away;
+        }
     }
 
     const rowIndex = axis.row.indexOf(scoreA % 10);
@@ -284,10 +288,16 @@ export default function GamePage() {
     const getOwner = (q: "q1" | "q2" | "q3" | "final") => {
       const axis = game.isScrambled && game.axis ? game.axis[q] : { row: defaultAxis, col: defaultAxis };
       let sA = 0, sB = 0;
-      if (q === "q1") { sA = currentScores.q1.home; sB = currentScores.q1.away; } 
-      else if (q === "q2") { sA = currentScores.q1.home + currentScores.q2.home; sB = currentScores.q1.away + currentScores.q2.away; } 
-      else if (q === "q3") { sA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home; sB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away; } 
-      else { sA = currentScores.final.home; sB = currentScores.final.away; }
+      
+      // FIX: Apply same manual logic to Payout Calculator
+      if (!game.espnGameId) {
+          sA = currentScores.teamA; sB = currentScores.teamB;
+      } else {
+          if (q === "q1") { sA = currentScores.q1.home; sB = currentScores.q1.away; } 
+          else if (q === "q2") { sA = currentScores.q1.home + currentScores.q2.home; sB = currentScores.q1.away + currentScores.q2.away; } 
+          else if (q === "q3") { sA = currentScores.q1.home + currentScores.q2.home + currentScores.q3.home; sB = currentScores.q1.away + currentScores.q2.away + currentScores.q3.away; } 
+          else { sA = currentScores.final.home; sB = currentScores.final.away; }
+      }
 
       const r = axis.row.indexOf(sA % 10);
       const c = axis.col.indexOf(sB % 10);
@@ -371,7 +381,6 @@ export default function GamePage() {
   const handleDelete = async () => { if (confirm("Are you sure you want to delete this game?")) { await deleteGame(); router.push("/"); } };
    
   // 4. Loading Screen
-  // FIXED: Ensure game AND game.teamA exist
   if (!game || !game?.teamA) {
     if (loading) {
       return (
@@ -427,7 +436,11 @@ export default function GamePage() {
                     {game.teamA}
                   </span>
                   <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-1">
-                    {activeQuarter === "final" ? currentScores.final.home : activeQuarter === "q1" ? currentScores.q1.home : activeQuarter === "q2" ? currentScores.q1.home + currentScores.q2.home : currentScores.teamA}
+                    {/* FIXED: Display logic now respects Manual Totals for all quarters */}
+                    {(!game.espnGameId) 
+                        ? currentScores.teamA 
+                        : (activeQuarter === "final" ? currentScores.final.home : activeQuarter === "q1" ? currentScores.q1.home : activeQuarter === "q2" ? currentScores.q1.home + currentScores.q2.home : currentScores.teamA)
+                    }
                   </span>
                 </div>
                 {/* CLOCK */}
@@ -448,7 +461,10 @@ export default function GamePage() {
                     {game.teamB}
                   </span>
                   <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-1">
-                    {activeQuarter === "final" ? currentScores.final.away : activeQuarter === "q1" ? currentScores.q1.away : activeQuarter === "q2" ? currentScores.q1.away + currentScores.q2.away : currentScores.teamB}
+                    {(!game.espnGameId) 
+                        ? currentScores.teamB 
+                        : (activeQuarter === "final" ? currentScores.final.away : activeQuarter === "q1" ? currentScores.q1.away : activeQuarter === "q2" ? currentScores.q1.away + currentScores.q2.away : currentScores.teamB)
+                    }
                   </span>
                 </div>
               </div>
