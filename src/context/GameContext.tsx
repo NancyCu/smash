@@ -83,6 +83,7 @@ export interface GameState {
   settings: GameSettings;
   squares: Record<string, SquareClaim[]>; // key: "rowIndex-colIndex" -> [{uid, name}]
   players: Player[];
+  playerIds: string[]; // Array of user IDs for efficient querying
   scores: { teamA: number; teamB: number }; // Manual score tracking
   payoutHistory: PayoutEvent[];
 }
@@ -160,6 +161,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const data = docSnap.data() as GameState;
         if (!data.squares) data.squares = {};
         if (!data.players) data.players = [];
+        if (!data.playerIds) data.playerIds = [];
         if (!data.payoutHistory) data.payoutHistory = [];
         data.payoutHistory.sort((a, b) => b.timestamp - a.timestamp);
         
@@ -200,6 +202,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       },
       squares: {},
       players: [],
+      playerIds: [],
       scores: { teamA: 0, teamB: 0 },
       payoutHistory: []
     };
@@ -253,6 +256,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const playerIndex = activeGame.players.findIndex(p => p.id === claimant.id);
     if (playerIndex === -1) {
         updates["players"] = arrayUnion({ id: claimant.id, name: claimant.name, squares: 1, paid: false });
+        updates["playerIds"] = arrayUnion(claimant.id);
     } else {
         const updatedPlayers = [...activeGame.players];
         updatedPlayers[playerIndex].squares += 1;
@@ -280,6 +284,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         if (newCount === 0) {
             // Remove player if they have no squares left
             updates["players"] = arrayRemove(updatedPlayers[playerIndex]);
+            updates["playerIds"] = arrayRemove(userId);
         } else {
             updatedPlayers[playerIndex].squares = newCount;
             updates["players"] = updatedPlayers;
@@ -296,7 +301,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const updatedPlayers = [...activeGame.players];
     updatedPlayers[playerIndex].paid = !updatedPlayers[playerIndex].paid;
-    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : null;
+    updatedPlayers[playerIndex].paidAt = updatedPlayers[playerIndex].paid ? Date.now() : undefined;
     
     await updateDoc(doc(db, "games", activeGame.id), { players: updatedPlayers });
   };
@@ -311,9 +316,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
       });
 
       const newPlayers = activeGame.players.filter(p => p.id !== playerId);
+      const newPlayerIds = activeGame.playerIds?.filter(id => id !== playerId) || [];
 
       await updateDoc(doc(db, "games", activeGame.id), {
           players: newPlayers,
+          playerIds: newPlayerIds,
           squares: newSquares
       });
   };
@@ -360,15 +367,34 @@ export function GameProvider({ children }: { children: ReactNode }) {
           "settings.axisValues": null,
           squares: {},
           players: [],
+          playerIds: [],
           scores: { teamA: 0, teamB: 0 },
           payoutHistory: []
       });
   };
 
   const getUserGames = async (userId: string): Promise<GameState[]> => {
+    // Query for games where user is the host
     const qHost = query(collection(db, "games"), where("hostUserId", "==", userId));
     const snapHost = await getDocs(qHost);
-    return snapHost.docs.map(d => ({ ...d.data(), id: d.id } as GameState));
+    const hostedGames = snapHost.docs.map(d => ({ ...d.data(), id: d.id } as GameState));
+    
+    // Query for games where user is a player
+    const qPlayer = query(collection(db, "games"), where("playerIds", "array-contains", userId));
+    const snapPlayer = await getDocs(qPlayer);
+    const participatedGames = snapPlayer.docs.map(d => ({ ...d.data(), id: d.id } as GameState));
+    
+    // Combine and deduplicate by game ID
+    const allGames = [...hostedGames];
+    const hostedGameIds = new Set(hostedGames.map(g => g.id));
+    
+    participatedGames.forEach(game => {
+      if (!hostedGameIds.has(game.id)) {
+        allGames.push(game);
+      }
+    });
+    
+    return allGames;
   };
 
   // --- MODIFIED: This function now writes to two places ---

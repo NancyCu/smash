@@ -81,6 +81,20 @@ export default function ProfilePage() {
   // Calculate owned games vs joined games
   const ownedGames = myGames.filter(g => g.hostUserId === user.uid);
 
+  // Calculate total winnings from all games
+  const totalWinnings = useMemo(() => {
+    return myGames.reduce((total, game) => {
+      // Sum all payouts where this user was the winner
+      const userWinnings = (game.payoutHistory || []).reduce((gameTotal, payout) => {
+        if (payout.winnerUserId === user.uid) {
+          return gameTotal + payout.amount;
+        }
+        return gameTotal;
+      }, 0);
+      return total + userWinnings;
+    }, 0);
+  }, [myGames, user.uid]);
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-24">
       <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-100 dark:border-white/5 sticky top-0 z-40 transition-colors">
@@ -122,6 +136,11 @@ export default function ProfilePage() {
                  <div className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-wider">
                    {ownedGames.length} Hosted
                  </div>
+                 {totalWinnings > 0 && (
+                   <div className="px-3 py-1 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-[10px] font-bold uppercase tracking-wider text-emerald-200">
+                     ${totalWinnings} Won
+                   </div>
+                 )}
               </div>
             </div>
           </div>

@@ -86,6 +86,20 @@ Invite friends via text or social media with one click. The preview card looks g
 - **One-Click Rejoin**: Jump back into active games from your dashboard.
 - **Stats**: Track your wins and total games played.
 
+#### 📍 **How to Access Your Game History**
+
+Your complete game history can be found in your **Profile** page. Here's how to access it:
+
+1. **Log in** to your account
+2. Click on your **Profile** icon/button in the navigation
+3. View all your games, including:
+   - Games you've **hosted** (marked with a HOST badge)
+   - Games you've **joined** and participated in
+   - **Live games** currently in progress
+   - Completed games
+
+Your game history automatically shows all games where you've claimed at least one square, making it easy to track your participation across multiple pools!
+
 ---
 
 ## 🛠️ Developer Setup
