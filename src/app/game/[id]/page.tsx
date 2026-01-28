@@ -115,28 +115,41 @@ export default function GamePage() {
   }, [matchedGame, game]);
 
   // --- 2. AUTO-SYNC LOGIC ---
+// --- 2. AUTO-SYNC EFFECT ---
+  // If the user hasn't manually clicked away, always follow the Live Game
   useEffect(() => {
-    if (!isManualView) {
-      setActiveQuarter(liveQuarter);
-    }
+      if (!isManualView) {
+          setActiveQuarter(liveQuarter);
+      }
   }, [liveQuarter, isManualView]);
 
-  // --- 3. SNAP-BACK TIMER (10s) ---
+  // --- 3. THE "SNAP BACK" TIMER (10 Seconds) ---
   useEffect(() => {
-    if (isManualView) {
-      const timer = setTimeout(() => {
-        setIsManualView(false);
-      }, 10000);
-      return () => clearTimeout(timer);
-    }
+      if (isManualView) {
+          // Wait 10 seconds, then release manual control
+          const timer = setTimeout(() => {
+              setIsManualView(false); // Snap back to Live Quarter
+              setSelectedCell(null);  // <--- IMPORTANT: Clear selection so the board lights up again
+          }, 10000);
+          return () => clearTimeout(timer);
+      }
   }, [isManualView]);
 
-  const handleQuarterChange = (q: "q1" | "q2" | "q3" | "final") => {
-    setActiveQuarter(q);
-    if (q === liveQuarter) setIsManualView(false);
-    else setIsManualView(true);
+  // --- 4. UPDATED CLICK HANDLER ---
+  const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
+      setActiveQuarter(q);
+      setSelectedCell(null); // <--- Clear selection when switching views manually too
+      
+      // If user clicks the CORRECT live quarter, we engage "Live Mode" (No timer)
+      if (q === liveQuarter) {
+          setIsManualView(false);
+      } 
+      // If user clicks a DIFFERENT quarter (Past/Future), we start the 10s timer
+      else {
+          setIsManualView(true);
+      }
 
-    if (isAdmin) setGamePhase(q);
+      if (isAdmin) setGamePhase(q);
   };
 
   // --- LOGO HELPER ---
