@@ -35,19 +35,34 @@ function hashToHue(input: string): number {
   return hash % 360;
 }
 
-const USER_COLOR_CLASSES = [
-  { bg: 'bg-rose-500', text: 'text-rose-100', soft: 'bg-rose-500/20 text-rose-200', ring: 'ring-rose-400' },
-  { bg: 'bg-cyan-500', text: 'text-cyan-100', soft: 'bg-cyan-500/20 text-cyan-200', ring: 'ring-cyan-400' },
-  { bg: 'bg-emerald-500', text: 'text-emerald-100', soft: 'bg-emerald-500/20 text-emerald-200', ring: 'ring-emerald-400' },
-  { bg: 'bg-violet-500', text: 'text-violet-100', soft: 'bg-violet-500/20 text-violet-200', ring: 'ring-violet-400' },
-  { bg: 'bg-amber-500', text: 'text-amber-100', soft: 'bg-amber-500/20 text-amber-200', ring: 'ring-amber-400' },
-  { bg: 'bg-pink-500', text: 'text-pink-100', soft: 'bg-pink-500/20 text-pink-200', ring: 'ring-pink-400' },
-  { bg: 'bg-indigo-500', text: 'text-indigo-100', soft: 'bg-indigo-500/20 text-indigo-200', ring: 'ring-indigo-400' },
+// --- STYLE SET 1: GLASS (For OTHERS - The "Fun" Texture) ---
+const GLASS_THEMES = [
+  { glass: 'bg-rose-500/20 border-rose-500/30 text-rose-300', ring: 'ring-rose-500' },
+  { glass: 'bg-cyan-500/20 border-cyan-500/30 text-cyan-300', ring: 'ring-cyan-500' },
+  { glass: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300', ring: 'ring-emerald-500' },
+  { glass: 'bg-violet-500/20 border-violet-500/30 text-violet-300', ring: 'ring-violet-500' },
+  { glass: 'bg-amber-500/20 border-amber-500/30 text-amber-300', ring: 'ring-amber-500' },
+  { glass: 'bg-pink-500/20 border-pink-500/30 text-pink-300', ring: 'ring-pink-500' },
+  { glass: 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300', ring: 'ring-indigo-500' },
 ];
 
-function classesForUid(uid: string) {
-  const idx = hashToHue(uid) % USER_COLOR_CLASSES.length;
-  return USER_COLOR_CLASSES[idx];
+function getGlassTheme(uid: string) {
+  return GLASS_THEMES[hashToHue(uid) % GLASS_THEMES.length];
+}
+
+// --- STYLE SET 2: SOLID (For ME - The "Hero" Look) ---
+const SOLID_STYLES = [
+  { bg: 'bg-rose-600', text: 'text-white' },
+  { bg: 'bg-cyan-600', text: 'text-white' },
+  { bg: 'bg-emerald-600', text: 'text-white' },
+  { bg: 'bg-violet-600', text: 'text-white' },
+  { bg: 'bg-amber-600', text: 'text-white' },
+  { bg: 'bg-pink-600', text: 'text-white' },
+  { bg: 'bg-indigo-600', text: 'text-white' },
+];
+
+function getSolidStyle(uid: string) {
+  return SOLID_STYLES[hashToHue(uid) % SOLID_STYLES.length];
 }
 
 export default function Grid({ 
@@ -58,20 +73,22 @@ export default function Grid({
 }: GridProps) {
   
   const showLogos = true;
-  const myColor = currentUserId ? classesForUid(currentUserId) : USER_COLOR_CLASSES[6];
+  // Fallback for pending selections
+  const myGlassTheme = currentUserId ? getGlassTheme(currentUserId) : GLASS_THEMES[6];
+  const mySolidStyle = currentUserId ? getSolidStyle(currentUserId) : SOLID_STYLES[6];
 
   return (
     <div className="relative w-full h-full flex flex-col">
 
-      {/* FLOATING LABELS */}
+      {/* FLOATING LABELS (Unchanged) */}
       <div className="absolute top-0 left-[9%] right-0 h-[9%] z-40 flex items-center justify-center pointer-events-none">
-         <div className="bg-black/40 backdrop-blur-md px-3 py-0.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg">
+         <div className="bg-black/80 backdrop-blur-md px-3 py-0.5 rounded-full border border-white/10 flex items-center gap-2 shadow-xl">
             <span className="font-black text-[min(4vw,1rem)] md:text-xl text-cyan-400 uppercase tracking-widest leading-none drop-shadow-md">{teamB}</span>
             {showLogos && teamBLogo && <div className="relative w-4 h-4 md:w-6 md:h-6 shrink-0 opacity-90"><Image src={teamBLogo} alt={teamB} fill className="object-contain" /></div>}
          </div>
       </div>
       <div className="absolute left-0 top-[9%] bottom-0 w-[9%] z-40 flex items-center justify-center pointer-events-none">
-         <div className="transform -rotate-90 bg-black/40 backdrop-blur-md px-3 py-0.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg origin-center whitespace-nowrap">
+         <div className="transform -rotate-90 bg-black/80 backdrop-blur-md px-3 py-0.5 rounded-full border border-white/10 flex items-center gap-2 shadow-xl origin-center whitespace-nowrap">
             <span className="font-black text-[min(4vw,1rem)] md:text-xl text-pink-500 uppercase tracking-widest leading-none drop-shadow-md">{teamA}</span>
             {showLogos && teamALogo && <div className="relative w-4 h-4 md:w-6 md:h-6 shrink-0 opacity-90 -rotate-90"><Image src={teamALogo} alt={teamA} fill className="object-contain" /></div>}
          </div>
@@ -80,14 +97,14 @@ export default function Grid({
       <div className="w-full h-full grid grid-cols-11 grid-rows-11 bg-[#0B0C15] select-none">
             
             {/* CORNER */}
-            <div className="col-span-1 row-span-1 bg-[#151725] border-r border-b border-white/10 flex items-center justify-center relative z-20"><div className="text-[8px] font-mono text-slate-600">VS</div></div>
+            <div className="col-span-1 row-span-1 bg-[#151725] border-r border-b border-white/10 flex items-center justify-center relative z-20"><div className="text-[8px] font-mono text-slate-500 font-bold">VS</div></div>
 
             {/* HEADERS */}
             {cols.map((num, i) => {
               const isHighlight = (winningCell && winningCell.col === i) || (selectedCell && selectedCell.col === i);
               return (
-                <div key={`col-${i}`} className={cn("col-span-1 row-span-1 flex items-center justify-center border-r border-b border-white/10 relative overflow-hidden transition-all", isHighlight ? "bg-cyan-500/20 z-50 shadow-[inset_0_0_10px_rgba(34,211,238,0.5)]" : "bg-[#0B0C15]")}>
-                   <span className={cn("font-black text-sm md:text-2xl z-20 transition-all", isScrambled ? (isHighlight ? "text-white scale-125 drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" : "text-cyan-400") : "text-slate-600 blur-[2px]")}>{isScrambled ? num : '?'}</span>
+                <div key={`col-${i}`} className={cn("col-span-1 row-span-1 flex items-center justify-center border-r border-b border-white/10 relative overflow-hidden transition-all", isHighlight ? "bg-cyan-900/40 z-50 shadow-[inset_0_0_15px_rgba(34,211,238,0.3)]" : "bg-[#0B0C15]")}>
+                   <span className={cn("font-black text-sm md:text-2xl z-20 transition-all", isScrambled ? (isHighlight ? "text-cyan-200 scale-125" : "text-cyan-500") : "text-slate-700 blur-[2px]")}>{isScrambled ? num : '?'}</span>
                 </div>
               );
             })}
@@ -95,8 +112,8 @@ export default function Grid({
               const isHighlight = (winningCell && winningCell.row === rowIndex) || (selectedCell && selectedCell.row === rowIndex);
               return (
                 <React.Fragment key={`row-${rowIndex}`}>
-                  <div className={cn("col-span-1 row-span-1 flex items-center justify-center border-r border-b border-white/10 relative overflow-hidden transition-all", isHighlight ? "bg-pink-500/20 z-50 shadow-[inset_0_0_10px_rgba(236,72,153,0.5)]" : "bg-[#0B0C15]")}>
-                     <span className={cn("font-black text-sm md:text-2xl z-20 transition-all", isScrambled ? (isHighlight ? "text-white scale-125 drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" : "text-pink-500") : "text-slate-600 blur-[2px]")}>{isScrambled ? rowNum : '?'}</span>
+                  <div className={cn("col-span-1 row-span-1 flex items-center justify-center border-r border-b border-white/10 relative overflow-hidden transition-all", isHighlight ? "bg-pink-900/40 z-50 shadow-[inset_0_0_15px_rgba(236,72,153,0.3)]" : "bg-[#0B0C15]")}>
+                     <span className={cn("font-black text-sm md:text-2xl z-20 transition-all", isScrambled ? (isHighlight ? "text-pink-200 scale-125" : "text-pink-500") : "text-slate-700 blur-[2px]")}>{isScrambled ? rowNum : '?'}</span>
                   </div>
 
                   {/* GAME CELLS */}
@@ -105,50 +122,40 @@ export default function Grid({
                     const key = `${rowIndex}-${colIndex}`;
                     const claims = (squares[key] ?? []).slice(0, 10);
                     
-                    // --- STREET SMARTS LOGIC START ---
                     const isWinner = !!winningCell && winningCell.row === rowIndex && winningCell.col === colIndex;
                     const isSelected = !!selectedCell && selectedCell.row === rowIndex && selectedCell.col === colIndex;
                     const isPending = pendingIndices.includes(cellIndex);
                     
-                    // Is this square claimed by ME?
                     const isMe = currentUserId && claims.some(c => c.uid === currentUserId);
 
-                    // Crosshair logic
                     const isCrosshair = (!!winningCell && (winningCell.row === rowIndex || winningCell.col === colIndex)) || 
                                         (!!selectedCell && (selectedCell.row === rowIndex || selectedCell.col === colIndex));
 
-                    // Dynamic Styling based on Status
-                    let cellStyle = "bg-transparent hover:bg-white/5"; // Default Empty
+                    // --- CONTAINER STYLING ---
+                    let cellStyle = "bg-transparent hover:bg-white/5"; 
                     
-                    if (claims.length > 0) {
-                        // It is taken. Check priority:
-                        if (isWinner) {
-                            if (isMe) {
-                                // JACKPOT: Winner + Me (Gold Pulse)
-                                cellStyle = "z-30 ring-2 ring-yellow-400 bg-yellow-400/20 shadow-[inset_0_0_20px_rgba(250,204,21,0.5)] animate-pulse";
-                            } else {
-                                // Winner + Other (Gold Static)
-                                cellStyle = "z-30 ring-2 ring-yellow-400 bg-yellow-400/10 shadow-[0_0_15px_rgba(250,204,21,0.2)]";
-                            }
-                        } else if (isMe) {
-                            // Me (Indigo/Purple pop)
-                            cellStyle = "z-10 ring-1 ring-indigo-500 bg-indigo-500/10 shadow-[inset_0_0_10px_rgba(99,102,241,0.2)]";
-                        } else {
-                            // Taken by Other (Slate)
-                            cellStyle = "bg-slate-800/40";
-                        }
-                    } else {
-                        // Empty Square Logic
-                        if (isWinner) cellStyle = "z-30 ring-2 ring-yellow-400 bg-yellow-400/20 shadow-[inset_0_0_20px_rgba(250,204,21,0.5)]"; // Winning but empty
-                        else if (isSelected) cellStyle = "z-20 ring-1 ring-cyan-400 bg-cyan-400/10";
-                        else if (isCrosshair) cellStyle = "bg-white/5";
+                    if (isWinner) {
+                         // WINNER: Solid Gold Pulse
+                         cellStyle = "z-30 ring-2 ring-yellow-400 bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.6)] animate-pulse";
+                    } else if (isMe && claims.length > 0) {
+                         // ME: SOLID COLOR (Pop)
+                         const mySolid = getSolidStyle(currentUserId!);
+                         cellStyle = `z-20 ring-1 ring-white/50 ${mySolid.bg} shadow-[0_0_15px_rgba(255,255,255,0.2)]`;
+                    } else if (claims.length > 0) {
+                         // OTHERS: GLASSY (Texture but not overwhelming)
+                         // We use the first claim's theme
+                         const glassTheme = getGlassTheme(claims[0].uid);
+                         cellStyle = `${glassTheme.glass} border border-white/5 backdrop-blur-[1px]`;
+                    } else if (isSelected) {
+                         cellStyle = "z-20 ring-1 ring-cyan-400 bg-cyan-900/30";
+                    } else if (isCrosshair) {
+                         cellStyle = "bg-white/5";
                     }
 
-                    // Pending override (Shopping Cart)
+                    // Pending Override
                     if (isPending) {
-                        cellStyle = `ring-inset ring-2 ${myColor.ring} ${myColor.soft} animate-pulse z-30`;
+                        cellStyle = `ring-inset ring-2 ${myGlassTheme.ring} bg-black/50 animate-pulse z-30`;
                     }
-                    // --- STREET SMARTS LOGIC END ---
 
                     return (
                       <div
@@ -159,33 +166,43 @@ export default function Grid({
                           cellStyle
                         )}
                       >
-                          {/* PENDING OVERLAY */}
+                          {/* PENDING TEXT */}
                           {isPending && claims.length === 0 && (
                             <div className="w-full h-full flex items-center justify-center">
-                                <span className={cn("text-[min(3vw,12px)] font-black uppercase tracking-wider", myColor.text)}>Pick</span>
+                                <span className={cn("text-[min(3vw,12px)] font-black uppercase tracking-wider", myGlassTheme.glass.split(' ').pop())}>Pick</span>
                             </div>
                           )}
 
-                          {/* CONTENT RENDERER */}
+                          {/* NAMES RENDERER */}
                           {claims.length > 0 && (
                              <div className={cn(
                                "w-full h-full grid gap-[0.5px]",
                                claims.length === 1 ? "grid-cols-1 grid-rows-1" :
                                claims.length === 2 ? "grid-cols-2 grid-rows-1" :
                                claims.length <= 4 ? "grid-cols-2 grid-rows-2" :
-                               claims.length <= 9 ? "grid-cols-3 grid-rows-3" :
-                               "grid-cols-3 grid-rows-4"
+                               "grid-cols-3 grid-rows-3"
                              )}>
                                 {claims.map((c, i) => {
-                                   const styles = classesForUid(c.uid);
+                                   const isThisMe = currentUserId && c.uid === currentUserId;
+                                   
+                                   // TEXT COLORS
+                                   let textClass = "";
+                                   if (isWinner) textClass = "text-black";
+                                   else if (isThisMe) textClass = "text-white drop-shadow-md";
+                                   else {
+                                      // Others get colored text matching their glass theme
+                                      const theme = getGlassTheme(c.uid);
+                                      textClass = theme.glass.split(' ').pop() || "text-slate-300";
+                                   }
+
                                    return (
-                                     <div key={i} className={cn("flex items-center justify-center overflow-hidden", styles.bg)}>
+                                     <div key={i} className="flex items-center justify-center overflow-hidden w-full h-full bg-transparent">
                                         <span className={cn(
                                           "font-bold leading-none truncate px-0.5",
-                                          styles.text,
-                                          claims.length === 1 ? "text-[min(3vw,12px)]" : 
-                                          claims.length <= 4 ? "text-[min(2.5vw,9px)]" : 
-                                          "text-[min(2vw,7px)]"
+                                          textClass,
+                                          claims.length === 1 ? "text-[min(3.5vw,14px)]" : 
+                                          claims.length <= 4 ? "text-[min(2.5vw,10px)]" : 
+                                          "text-[min(2vw,8px)]"
                                         )}>
                                             {claims.length <= 2 ? c.name : c.name.slice(0,3).toUpperCase()}
                                         </span>
