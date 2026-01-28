@@ -420,7 +420,6 @@ export default function GamePage() {
                           isScrambled={game.isScrambled} selectedCell={selectedCell}
                           winningCell={winningCoordinates}
                           pendingIndices={pendingSquares} currentUserId={user?.uid}
-                          activeQuarter={activeQuarter === 'final' ? 4 : activeQuarter === 'q3' ? 3 : activeQuarter === 'q2' ? 2 : 1}
                       />
                   </div>
               </div>
