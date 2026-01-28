@@ -9,8 +9,6 @@ import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
 import LiveGameClock from "@/components/LiveGameClock";
 import {
-  Copy,
-  Check,
   ShoppingCart,
   LogIn,
   LogOut,
@@ -66,7 +64,6 @@ export default function GamePage() {
   const [isManualView, setIsManualView] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   // Get sport configuration
   const sportType: SportType = game?.sport || 'default';
@@ -490,7 +487,6 @@ export default function GamePage() {
     try { await claimSquare(selectedCell.row * 10 + selectedCell.col); } catch (err) { alert("Failed to claim."); } finally { setIsSubmitting(false); }
   };
   const handleUnclaim = async () => { if (selectedCell) await unclaimSquare(selectedCell.row * 10 + selectedCell.col); };
-  const copyCode = () => { if (game) { navigator.clipboard.writeText(game.id); setCopied(true); setTimeout(() => setCopied(false), 2000); } };
   const handleDelete = async () => { if (confirm("Are you sure you want to delete this game?")) { await deleteGame(); router.push("/"); } };
    
   // 4. Loading Screen
@@ -515,43 +511,37 @@ export default function GamePage() {
   const cartTotal = pendingSquares.length * game.price;
 
   return (
-    <main className="flex flex-col lg:flex-row h-screen w-full bg-[#0B0C15] overflow-hidden">
+    <main className="flex flex-col lg:flex-row h-dvh w-full bg-[#0B0C15] overflow-hidden">
       {/* 1. MAIN AREA */}
       <div className="flex-1 flex flex-col h-full overflow-y-auto no-scrollbar relative">
         {/* MOBILE HEADER */}
-        <div className="lg:hidden p-4 bg-[#0B0C15]/95 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5">
+        <div className="lg:hidden p-2 bg-[#0B0C15]/95 sticky top-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/5">
           <div onClick={() => router.push("/")} className="flex items-center gap-2 cursor-pointer">
-            <div className="relative h-14 w-auto rounded-lg overflow-hidden">
-              <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-14 w-auto object-contain" />
+            <div className="relative h-12 w-auto rounded-lg overflow-hidden">
+              <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-12 w-auto object-contain" />
             </div>
-            <span className="font-bold text-white tracking-widest text-xs uppercase">Souper Bowl Squares</span>
+            <span className="font-bold text-white tracking-widest text-[10px] uppercase">Souper Bowl Squares</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleAuth} className="p-2 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
-              {user ? <LogOut className="w-4 h-4 text-red-400" /> : <LogIn className="w-4 h-4 text-green-400" />}
-            </button>
-            <button onClick={copyCode} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
-              <span className="text-xs font-mono text-slate-400">{game.id.slice(0, 6)}...</span>
-              {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-slate-500" />}
-            </button>
-          </div>
+          <button onClick={handleAuth} className="p-2 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
+            {user ? <LogOut className="w-4 h-4 text-red-400" /> : <LogIn className="w-4 h-4 text-green-400" />}
+          </button>
         </div>
 
-        <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-4 gap-2 lg:gap-4">
+        <div className="flex flex-col items-center w-full max-w-4xl mx-auto px-2 py-1 lg:p-2 gap-1 lg:gap-2">
           {/* SCOREBOARD */}
           <div className="w-full relative group z-20 shrink-0">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
-            <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl px-2 pt-2 pb-1 flex flex-col items-center shadow-2xl">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/10 via-indigo-500/5 to-cyan-500/10 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition duration-1000"></div>
+            <div className="relative w-full bg-[#0B0C15]/95 backdrop-blur-xl border border-white/5 rounded-xl px-2 pt-1 pb-0.5 flex flex-col items-center shadow-xl">
               <div className="flex w-full justify-between items-start relative">
                 {/* TEAM A */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
-                  <div className="flex items-center gap-2 mb-1 justify-center w-full">
-                    <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
-                    <span className="text-pink-500 font-teko text-xs md:text-xl tracking-wide uppercase text-center leading-tight whitespace-normal break-words max-w-[80px] md:max-w-none">
+                  <div className="flex items-center gap-1 mb-0.5 justify-center w-full">
+                    <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
+                    <span className="text-pink-500 font-teko text-[10px] md:text-lg tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px]">
                       {game.teamA}
                     </span>
                   </div>
-                  <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-1">
+                  <span className="text-4xl md:text-7xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-0.5">
                     {/* Sport-aware score display */}
                     {!game.espnGameId 
                         ? currentScores.teamA 
@@ -568,7 +558,7 @@ export default function GamePage() {
                   </span>
                 </div>
                 {/* CLOCK */}
-                <div className="flex flex-col items-center w-[30%] shrink-0 z-10 pt-2">
+                <div className="flex flex-col items-center w-[30%] shrink-0 z-10 pt-0.5">
                   <LiveGameClock game={matchedGame} />
                   <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100">
                     {displayPeriods.map((period) => (
@@ -591,13 +581,13 @@ export default function GamePage() {
                 </div>
                 {/* TEAM B */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
-                  <div className="flex items-center gap-2 mb-1 justify-center w-full">
-                    <span className="text-cyan-400 font-teko text-xs md:text-xl tracking-wide uppercase text-center leading-tight whitespace-normal break-words max-w-[80px] md:max-w-none">
+                  <div className="flex items-center gap-1 mb-0.5 justify-center w-full">
+                    <span className="text-cyan-400 font-teko text-[10px] md:text-lg tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px]">
                       {game.teamB}
                     </span>
-                    <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
+                    <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
                   </div>
-                  <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-1">
+                  <span className="text-4xl md:text-7xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-0.5">
                     {!game.espnGameId 
                         ? currentScores.teamB 
                         : (activePeriod === "final" 

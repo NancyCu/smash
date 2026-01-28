@@ -120,3 +120,22 @@ body {
     opacity: 1;
   }
 }
+
+/* Gradient animation for text */
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  animation: gradient 3s ease infinite;
+}
+
+/* Custom font family for Russo One */
+.font-russo {
+  font-family: var(--font-russo);
+}

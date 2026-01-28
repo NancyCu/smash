@@ -66,9 +66,20 @@ function HomeContent() {
             alt="Souper Bowl LX Logo" 
             className="w-full max-w-[320px] mx-auto mb-6 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.3)]"
           />
-          <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-wider leading-none">Souper Bowl</h1>
-          <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500 uppercase tracking-wider leading-none">Squares</h1>
-          <p className="text-slate-400 mt-3 text-sm font-medium tracking-wide">"Because with us, a Nguyen is always a Win"</p>
+          <div className="text-center mt-6 mb-8 relative z-10">
+            <h1 className="font-russo text-5xl md:text-7xl tracking-tighter uppercase italic leading-[0.85]">
+              <span className="text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.9)]">
+                Souper Bowl
+              </span>
+              <br />
+              <span className="bg-gradient-to-r from-[#db2777] via-[#22d3ee] to-[#db2777] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]">
+                SQUARES
+              </span>
+            </h1>
+            <p className="text-[#22d3ee] text-sm md:text-base font-bold mt-3 tracking-[0.2em] uppercase opacity-90">
+              &ldquo;Because with us, a Nguyen is always a Win&rdquo;
+            </p>
+          </div>
         </div>
       </div>
 
