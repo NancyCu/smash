@@ -526,11 +526,11 @@ export default function GamePage() {
   const cartTotal = pendingSquares.length * game.price;
 
   return (
-    <main className="flex flex-col lg:flex-row h-dvh w-full overflow-hidden">
+    <main className="flex flex-col lg:flex-row h-dvh w-full overflow-hidden bg-[#0B0C15]">
       {/* 1. MAIN AREA */}
       <div className="flex-1 flex flex-col h-full relative overflow-hidden">
         {/* MOBILE HEADER */}
-        <div className="lg:hidden p-2 bg-white/10 shrink-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/20 shadow-lg">
+        <div className="lg:hidden p-2 bg-[#0B0C15]/60 shrink-0 z-50 backdrop-blur-md flex justify-between items-center border-b border-white/20 shadow-lg">
           <div onClick={() => router.push("/")} className="flex items-center gap-2 cursor-pointer">
             <div className="relative h-8 w-auto rounded-lg overflow-hidden shadow-md">
               <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-8 w-auto object-contain" />
@@ -545,11 +545,11 @@ export default function GamePage() {
         {/* GAME BAR */}
         <GameBar />
 
-        <div className="flex-1 w-full min-h-0 overflow-y-auto no-scrollbar flex flex-col items-center max-w-4xl mx-auto px-2 py-1 lg:p-2 gap-1">
+        <div className="flex-1 w-full min-h-0 overflow-y-auto no-scrollbar pb-32 flex flex-col items-center max-w-4xl mx-auto px-2 py-1 lg:p-2 gap-1">
           {/* SCOREBOARD */}
           <div className="w-full relative group z-20 shrink-0">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/30 via-indigo-500/20 to-cyan-500/30 rounded-2xl blur-lg opacity-60 group-hover:opacity-80 transition duration-1000"></div>
-            <div className="relative w-full bg-white/20 backdrop-blur-xl border border-white/30 rounded-xl px-2 pt-1 pb-0.5 flex flex-col items-center shadow-xl">
+            <div className="relative w-full bg-[#0B0C15]/60 backdrop-blur-xl border border-white/10 rounded-xl px-2 pt-1 pb-0.5 flex flex-col items-center shadow-xl">
               <div className="flex w-full justify-between items-start relative">
                 {/* TEAM A */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
@@ -625,14 +625,14 @@ export default function GamePage() {
 
           {/* GRID */}
           <div className="w-full shrink-0 aspect-square max-w-[500px] z-10 flex flex-col justify-center my-1">
-            <div className="w-full h-full bg-white/10 backdrop-blur-md rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)] border border-white/20 overflow-hidden ring-1 ring-white/10">
+            <div className="w-full h-full bg-[#0B0C15]/60 backdrop-blur-md rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.05)] border border-white/10 overflow-hidden ring-1 ring-white/5">
               <Grid rows={currentAxis.row} cols={currentAxis.col} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamA || "Home"} teamB={game.teamB || "Away"} teamALogo={getTeamLogo(game.teamA)} teamBLogo={getTeamLogo(game.teamB)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} currentUserId={user?.uid} />
             </div>
           </div>
 
           {/* CART / DETAILS BOX */}
           {pendingSquares.length > 0 ? (
-            <div className="w-full bg-white/20 backdrop-blur-xl border border-indigo-400/30 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
+            <div className="w-full bg-[#0B0C15]/60 backdrop-blur-xl border border-indigo-400/30 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/40"><ShoppingCart className="w-5 h-5 text-white" /></div>
@@ -651,7 +651,7 @@ export default function GamePage() {
                 const isWinnerView = !selectedCell && winningCoordinates; 
                 const isTargetWinning = winningCoordinates && targetCell && winningCoordinates.row === targetCell.row && winningCoordinates.col === targetCell.col;
                 return (
-                    <div className={`w-full bg-white/20 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/20"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
+                    <div className={`w-full bg-[#0B0C15]/60 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
                       <div className="flex items-start justify-between">
                         <div className="flex flex-col flex-1">
                           {/* OWNERS AT TOP - THE HERO */}
@@ -726,7 +726,7 @@ export default function GamePage() {
       </div>
 
       {/* DESKTOP SIDEBAR */}
-      <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-white/10 backdrop-blur-xl border-l border-white/20 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl relative">
+      <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-[#0B0C15]/60 backdrop-blur-xl border-l border-white/10 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl relative">
         <div className="mb-6">
           <div onClick={() => router.push("/")} className="cursor-pointer group">
             <div className="relative w-full h-32 rounded-xl overflow-hidden border border-white/20 mb-4 shadow-xl group-hover:shadow-2xl transition-all">

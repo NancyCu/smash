@@ -159,7 +159,7 @@ export default function GameInfo({
   };
 
   return (
-    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl space-y-6">
+    <div className="bg-[#0B0C15]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl space-y-6">
         
         {/* GAME HEADER */}
         <div>

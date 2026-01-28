@@ -52,18 +52,18 @@ export default function Grid({
       <div className="flex flex-1 min-h-0 relative overflow-visible">
         
         {/* --- 3. THE GRID --- */}
-        <div className="w-full h-full pt-8 pl-8 md:pt-14 md:pl-14">
+        <div className="w-full h-full">
           <div className="relative h-full w-full">
-            {/* Team B name overlay across the top header row (inside grid) */}
-            <div className="pointer-events-none absolute -top-6 md:-top-12 left-8 md:left-10 right-0 h-8 md:h-12 flex items-center justify-center z-50 mb-2">
-                <span className="text-[#22d3ee]/90 font-teko font-black uppercase tracking-[0.25em] md:tracking-[0.3em] blur-[0.5px] drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] drop-shadow-[0_0_10px_rgba(34,211,238,0.6)] text-xs md:text-3xl whitespace-nowrap overflow-visible z-10 relative">
+            {/* Team B name overlay - Watermark Style */}
+            <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-2 z-0">
+                <span className="text-[#22d3ee] font-black uppercase tracking-widest opacity-20 text-4xl md:text-6xl select-none">
                 {teamB}
                 </span>
             </div>
 
-            {/* Team A name overlay down the left header column (inside grid) */}
-            <div className="pointer-events-none absolute top-8 md:top-10 -left-6 md:-left-12 w-8 md:w-12 bottom-0 flex items-center justify-center z-50">
-                <span className="text-[#db2777]/90 font-teko font-black uppercase tracking-[0.25em] md:tracking-[0.3em] blur-[0.5px] drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] drop-shadow-[0_0_10px_rgba(219,39,119,0.6)] text-xs md:text-3xl whitespace-nowrap [writing-mode:vertical-rl] rotate-180 overflow-visible mr-2 z-10 relative">
+            {/* Team A name overlay - Watermark Style */}
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-start pl-2 z-0">
+                <span className="text-[#db2777] font-black uppercase tracking-widest opacity-20 text-4xl md:text-6xl select-none whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
                 {teamA}
                 </span>
             </div>
