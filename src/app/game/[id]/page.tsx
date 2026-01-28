@@ -286,9 +286,19 @@ export default function GamePage() {
 const pot = game.pot || game.totalPot || 0;
 
 const payouts = useMemo(() => {
-  const history = game.payoutHistory || [];
+  // 1. Safety Guard: Return zeros if game data isn't ready
+  if (!game || !game.payoutHistory) {
+    return {
+      q1: { amount: 0 },
+      q2: { amount: 0 },
+      q3: { amount: 0 },
+      final: { amount: 0 }
+    };
+  }
+
+  const pot = game.pot || game.totalPot || 0;
+  const history = game.payoutHistory;
   
-  // Default percentages
   const ideal = {
     q1: Math.floor(pot * 0.1),
     q2: Math.floor(pot * 0.2),
@@ -300,7 +310,6 @@ const payouts = useMemo(() => {
     const record = history.find(p => p.quarter === qKey);
     if (record) return { amount: record.amount, winner: record.winnerName };
     
-    // Logic for Rollover: If the game has moved past this quarter but no winner exists
     const order = ['q1', 'q2', 'q3', 'final'];
     const currentIdx = order.indexOf(game.currentPeriod || 'q1');
     const targetIdx = order.indexOf(qKey);
@@ -315,7 +324,7 @@ const payouts = useMemo(() => {
     q3: getQData('q3', ideal.q3),
     final: getQData('final', ideal.final),
   };
-}, [game, pot]);
+}, [game, game?.payoutHistory, game?.pot, game?.totalPot]);
 
     const getOwner = (q: "q1" | "q2" | "q3" | "final") => {
       const axis =
