@@ -8,7 +8,6 @@ import type { SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
-// STREET SMARTS FIX: Import the new Clock Component
 import LiveGameClock from "@/components/LiveGameClock"; 
 import { Copy, Check, ShoppingCart, LogIn, LogOut, Loader2, X, Trophy, UserPlus, Trash2, Ban } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
@@ -23,7 +22,7 @@ export default function GamePage() {
   } = useGame();
   
   const { user, logOut } = useAuth();
-  const { games: liveGames } = useEspnScores(); // Ensure your hook returns { games: [...] }
+  const { games: liveGames } = useEspnScores();
 
   const matchedGame = useMemo(() => 
     game?.espnGameId ? liveGames.find(g => g.id === game.espnGameId) : null, 
@@ -31,18 +30,21 @@ export default function GamePage() {
   );
   
   // --- STATE ---
-// --- STATE ---
   const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
-  const [isManualView, setIsManualView] = useState(false); // NEW: Track if we are in "Manual Override" mode
+  const [isManualView, setIsManualView] = useState(false); // Track if user clicked a button
   const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]); 
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- LOGIC: CALCULATE THE "REAL" LIVE QUARTER ---
+  // --- 1. CALCULATE LIVE QUARTER ---
   const liveQuarter = useMemo(() => {
       // Priority 1: Game Over -> Final
-      if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const status = (matchedGame as any)?.status;
+      const detail = (matchedGame as any)?.statusDetail;
+      
+      if (status === "post" || (detail && detail.includes("Final"))) {
           return 'final';
       }
       // Priority 2: Game Live -> Use Period
@@ -51,41 +53,34 @@ export default function GamePage() {
           if (p === 1) return 'q1';
           if (p === 2) return 'q2';
           if (p === 3) return 'q3';
-          if (p >= 4) return 'final';
+          if (p >= 4) return 'final'; 
       }
-      // Priority 3: Fallback to Host Manual Control (Firebase)
+      // Priority 3: Host Control (Fallback)
       return (game?.currentPeriod as 'q1'|'q2'|'q3'|'final') || 'q1';
   }, [matchedGame, game]);
 
-  // --- EFFECT 1: AUTO-SYNC ---
-  // If user isn't looking at history manually, always show the live quarter
+  // --- 2. AUTO-SYNC LOGIC ---
   useEffect(() => {
       if (!isManualView) {
           setActiveQuarter(liveQuarter);
       }
   }, [liveQuarter, isManualView]);
 
-  // --- EFFECT 2: SNAP BACK TIMER (10s) ---
+  // --- 3. SNAP-BACK TIMER (10s) ---
   useEffect(() => {
       if (isManualView) {
           const timer = setTimeout(() => {
-              setIsManualView(false); // Snap back to live!
-          }, 10000); 
+              setIsManualView(false); 
+          }, 10000);
           return () => clearTimeout(timer);
       }
   }, [isManualView]);
 
-  // --- HANDLER: QUARTER CLICK (Replace your old one with this!) ---
   const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
       setActiveQuarter(q);
-
-      // If they clicked the current live quarter, stay live (disable timer).
-      // If they clicked a past/future quarter, enable manual mode (start 10s timer).
-      if (q === liveQuarter) {
-          setIsManualView(false);
-      } else {
-          setIsManualView(true);
-      }
+      // If user clicks the current live quarter, stay live. Otherwise, start manual timer.
+      if (q === liveQuarter) setIsManualView(false);
+      else setIsManualView(true);
 
       if (isAdmin) setGamePhase(q);
   };
@@ -104,47 +99,41 @@ export default function GamePage() {
     return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/${teamName.toLowerCase().slice(0,3)}.png&h=200&w=200`;
   };
 
-  // --- SCORES CALCULATION ---
+  // --- SCORES ---
   const currentScores = useMemo(() => {
     const base = { q1: { home: 0, away: 0 }, q2: { home: 0, away: 0 }, q3: { home: 0, away: 0 }, final: { home: 0, away: 0 }, teamA: 0, teamB: 0 };
     if (!game) return base;
 
-    if (game.espnGameId) {
-        // Use the memoized matchedGame we already found
-        if (matchedGame && matchedGame.competitors) {
-            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-            const targetA = normalize(game.teamA);
-            const targetB = normalize(game.teamB);
-            
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let compA = matchedGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetA) || targetA.includes(n); });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let compB = matchedGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetB) || targetB.includes(n); });
-            
-            // Fallback logic for finding teams
-            if (!compA && compB) compA = matchedGame.competitors.find((c: any) => c.id !== compB.id);
-            if (!compB && compA) compB = matchedGame.competitors.find((c: any) => c.id !== compA.id);
-            if (!compA && !compB) { compA = matchedGame.competitors[0]; compB = matchedGame.competitors[1]; }
-            
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const getScore = (c: any, i: number) => c?.linescores?.[i]?.value ? Number(c.linescores[i].value) : 0;
-            
-            return {
-                q1: { home: getScore(compA, 0), away: getScore(compB, 0) },
-                q2: { home: getScore(compA, 1), away: getScore(compB, 1) },
-                q3: { home: getScore(compA, 2), away: getScore(compB, 2) },
-                final: { home: Number(compA?.score||0), away: Number(compB?.score||0) },
-                teamA: Number(compA?.score||0), teamB: Number(compB?.score||0)
-            };
-        }
+    if (game.espnGameId && matchedGame && matchedGame.competitors) {
+        const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const targetA = normalize(game.teamA);
+        const targetB = normalize(game.teamB);
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let compA = matchedGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetA) || targetA.includes(n); });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let compB = matchedGame.competitors.find((c: any) => { const n = normalize(c.team.name); return n.includes(targetB) || targetB.includes(n); });
+        
+        if (!compA && compB) compA = matchedGame.competitors.find((c: any) => c.id !== compB.id);
+        if (!compB && compA) compB = matchedGame.competitors.find((c: any) => c.id !== compA.id);
+        if (!compA && !compB) { compA = matchedGame.competitors[0]; compB = matchedGame.competitors[1]; }
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const getScore = (c: any, i: number) => c?.linescores?.[i]?.value ? Number(c.linescores[i].value) : 0;
+        
+        return {
+            q1: { home: getScore(compA, 0), away: getScore(compB, 0) },
+            q2: { home: getScore(compA, 1), away: getScore(compB, 1) },
+            q3: { home: getScore(compA, 2), away: getScore(compB, 2) },
+            final: { home: Number(compA?.score||0), away: Number(compB?.score||0) },
+            teamA: Number(compA?.score||0), teamB: Number(compB?.score||0)
+        };
     }
     return { ...base, final: { home: game.scores?.teamA || 0, away: game.scores?.teamB || 0 }, teamA: game.scores?.teamA || 0, teamB: game.scores?.teamB || 0 };
   }, [game, matchedGame]);
 
-  // --- WINNING CELL LOGIC ---
+  // --- WINNING CELL ---
   const defaultAxis = [0,1,2,3,4,5,6,7,8,9];
-  // STREET SMARTS: This relies on activeQuarter. Since activeQuarter now updates automatically via useEffect,
-  // The grid headers (axis) will rotate automatically!
   const currentAxis = game?.isScrambled ? (game.axis?.[activeQuarter] || { row: defaultAxis, col: defaultAxis }) : { row: defaultAxis, col: defaultAxis };
 
   const winningCoordinates = useMemo(() => {
@@ -162,7 +151,7 @@ export default function GamePage() {
     return { row: rowIndex, col: colIndex };
   }, [currentScores, activeQuarter, game]);
 
-  // --- FORMATTED SQUARES ---
+  // --- GRID DATA ---
   const formattedSquares = useMemo(() => {
     if (!game?.squares) return {};
     const result: Record<string, { uid: string, name: string, claimedAt: number }[]> = {};
@@ -182,7 +171,7 @@ export default function GamePage() {
     return result;
   }, [game]);
 
-  // --- STATS / PAYOUTS ---
+  // --- STATS / PAYOUTS (ROLLOVER LOGIC) ---
   const gameStats = useMemo(() => {
       if (!game) return { payouts: { q1: 0, q2: 0, q3: 0, final: 0 }, winners: [], currentPotential: 0 };
       
@@ -213,9 +202,12 @@ export default function GamePage() {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const status = (matchedGame as any)?.status;
-      const p = status?.period || 1;
-      const isFinal = status?.type?.completed;
-      const isHalf = status?.type?.name === "STATUS_HALFTIME";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const statusType = (matchedGame as any)?.statusDetail;
+      
+      const p = matchedGame?.period || 1;
+      const isFinal = status === "post" || (statusType && statusType.includes("Final"));
+      const isHalf = status === "halftime" || (statusType && statusType.includes("Halftime"));
 
       let currentRollover = 0;
       const results = [];
@@ -224,7 +216,7 @@ export default function GamePage() {
       // Q1
       const q1Done = p > 1 || isHalf || isFinal;
       const w1 = getOwner('q1');
-      if (q1Done && !w1) { currentRollover += base.q1; payoutMap.q1 = 0; results.push({ key: 'q1', label: 'Q1', winner: 'No Winner', amount: 0, rollover: true }); } 
+      if (q1Done && !w1) { currentRollover += base.q1; payoutMap.q1 = 0; results.push({ key: 'q1', label: 'Q1', winner: 'Rollover', amount: 0, rollover: true }); } 
       else if (q1Done && w1) { payoutMap.q1 = base.q1; results.push({ key: 'q1', label: "Q1", winner: w1.displayName, amount: base.q1, rollover: false }); currentRollover = 0; } 
       else { payoutMap.q1 = base.q1; }
 
@@ -232,7 +224,7 @@ export default function GamePage() {
       const q2Done = p > 2 || isFinal;
       const w2 = getOwner('q2');
       const q2Total = base.q2 + currentRollover;
-      if (q2Done && !w2) { currentRollover = q2Total; payoutMap.q2 = 0; results.push({ key: 'q2', label: 'Half', winner: 'No Winner', amount: 0, rollover: true }); } 
+      if (q2Done && !w2) { currentRollover = q2Total; payoutMap.q2 = 0; results.push({ key: 'q2', label: 'Half', winner: 'Rollover', amount: 0, rollover: true }); } 
       else if (q2Done && w2) { payoutMap.q2 = q2Total; results.push({ key: 'q2', label: "Half", winner: w2.displayName, amount: q2Total, rollover: false }); currentRollover = 0; } 
       else { payoutMap.q2 = q2Total; }
 
@@ -240,7 +232,7 @@ export default function GamePage() {
       const q3Done = p > 3 || isFinal;
       const w3 = getOwner('q3');
       const q3Total = base.q3 + currentRollover;
-      if (q3Done && !w3) { currentRollover = q3Total; payoutMap.q3 = 0; results.push({ key: 'q3', label: 'Q3', winner: 'No Winner', amount: 0, rollover: true }); } 
+      if (q3Done && !w3) { currentRollover = q3Total; payoutMap.q3 = 0; results.push({ key: 'q3', label: 'Q3', winner: 'Rollover', amount: 0, rollover: true }); } 
       else if (q3Done && w3) { payoutMap.q3 = q3Total; results.push({ key: 'q3', label: "Q3", winner: w3.displayName, amount: q3Total, rollover: false }); currentRollover = 0; } 
       else { payoutMap.q3 = q3Total; }
 
@@ -328,54 +320,56 @@ export default function GamePage() {
 
           <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 lg:p-6 gap-6">
               
-              {/* SCOREBOARD */}
+              {/* SCOREBOARD (FIXED OVERLAP & WRAPPING) */}
               <div className="w-full relative group z-20 shrink-0">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/20 via-indigo-500/10 to-cyan-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
                   <div className="relative w-full bg-[#0f111a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-2xl">
                       
-                      <div className="flex w-full justify-between items-center mb-2">
-                          <div className="flex flex-col items-center w-1/3 relative">
-                              <span className="text-pink-500 font-teko text-xl md:text-3xl tracking-[0.2em] uppercase mb-1">{game.teamA}</span>
-                              <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)]">
+                      <div className="flex w-full justify-between items-start mb-2 relative">
+                          
+                          {/* TEAM A (LEFT) */}
+                          <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
+                              <span className="text-pink-500 font-teko text-lg md:text-3xl tracking-widest uppercase mb-1 text-center leading-none text-balance w-full break-words px-1">
+                                  {game.teamA}
+                              </span>
+                              <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-1">
                                   {activeQuarter === 'final' ? currentScores.final.home : activeQuarter === 'q1' ? currentScores.q1.home : activeQuarter === 'q2' ? (currentScores.q1.home + currentScores.q2.home) : currentScores.teamA}
                               </span>
                           </div>
                           
-                          {/* STREET SMARTS FIX: CLOCK + CONTROLS */}
-<div className="flex flex-col items-center w-1/3 z-10">
-    {/* 1. The Clock (Top) */}
-    <LiveGameClock game={matchedGame} />
+                          {/* CENTER CLOCK (Does not shrink) */}
+                          <div className="flex flex-col items-center w-[30%] shrink-0 z-10 pt-2">
+                              <LiveGameClock game={matchedGame} />
 
-    {/* 2. The Buttons (Restored) */}
-    <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100 mt-1">
-        {(['q1', 'q2', 'q3', 'final'] as const).map((q) => (
-            <button 
-                key={q} 
-                onClick={() => handleQuarterChange(q)} 
-                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activeQuarter === q ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
-            >
-                {q === 'final' ? 'Final' : q.toUpperCase()}
-            </button>
-        ))}
-    </div>
-    
-    {/* 3. Host Control Text */}
-    {isAdmin && <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest animate-pulse">Host Control</span>}
-</div>
+                              <div className="flex bg-black/40 rounded-full p-1 border border-white/10 scale-75 md:scale-100 mt-1">
+                                  {(['q1', 'q2', 'q3', 'final'] as const).map((q) => (
+                                      <button 
+                                          key={q} 
+                                          onClick={() => handleQuarterChange(q)} 
+                                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${activeQuarter === q ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                                      >
+                                          {q === 'final' ? 'Final' : q.toUpperCase()}
+                                      </button>
+                                  ))}
+                              </div>
+                              {isAdmin && <span className="text-[9px] text-green-400 font-bold uppercase mt-1 tracking-widest animate-pulse">Host Control</span>}
+                          </div>
 
-                          <div className="flex flex-col items-center w-1/3 relative">
-                              <span className="text-cyan-400 font-teko text-xl md:text-3xl tracking-[0.2em] uppercase mb-1">{game.teamB}</span>
-                              <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]">
+                          {/* TEAM B (RIGHT) */}
+                          <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
+                              <span className="text-cyan-400 font-teko text-lg md:text-3xl tracking-widest uppercase mb-1 text-center leading-none text-balance w-full break-words px-1">
+                                  {game.teamB}
+                              </span>
+                              <span className="text-5xl md:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-1">
                                   {activeQuarter === 'final' ? currentScores.final.away : activeQuarter === 'q1' ? currentScores.q1.away : activeQuarter === 'q2' ? (currentScores.q1.away + currentScores.q2.away) : currentScores.teamB}
                               </span>
                           </div>
+
                       </div>
                   </div>
               </div>
 
-              {/* ... REST OF YOUR CODE (Winners, Grid, Cart) ... */}
-              {/* No changes needed below here, because Grid uses activeQuarter which we now automate */}
-              
+              {/* CURRENT WINNER & PURSE DISPLAY */}
               <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-[#151725] border border-green-500/30 rounded-xl p-4 shadow-lg flex items-center justify-between relative overflow-hidden">
                       <div className="absolute top-0 right-0 p-2"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" /></div>
@@ -391,6 +385,7 @@ export default function GamePage() {
                       </div>
                   </div>
 
+                  {/* PAST WINNERS / ROLLOVER LOG */}
                   {gameStats?.winners && gameStats.winners.length > 0 && (
                       <div className="bg-[#151725] border border-white/5 rounded-xl p-4 shadow-lg flex flex-col justify-center">
                           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 border-b border-white/5 pb-1">History</span>
@@ -400,7 +395,7 @@ export default function GamePage() {
                                       <span className="text-slate-400 font-bold">{w.label}</span>
                                       <div className="flex items-center gap-2">
                                           {w.rollover ? (
-                                              <span className="text-red-400 italic flex items-center gap-1"><Ban className="w-3 h-3"/> No Winner</span>
+                                              <span className="text-red-400 italic flex items-center gap-1"><Ban className="w-3 h-3"/> Rollover</span>
                                           ) : (
                                               <>
                                                   <span className="text-white font-bold">{w.winner}</span>
@@ -415,6 +410,7 @@ export default function GamePage() {
                   )}
               </div>
 
+              {/* GRID */}
               <div className="w-full aspect-square shrink-0 relative z-10">
                   <div className="h-full w-full bg-[#0f111a] rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 overflow-hidden">
                       <Grid 
@@ -424,10 +420,12 @@ export default function GamePage() {
                           isScrambled={game.isScrambled} selectedCell={selectedCell}
                           winningCell={winningCoordinates}
                           pendingIndices={pendingSquares} currentUserId={user?.uid}
+                          activeQuarter={activeQuarter === 'final' ? 4 : activeQuarter === 'q3' ? 3 : activeQuarter === 'q2' ? 2 : 1}
                       />
                   </div>
               </div>
 
+              {/* CART / DETAILS BOX */}
               {pendingSquares.length > 0 ? (
                   <div className="w-full bg-[#151725] border border-indigo-500/50 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
                       <div className="flex items-center justify-between mb-4">
@@ -502,7 +500,7 @@ export default function GamePage() {
           </div>
       </div>
       
-      {/* DESKTOP SIDEBAR (Kept same) */}
+      {/* DESKTOP SIDEBAR */}
       <div className="hidden lg:flex w-[400px] xl:w-[450px] bg-[#0f111a] border-l border-white/5 flex-col h-full overflow-y-auto p-6 z-20 shadow-2xl relative">
           <div className="mb-6">
                <div onClick={() => router.push('/')} className="cursor-pointer group">

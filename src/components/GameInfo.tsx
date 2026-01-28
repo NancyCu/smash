@@ -10,7 +10,7 @@ interface GameInfoProps {
   pricePerSquare: number;
   totalPot: number;
   payouts: any; 
-  winners: any[]; // List of winners passed from parent
+  winners: any[]; 
   matchup: { teamA: string; teamB: string };
   scores: any;
   isAdmin: boolean;
@@ -54,6 +54,7 @@ export default function GameInfo({
 
   // --- DYNAMIC PAYOUT RENDERER ---
   const renderPayouts = () => {
+      // Default Base Splits (10/20/20/50)
       let displayPayouts = [
           { key: 'q1', label: "Q1", amount: Math.floor(totalPot * 0.10) },
           { key: 'q2', label: "Half", amount: Math.floor(totalPot * 0.20) },
@@ -61,7 +62,7 @@ export default function GameInfo({
           { key: 'final', label: "Final", amount: totalPot - (Math.floor(totalPot * 0.10) + Math.floor(totalPot * 0.20) * 2) },
       ];
 
-      // Use calculated rollover data from Parent if available
+      // If Parent sends calculated cascading values, use them!
       if (payouts && typeof payouts.q1 === 'number') {
           displayPayouts = [
               { key: 'q1', label: "Q1", amount: payouts.q1 },
@@ -74,30 +75,38 @@ export default function GameInfo({
       return (
         <div className="grid grid-cols-4 gap-2 mt-2">
             {displayPayouts.map((p, i) => {
-                const winner = winners?.find(w => w.key === p.key);
-                // "Rollover" if amount is 0 and no winner found (and pot exists)
-                const isRollover = p.amount === 0 && !winner && totalPot > 0;
+                const winnerObj = winners?.find(w => w.key === p.key);
+                
+                // Determine Status
+                // 1. Real Winner: Object exists AND rollover is false
+                const isRealWinner = winnerObj && !winnerObj.rollover;
+                
+                // 2. Rollover: Object exists with rollover=true OR amount is 0 w/ no winner
+                const isRollover = (winnerObj && winnerObj.rollover) || (p.amount === 0 && !isRealWinner && totalPot > 0);
                 
                 return (
                     <div key={i} className={`flex flex-col items-center rounded-lg p-2 border relative overflow-hidden group transition-all ${
-                        winner 
+                        isRealWinner 
                         ? "bg-green-900/20 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.2)]" 
                         : isRollover 
-                            ? "bg-red-900/10 border-red-500/20 opacity-60" 
+                            ? "bg-red-900/10 border-red-500/20 opacity-70" 
                             : "bg-black/20 border-white/5"
                     }`}>
-                        {winner && <div className="absolute top-0 right-0 p-1"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/></div>}
+                        {/* Winner Dot */}
+                        {isRealWinner && <div className="absolute top-0 right-0 p-1"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/></div>}
                         
-                        <span className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${winner ? "text-green-400" : "text-slate-500"}`}>{p.label}</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isRealWinner ? "text-green-400" : "text-slate-500"}`}>{p.label}</span>
                         
-                        <span className={`text-sm font-black transition-colors ${isRollover ? "text-slate-500 line-through" : "text-white"}`}>
-                            {winner ? `$${winner.amount}` : `$${p.amount}`}
+                        {/* Amount - Strikethrough if Rollover */}
+                        <span className={`text-sm font-black transition-colors ${isRollover ? "text-red-400 line-through decoration-2" : "text-white"}`}>
+                            {isRealWinner ? `$${winnerObj.amount}` : `$${p.amount}`}
                         </span>
 
-                        {winner ? (
-                            <span className="text-[9px] text-green-300 font-bold truncate max-w-full">{winner.winner}</span>
+                        {/* Footer Text */}
+                        {isRealWinner ? (
+                            <span className="text-[9px] text-green-300 font-bold truncate max-w-full">{winnerObj.winner}</span>
                         ) : isRollover ? (
-                            <span className="text-[7px] text-red-400 font-bold uppercase mt-1">Rollover</span>
+                            <span className="text-[7px] text-red-400 font-bold uppercase mt-1 tracking-wider">Rollover</span>
                         ) : null}
                     </div>
                 );
