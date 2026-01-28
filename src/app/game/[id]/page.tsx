@@ -52,101 +52,57 @@ export default function GamePage() {
   );
 
   // --- STATE ---
-  const [activeQuarter, setActiveQuarter] = useState<
-    "q1" | "q2" | "q3" | "final"
-  >("q1");
+  const [activeQuarter, setActiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'final'>('q1');
+  const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isManualView, setIsManualView] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]);
-  // ... inside GameContent function ...
-
-  const [selectedCell, setSelectedCell] = useState<{
-    row: number;
-    col: number;
-  } | null>(null);
-  // Ref to hold the timer ID so it persists across renders without causing re-renders itself
-  const snapBackTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // --- 10-SECOND SNAP BACK LOGIC ---
-  useEffect(() => {
-    // 1. Always clear any existing timer when selectedCell changes.
-    // This handles quick successive clicks by resetting the clock.
-    if (snapBackTimerRef.current) {
-      clearTimeout(snapBackTimerRef.current);
-    }
-
-    // 2. If a cell is currently selected, start a new 10-second timer.
-    if (selectedCell !== null) {
-      snapBackTimerRef.current = setTimeout(() => {
-        setSelectedCell(null); // Snap back to normal view
-        snapBackTimerRef.current = null;
-      }, 10000); // 10000ms = 10 seconds
-    }
-
-    // 3. Cleanup function: clear timer if component unmounts before 10s.
-    return () => {
-      if (snapBackTimerRef.current) {
-        clearTimeout(snapBackTimerRef.current);
-      }
-    };
-  }, [selectedCell]); // Re-run this effect whenever selectedCell changes
-
-  // ... rest of your component ...
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // --- 1. CALCULATE LIVE QUARTER ---
   const liveQuarter = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const status = (matchedGame as any)?.status;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const detail = (matchedGame as any)?.statusDetail;
-
-    if (status === "post" || (detail && detail.includes("Final"))) {
-      return "final";
-    }
-    if (matchedGame?.isLive) {
-      const p = matchedGame.period;
-      if (p === 1) return "q1";
-      if (p === 2) return "q2";
-      if (p === 3) return "q3";
-      if (p >= 4) return "final";
-    }
-    return (game?.currentPeriod as "q1" | "q2" | "q3" | "final") || "q1";
+      if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) return 'final';
+      if (matchedGame?.isLive) {
+          const p = matchedGame.period;
+          if (p === 1) return 'q1';
+          if (p === 2) return 'q2';
+          if (p === 3) return 'q3';
+          if (p >= 4) return 'final';
+      }
+      return (game?.currentPeriod as 'q1'|'q2'|'q3'|'final') || 'q1';
   }, [matchedGame, game]);
 
-  // --- 2. AUTO-SYNC LOGIC ---
-// --- 2. AUTO-SYNC EFFECT ---
-  // If the user hasn't manually clicked away, always follow the Live Game
+  // --- 2. SNAP BACK TIMER ---
   useEffect(() => {
-      if (!isManualView) {
+      let timer: NodeJS.Timeout;
+      
+      if (isManualView) {
+          timer = setTimeout(() => {
+              // TIME IS UP: Reset everything to "Live State"
+              setIsManualView(false);
+              setSelectedCell(null); 
+              setActiveQuarter(liveQuarter); // Force sync to live quarter
+          }, 10000);
+      } else {
+          // If not in manual view, ensure we are synced
           setActiveQuarter(liveQuarter);
       }
-  }, [liveQuarter, isManualView]);
 
-  // --- 3. THE "SNAP BACK" TIMER (10 Seconds) ---
-  useEffect(() => {
-      if (isManualView) {
-          // Wait 10 seconds, then release manual control
-          const timer = setTimeout(() => {
-              setIsManualView(false); // Snap back to Live Quarter
-              setSelectedCell(null);  // <--- IMPORTANT: Clear selection so the board lights up again
-          }, 10000);
-          return () => clearTimeout(timer);
-      }
-  }, [isManualView]);
+      return () => clearTimeout(timer);
+  }, [isManualView, liveQuarter]);
 
-  // --- 4. UPDATED CLICK HANDLER ---
+  // --- 3. HANDLE QUARTER TAB CLICK ---
   const handleQuarterChange = (q: 'q1'|'q2'|'q3'|'final') => {
       setActiveQuarter(q);
-      setSelectedCell(null); // <--- Clear selection when switching views manually too
       
-      // If user clicks the CORRECT live quarter, we engage "Live Mode" (No timer)
       if (q === liveQuarter) {
+          // If they clicked the CURRENT quarter, treat it as "Back to Live"
           setIsManualView(false);
-      } 
-      // If user clicks a DIFFERENT quarter (Past/Future), we start the 10s timer
-      else {
+          setSelectedCell(null); // Clear selection so Winning Square pops
+      } else {
+          // If they clicked a DIFFERENT quarter, treat it as "Manual Peek"
           setIsManualView(true);
+          setSelectedCell(null); // Clear selection so they see that quarter's winner
       }
 
       if (isAdmin) setGamePhase(q);
@@ -497,21 +453,21 @@ export default function GamePage() {
     }
   }, [id, setGameId]);
 
-  useEffect(() => {
-    if (winningCoordinates) setSelectedCell(winningCoordinates);
-  }, [winningCoordinates]);
-
   // Handlers
   const handleSquareClick = (row: number, col: number) => {
     const index = row * 10 + col;
 
     // 1. If Game is Locked (Scrambled) and not Admin, just select for viewing
     if (game?.isScrambled && !isAdmin) {
+      // Set selection and Trigger Manual Mode
       setSelectedCell({ row, col });
+      setIsManualView(true);
       return;
     }
 
+    // Set selection and Trigger Manual Mode
     setSelectedCell({ row, col });
+    setIsManualView(true);
 
     // 2. If the user is removing a square from their cart, let them (no checks needed)
     if (pendingSquares.includes(index)) {
@@ -633,14 +589,6 @@ export default function GamePage() {
       </div>
     );
 
-  const selectedSquareData = selectedCell
-    ? formattedSquares[`${selectedCell.row}-${selectedCell.col}`] || []
-    : [];
-  const isWinningSquare =
-    winningCoordinates &&
-    selectedCell &&
-    winningCoordinates.row === selectedCell.row &&
-    winningCoordinates.col === selectedCell.col;
   const cartTotal = pendingSquares.length * game.price;
 
   return (
@@ -820,81 +768,113 @@ export default function GamePage() {
               </button>
             </div>
           ) : (
-            <div
-              className={`w-full bg-[#151725] border ${isWinningSquare ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}
-            >
-              <div className="flex items-center justify-between mb-2 border-b border-white/5 pb-1">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-2">
-                    Square Details{" "}
-                    {isWinningSquare && (
-                      <span className="text-yellow-400 flex items-center gap-1 animate-pulse">
-                        <Trophy className="w-3 h-3" /> Winning Square
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-lg font-black text-white flex items-center gap-2">
-                    {selectedCell
-                      ? `Row ${currentAxis.row[selectedCell.row]} • Col ${currentAxis.col[selectedCell.col]}`
-                      : "Select a Square"}
-                    {isWinningSquare && (
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />
-                    )}
-                  </span>
-                </div>
-                {selectedCell && (
-                  <button
-                    onClick={() => setSelectedCell(null)}
-                    className="p-1 rounded-full hover:bg-white/10 text-slate-500"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              {selectedCell ? (
-                <div className="space-y-2">
-                  <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                    {selectedSquareData.length === 0 ? (
-                      <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg">
-                        Empty Square
-                      </div>
-                    ) : (
-                      selectedSquareData.map((p, i) => (
-                        <div
-                          key={i}
-                          className={`flex justify-between items-center p-2 rounded-lg border ${p.uid === user?.uid ? "bg-indigo-600/20 border-indigo-500/30" : "bg-black/40 border-white/5"}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold ${p.uid === user?.uid ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}
-                            >
-                              {i + 1}
-                            </div>
-                            <span
-                              className={`text-xs font-bold ${p.uid === user?.uid ? "text-indigo-200" : "text-slate-200"}`}
-                            >
-                              {p.name} {p.uid === user?.uid && "(You)"}
-                            </span>
-                          </div>
-                          {(isAdmin || p.uid === user?.uid) && (
-                            <button
-                              onClick={handleUnclaim}
-                              className="p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
+            // --- UPDATED DETAILS PANEL (HANDLES SNAP BACK) ---
+            (() => {
+                // DECISION LOGIC: Use Selected Cell OR Fallback to Winning Cell
+                const targetCell = selectedCell || winningCoordinates;
+                const isWinnerView = !selectedCell && winningCoordinates; // Only true if we fell back to winner
+                
+                // If we have a target cell (selected or winning), confirm if it's the WINNER based on logic
+                const isTargetWinning = winningCoordinates && targetCell && 
+                                        winningCoordinates.row === targetCell.row && 
+                                        winningCoordinates.col === targetCell.col;
+
+                return (
+                    <div
+                      className={`w-full bg-[#151725] border ${
+                        isTargetWinning 
+                            ? "border-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.2)]" 
+                            : "border-white/10"
+                      } rounded-2xl p-3 shadow-xl shrink-0 transition-all`}
+                    >
+                      <div className="flex items-center justify-between mb-2 border-b border-white/5 pb-1">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-2">
+                             {/* Header Text */}
+                             {selectedCell ? (
+                                "Selected Square"
+                             ) : isWinnerView ? (
+                                <span className="text-yellow-400 flex items-center gap-1 animate-pulse">
+                                    <Trophy className="w-3 h-3" /> Winning Square
+                                </span>
+                             ) : (
+                                "Square Details"
+                             )}
+                          </span>
+                          <span className="text-lg font-black text-white flex items-center gap-2">
+                            {targetCell
+                              ? `Row ${currentAxis.row[targetCell.row]} • Col ${currentAxis.col[targetCell.col]}`
+                              : "Select a Square"}
+                            
+                            {isTargetWinning && (
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />
+                            )}
+                          </span>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4 text-slate-500 text-xs">
-                  Tap empty squares to build your cart.
-                </div>
-              )}
-            </div>
+                        {selectedCell && (
+                          <button
+                            onClick={() => setSelectedCell(null)}
+                            className="p-1 rounded-full hover:bg-white/10 text-slate-500"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {targetCell ? (
+                         (() => {
+                             // DATA FETCH for the Target Cell
+                             const cellKey = `${targetCell.row}-${targetCell.col}`;
+                             const cellData = formattedSquares[cellKey] || [];
+                             
+                             return (
+                                <div className="space-y-2">
+                                  <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                                    {cellData.length === 0 ? (
+                                      <div className="p-2 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-lg">
+                                        Empty Square
+                                      </div>
+                                    ) : (
+                                      cellData.map((p, i) => (
+                                        <div
+                                          key={i}
+                                          className={`flex justify-between items-center p-2 rounded-lg border ${p.uid === user?.uid ? "bg-indigo-600/20 border-indigo-500/30" : "bg-black/40 border-white/5"}`}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <div
+                                              className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold ${p.uid === user?.uid ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}
+                                            >
+                                              {i + 1}
+                                            </div>
+                                            <span
+                                              className={`text-xs font-bold ${p.uid === user?.uid ? "text-indigo-200" : "text-slate-200"}`}
+                                            >
+                                              {p.name} {p.uid === user?.uid && "(You)"}
+                                            </span>
+                                          </div>
+                                          {(isAdmin || p.uid === user?.uid) && (
+                                            <button
+                                              onClick={handleUnclaim} // Note: This unclaims based on selectedCell. If we are in "Winning View" (snap back), selectedCell is null, so this is safe.
+                                              className="p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+                             )
+                         })()
+                      ) : (
+                        <div className="text-center py-4 text-slate-500 text-xs">
+                          Tap empty squares to build your cart.
+                        </div>
+                      )}
+                    </div>
+                )
+            })()
           )}
 
           <div className="lg:hidden w-full pb-20">
