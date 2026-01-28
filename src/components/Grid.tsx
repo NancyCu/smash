@@ -27,17 +27,17 @@ export default function Grid({
   const selectedUsers = selectedCell ? getCellUsers(selectedCell.row, selectedCell.col) : [];
   const selectedUserIdToHighlight = selectedUsers.length > 0 ? selectedUsers[0].uid : null;
 
-  // Helper to apply glassy style based on state
+  // Helper: Glassy Background + Solid Borders
   const getGlassyStyle = (baseHex: string, isDimmed: boolean) => {
       if (isDimmed) return {};
-      // Use 0.5 (50%) opacity for the glassy look
-      return { backgroundColor: hexToRgba(baseHex, 0.5) };
+      // 60% opacity for vibrant pastel glass
+      return { backgroundColor: hexToRgba(baseHex, 0.6) };
   };
 
   return (
     <div className="relative grid grid-cols-11 border border-white/5 bg-[#0f111a] select-none rounded-lg overflow-hidden">
       
-      {/* --- OVERLAYS FOR TEAM NAMES (Only visible before Scramble) --- */}
+      {/* --- OVERLAYS --- */}
       {!isScrambled && (
         <>
           <div className="absolute top-0 left-[9.09%] right-0 h-8 md:h-10 z-10 flex items-center justify-center pointer-events-none">
@@ -53,7 +53,7 @@ export default function Grid({
         </>
       )}
 
-      {/* --- HEADER ROW (Top / Team B) --- */}
+      {/* --- HEADER ROW (Team B) --- */}
       <div className="contents">
          <div className="bg-[#0B0C15] border-r border-b border-white/5 flex items-center justify-center p-1 overflow-hidden relative z-20">
              {teamALogo && teamBLogo ? (
@@ -84,7 +84,7 @@ export default function Grid({
          })}
       </div>
 
-      {/* --- GRID ROWS (Left / Team A) --- */}
+      {/* --- GRID ROWS (Team A) --- */}
       {rows.map((rowNum, rIndex) => {
         const isRowSelected = selectedCell?.row === rIndex;
         const isRowWinner = winningCell?.row === rIndex;
@@ -134,25 +134,24 @@ export default function Grid({
                             <div className={`w-full h-full grid ${users.length === 1 ? 'grid-cols-1' : users.length === 2 ? 'grid-rows-2' : 'grid-cols-2 grid-rows-2'} overflow-hidden`}>
                                 {users.slice(0, 4).map((u, idx) => {
                                     const isFocus = selectedUserIdToHighlight && u.uid === selectedUserIdToHighlight;
-                                    // Add !! to force "null" to become "false"
                                     const isDimmed = !!selectedUserIdToHighlight && !isFocus;
                                     const baseColor = getUserColor(u.name);
                                     
-                                    // Apply glassy style using RGBA + Backdrop blur helper classes
                                     const glassyStyle = getGlassyStyle(baseColor, isDimmed);
 
                                     return (
                                         <div 
                                             key={idx} 
                                             style={glassyStyle} 
-                                            // Add backdrop-blur-sm and a light border for the glassy effect
+                                            // backdrop-blur-sm = Frosted Glass
+                                            // border-white/20 = Solid Edges
+                                            // text-slate-900 = Dark text on bright pastel
                                             className={`
-                                                flex items-center justify-center backdrop-blur-sm border border-white/10
+                                                flex items-center justify-center backdrop-blur-sm border border-white/20
                                                 ${isDimmed ? 'bg-[#0b0c15] grayscale opacity-20' : ''} 
                                                 ${users.length > 2 ? 'border-[0.5px] border-black/10' : ''}
                                             `}
                                         >
-                                            {/* Use dark text for bright neon backgrounds */}
                                             <span className={`
                                                 font-black truncate select-none
                                                 ${isDimmed ? 'text-slate-600' : 'text-slate-900 drop-shadow-sm'}
