@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Lock, Trophy } from "lucide-react";
+import { Lock, HelpCircle, Trophy } from "lucide-react";
 
 interface GridProps {
   rows: number[];
@@ -33,30 +33,7 @@ export default function Grid({
   currentUserId,
 }: GridProps) {
   
-  // 1. COLOR GENERATOR (Restored from your old code for vibrant squares)
-  const getUserColor = (name: string) => {
-    const colors = [
-      "bg-red-500/20 text-red-200 border-red-500/30",
-      "bg-orange-500/20 text-orange-200 border-orange-500/30",
-      "bg-amber-500/20 text-amber-200 border-amber-500/30",
-      "bg-green-500/20 text-green-200 border-green-500/30",
-      "bg-emerald-500/20 text-emerald-200 border-emerald-500/30",
-      "bg-teal-500/20 text-teal-200 border-teal-500/30",
-      "bg-cyan-500/20 text-cyan-200 border-cyan-500/30",
-      "bg-sky-500/20 text-sky-200 border-sky-500/30",
-      "bg-blue-500/20 text-blue-200 border-blue-500/30",
-      "bg-indigo-500/20 text-indigo-200 border-indigo-500/30",
-      "bg-violet-500/20 text-violet-200 border-violet-500/30",
-      "bg-purple-500/20 text-purple-200 border-purple-500/30",
-      "bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-500/30",
-      "bg-pink-500/20 text-pink-200 border-pink-500/30",
-      "bg-rose-500/20 text-rose-200 border-rose-500/30",
-    ];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return colors[Math.abs(hash) % colors.length];
-  };
-
+  // Helper to check if a specific cell is the winner
   const isWinner = (rIndex: number, cIndex: number) => {
     return winningCell?.row === rIndex && winningCell?.col === cIndex;
   };
@@ -65,13 +42,13 @@ export default function Grid({
     <div className="w-full h-full flex flex-col select-none bg-[#0f111a] p-1 md:p-2">
       {/* --- TOP HEADER (TEAM B - CYAN) --- */}
       <div className="flex h-8 md:h-12 items-center mb-1">
-        {/* Corner Spacer */}
+        {/* Empty corner spacer */}
         <div className="w-8 md:w-12 shrink-0 mr-1" />
         
-        {/* Team B Name */}
+        {/* Team B Name Centered */}
         <div className="flex-1 flex items-center justify-center bg-[#151725] rounded-t-lg border border-white/5 relative overflow-hidden">
            <div className="absolute inset-0 bg-cyan-500/5" />
-           <span className="text-cyan-400 font-teko text-lg md:text-2xl tracking-[0.2em] uppercase z-10 font-bold drop-shadow-md">
+           <span className="text-cyan-400 font-teko text-lg md:text-2xl tracking-[0.2em] uppercase z-10 font-bold">
              {teamB}
            </span>
         </div>
@@ -80,64 +57,66 @@ export default function Grid({
       <div className="flex flex-1 relative">
         {/* --- LEFT HEADER (TEAM A - PINK) --- */}
         <div className="w-8 md:w-12 flex flex-col mr-1">
-           {/* Corner Box */}
+           {/* Top-Left Corner Box (Logo or Icon) */}
            <div className="h-8 md:h-10 mb-1 bg-[#151725] rounded-tl-lg border border-white/5 flex items-center justify-center text-slate-600">
-              {isScrambled ? <Lock className="w-3 h-3 md:w-4 md:h-4 opacity-50" /> : <div className="w-1 h-1 bg-slate-700 rounded-full" />}
+              {isScrambled ? <Lock className="w-3 h-3 md:w-4 md:h-4" /> : <HelpCircle className="w-3 h-3 md:w-4 md:h-4 opacity-50" />}
            </div>
 
-           {/* Team A Name */}
+           {/* Team A Name (Vertical) */}
            <div className="flex-1 bg-[#151725] rounded-l-lg border border-white/5 relative overflow-hidden flex items-center justify-center">
               <div className="absolute inset-0 bg-pink-500/5" />
-              <span className="text-pink-500 font-teko text-lg md:text-2xl tracking-[0.2em] uppercase -rotate-90 whitespace-nowrap z-10 font-bold drop-shadow-md">
+              <span className="text-pink-500 font-teko text-lg md:text-2xl tracking-[0.2em] uppercase -rotate-90 whitespace-nowrap z-10 font-bold">
                 {teamA}
               </span>
            </div>
         </div>
 
-        {/* --- MAIN GRID --- */}
+        {/* --- MAIN GRID AREA --- */}
         <div className="flex-1 flex flex-col min-w-0">
           
-          {/* --- TOP NUMBERS --- */}
+          {/* --- COLUMN NUMBERS (TOP ROW) --- */}
           <div className="flex h-8 md:h-10 mb-1">
             {cols.map((num, i) => (
               <div
                 key={`col-${i}`}
-                className="flex-1 flex items-center justify-center bg-[#151725] border-r border-white/5 last:border-r-0 first:rounded-bl-lg relative overflow-hidden transition-colors duration-300"
+                className="flex-1 flex items-center justify-center bg-[#151725] border-r border-white/5 last:border-r-0 first:rounded-bl-lg relative overflow-hidden"
               >
                 {/* HIDE NUMBERS IF NOT SCRAMBLED */}
                 {isScrambled ? (
-                  <span className="text-cyan-400 font-teko text-xl md:text-3xl font-bold drop-shadow-sm">
+                  <span className="text-cyan-400 font-teko text-xl md:text-3xl font-bold">
                     {num}
                   </span>
                 ) : (
-                  <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-slate-800" />
+                  <div className="w-1 h-1 md:w-2 md:h-2 rounded-full bg-slate-800" />
                 )}
                 
-                {/* Highlight Logic */}
+                {/* Highlight Logic for Column */}
                 {winningCell?.col === i && (
-                   <div className="absolute inset-0 bg-cyan-500/20 shadow-[inset_0_0_10px_#22d3ee] animate-pulse" />
+                   <div className="absolute inset-0 bg-cyan-500/20 shadow-[inset_0_0_10px_#22d3ee]" />
                 )}
               </div>
             ))}
           </div>
 
-          {/* --- ROWS --- */}
+          {/* --- GRID ROWS --- */}
           <div className="flex-1 flex flex-col">
             {rows.map((rowNum, rIndex) => (
               <div key={`row-${rIndex}`} className="flex-1 flex min-h-0">
                 
-                {/* --- SIDE NUMBERS --- */}
-                <div className="w-8 md:w-12 shrink-0 bg-[#151725] border-b border-white/5 flex items-center justify-center relative overflow-hidden transition-colors duration-300">
+                {/* --- ROW NUMBER (LEFT SIDE) --- */}
+                <div className="w-8 md:w-10 shrink-0 bg-[#151725] border-b border-white/5 flex items-center justify-center relative overflow-hidden">
+                   {/* HIDE NUMBERS IF NOT SCRAMBLED */}
                    {isScrambled ? (
-                      <span className="text-pink-500 font-teko text-xl md:text-3xl font-bold drop-shadow-sm">
+                      <span className="text-pink-500 font-teko text-xl md:text-3xl font-bold">
                         {rowNum}
                       </span>
                    ) : (
-                      <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-slate-800" />
+                      <div className="w-1 h-1 md:w-2 md:h-2 rounded-full bg-slate-800" />
                    )}
 
+                   {/* Highlight Logic for Row */}
                    {winningCell?.row === rIndex && (
-                      <div className="absolute inset-0 bg-pink-500/20 shadow-[inset_0_0_10px_#ec4899] animate-pulse" />
+                      <div className="absolute inset-0 bg-pink-500/20 shadow-[inset_0_0_10px_#ec4899]" />
                    )}
                 </div>
 
@@ -148,59 +127,64 @@ export default function Grid({
                   const owner = Array.isArray(cellData) ? cellData[0] : cellData;
                   const isPending = pendingIndices.includes(rIndex * 10 + cIndex);
                   const isSelected = selectedCell?.row === rIndex && selectedCell?.col === cIndex;
-                  const cellWinner = isWinner(rIndex, cIndex);
+                  const isWinning = isWinner(rIndex, cIndex);
 
-                  // --- STYLE LOGIC ---
-                  let containerClass = "flex-1 relative cursor-pointer flex items-center justify-center transition-all duration-200 border-r border-b border-white/5";
-                  let textClass = "font-bold text-[8px] md:text-[10px] lg:text-xs uppercase tracking-wider truncate px-0.5 text-center w-full";
+                  // Dynamic Styles
+                  let bgClass = "bg-[#0B0C15]"; // Default Dark
+                  let borderClass = "border border-white/5";
+                  let textClass = "text-white/20"; // Empty text color
 
-                  if (cellWinner) {
-                    // Winner: Gold/Yellow Override
-                    containerClass += " bg-yellow-500/20 shadow-[inset_0_0_15px_rgba(250,204,21,0.4)] z-30 border border-yellow-500";
-                    textClass += " text-yellow-200";
+                  if (isWinning) {
+                    bgClass = "bg-yellow-500/20 animate-pulse";
+                    borderClass = "border border-yellow-400";
+                    textClass = "text-yellow-200";
                   } else if (isSelected) {
-                    // Selected: Bright Indigo
-                    containerClass += " bg-indigo-500/80 z-20 scale-105 shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-white";
-                    textClass += " text-white";
+                    bgClass = "bg-indigo-600/40";
+                    borderClass = "border border-indigo-400";
+                    textClass = "text-white";
                   } else if (isPending) {
-                    // Cart: Pulsing Indigo
-                    containerClass += " bg-indigo-900/30 animate-pulse border-indigo-500/30 dashed";
-                    textClass += " text-indigo-300";
+                    bgClass = "bg-indigo-500/20";
+                    borderClass = "border border-indigo-500/50 dashed";
+                    textClass = "text-indigo-200";
                   } else if (owner) {
-                    // Taken: Use Vibrant User Color
-                    const userColor = getUserColor(owner.name);
-                    containerClass += ` ${userColor}`;
-                    // Highlight if it's Me
+                    // Check if current user owns it
                     if (owner.uid === currentUserId) {
-                       containerClass += " border border-indigo-400/50 shadow-inner";
+                       bgClass = "bg-cyan-900/30";
+                       borderClass = "border border-cyan-500/30";
+                       textClass = "text-cyan-200";
+                    } else {
+                       // Occupied by someone else
+                       bgClass = "bg-[#1a1d2d]"; 
+                       borderClass = "border border-white/10";
+                       textClass = "text-slate-300";
                     }
-                  } else {
-                    // Empty: Dark
-                    containerClass += " bg-[#0B0C15] hover:bg-white/5";
-                    textClass += " text-white/20";
                   }
 
                   return (
                     <div
                       key={cellKey}
                       onClick={() => onSquareClick(rIndex, cIndex)}
-                      className={containerClass}
+                      className={`flex-1 relative cursor-pointer flex items-center justify-center transition-all duration-200 ${bgClass} ${borderClass}`}
                     >
                       {/* Name Label */}
-                      <span className={textClass}>
+                      <span
+                        className={`font-bold text-[8px] md:text-[10px] lg:text-xs uppercase tracking-wider truncate px-0.5 text-center w-full ${textClass}`}
+                      >
                         {owner ? (
-                           owner.name.split(' ')[0].slice(0, 8)
+                           // Show Name
+                           owner.name.split(' ')[0] 
                         ) : isPending ? (
-                           "PICK"
+                           <span className="animate-pulse">...</span>
                         ) : (
+                           // Empty State
                            ""
                         )}
                       </span>
 
-                      {/* Winner Crown */}
-                      {cellWinner && (
-                        <div className="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 text-yellow-400 drop-shadow-[0_2px_10px_rgba(250,204,21,0.8)] z-40 animate-bounce">
-                          <Trophy className="w-3 h-3 md:w-5 md:h-5 fill-yellow-400" />
+                      {/* Winner Crown Icon */}
+                      {isWinning && (
+                        <div className="absolute -top-2 -right-2 md:-top-3 md:-right-3 text-yellow-400 drop-shadow-[0_2px_10px_rgba(250,204,21,0.5)] z-20">
+                          <Trophy className="w-4 h-4 md:w-6 md:h-6 fill-yellow-400" />
                         </div>
                       )}
                     </div>
