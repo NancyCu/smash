@@ -198,6 +198,33 @@ export default function GamePage() {
     };
   }, [game, matchedGame]);
 
+  // ... inside GamePage component, after 'currentScores' is defined ...
+
+  // --- AUTO-SYNC ENGINE ---
+  // This pushes live ESPN scores to Firebase so the "Winners Page" sees them too.
+  useEffect(() => {
+    // 1. Safety Checks: Must have a game, a live match, and valid scores
+    if (!game || !matchedGame || !currentScores) return;
+
+    const liveHome = currentScores.teamA;
+    const liveAway = currentScores.teamB;
+    
+    // 2. Get what is currently saved in Firebase (Handle potential 0/undefined)
+    const storedHome = game.scores?.teamA || 0;
+    const storedAway = game.scores?.teamB || 0;
+
+    // 3. The "Smart" Check: Only write if the scores are DIFFERENT.
+    // This prevents infinite loops of updating the database.
+    if (liveHome !== storedHome || liveAway !== storedAway) {
+       console.log(`🔄 Syncing ESPN Scores (${liveHome}-${liveAway}) to Database...`);
+       
+       // This calls the Context function we just fixed
+       updateScores(liveHome, liveAway);
+    }
+  }, [currentScores, game?.scores, matchedGame, updateScores]);
+
+// ... rest of your code ...
+
   // --- WINNING CELL ---
   const winningCoordinates = useMemo(() => {
     const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
