@@ -113,7 +113,6 @@ export default function GamePage() {
   const [restorationToast, setRestorationToast] = useState<{ show: boolean; message: string; type: 'success' | 'warning' | 'error' }>({ show: false, message: '', type: 'success' });
   const [restoringSquares, setRestoringSquares] = useState<number[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [claimedSquaresCount, setClaimedSquaresCount] = useState(0);
 
   // Get sport configuration
   const sportType: SportType = game?.sport || 'default';
@@ -634,16 +633,12 @@ export default function GamePage() {
     if (!user) { await handleAuth(); return; }
     if (pendingSquares.length === 0) return;
     setIsSubmitting(true);
-    const squareCount = pendingSquares.length;
     try {
       for (const index of pendingSquares) await claimSquare(index);
       setPendingSquares([]); setSelectedCell(null);
       
-      // Show payment modal after successful claim
-      if (game && (game.paymentLink || game.zellePhone)) {
-        setClaimedSquaresCount(squareCount);
-        setShowPaymentModal(true);
-      }
+      // Payment is optional - users can pay via "Pay Host" button in GameInfo
+      // No forced payment modal after claiming
     } catch (err) { alert("Error claiming squares"); } finally { setIsSubmitting(false); }
   };
   const handleClearCart = () => setPendingSquares([]);
@@ -1019,18 +1014,33 @@ export default function GamePage() {
         />
       </div>
 
-      {/* Payment Modal - Shows after claiming squares */}
-      {game && (
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          paymentLink={game.paymentLink}
-          zellePhone={game.zellePhone}
-          hostName={game.hostDisplayName || "Host"}
-          totalOwed={claimedSquaresCount * game.price}
-          gameName={game.name}
-        />
-      )}
+      {/* Payment Modal - Optional for user convenience */}
+      {game && (() => {
+        // Calculate total squares owned by current user
+        let ownedSquares = 0;
+        if (user && game.squares) {
+          Object.values(game.squares).forEach((sqValue: unknown) => {
+            const sqUsers = Array.isArray(sqValue) ? sqValue : [sqValue];
+            if (sqUsers.some((u: { uid?: string; userId?: string }) => 
+              (u.uid && u.uid === user.uid) || (u.userId && u.userId === user.uid)
+            )) {
+              ownedSquares++;
+            }
+          });
+        }
+        
+        return (
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => setShowPaymentModal(false)}
+            paymentLink={game.paymentLink}
+            zellePhone={game.zellePhone}
+            hostName={game.hostDisplayName || "Host"}
+            totalOwed={ownedSquares * game.price}
+            gameName={game.name}
+          />
+        );
+      })()}
     </main>
   );
 }
