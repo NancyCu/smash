@@ -92,7 +92,8 @@ function SingleGameWinners({ gameId }: { gameId: string }) {
     const colIdx = axisCol.indexOf(lastDigitB);
     if (rowIdx === -1 || colIdx === -1) return null;
 
-    const cellIndex = rowIdx * 10 + colIdx;
+    // Swap mapping to match live game logic
+    const cellIndex = colIdx * 10 + rowIdx;
     const cellData = game?.squares ? game.squares[cellIndex] : undefined;
     let winners: SquareData[] = [];
     if (Array.isArray(cellData)) winners = cellData as SquareData[];
@@ -477,7 +478,8 @@ function HallOfFame() {
               
               if (rowIdx === -1 || colIdx === -1) return null;
 
-              const cellIndex = rowIdx * 10 + colIdx;
+              // Swap mapping to match live game logic
+              const cellIndex = colIdx * 10 + rowIdx;
               const cellData = game?.squares ? game.squares[cellIndex] : undefined;
               let winners: SquareData[] = [];
               
