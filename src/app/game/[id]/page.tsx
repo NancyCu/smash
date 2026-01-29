@@ -9,6 +9,7 @@ import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
 import GameBar from "@/components/GameBar";
 import LiveGameClock from "@/components/LiveGameClock";
+import { HelpButton } from "@/components/HelpButton";
 import PaymentModal from "@/components/PaymentModal";
 import {
   ShoppingCart,
@@ -605,9 +606,12 @@ export default function GamePage() {
             </div>
             <span className="font-bold text-white tracking-widest text-[10px] uppercase drop-shadow-md">Souper Bowl Squares</span>
           </div>
-          <button onClick={handleAuth} className="p-1.5 rounded-full bg-white/20 border border-white/30 text-slate-100 backdrop-blur-sm shadow-sm hover:bg-white/30 transition-all">
-            {user ? <LogOut className="w-3 h-3 text-red-300" /> : <LogIn className="w-3 h-3 text-green-300" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <HelpButton />
+            <button onClick={handleAuth} className="p-1.5 rounded-full bg-white/20 border border-white/30 text-slate-100 backdrop-blur-sm shadow-sm hover:bg-white/30 transition-all">
+              {user ? <LogOut className="w-3 h-3 text-red-300" /> : <LogIn className="w-3 h-3 text-green-300" />}
+            </button>
+          </div>
         </div>
         
         {/* GAME BAR */}
@@ -851,6 +855,7 @@ export default function GamePage() {
             <p className="text-indigo-200 text-xs font-medium leading-relaxed border-l-2 border-indigo-400 pl-3 italic">"Go Big or Go Home. Connect, compete, and win big with the ultimate squares experience. Because with us, a Nguyen is always a Win"</p>
           </div>
           <div className="mt-6 flex justify-between items-center border-t border-white/10 pt-4">
+            <HelpButton />
             <button onClick={handleAuth} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs uppercase transition-colors backdrop-blur-sm shadow-sm opacity-90 hover:opacity-100">
               {user ? <><LogOut className="w-4 h-4 text-red-300" /><span>Log Out</span></> : <><LogIn className="w-4 h-4 text-green-300" /><span>Log In</span></>}
             </button>
