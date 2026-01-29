@@ -174,12 +174,12 @@ export default function GameHistoryCard({ game, quarterResults }: GameHistoryCar
           {quarters.map((q) => (
             <div
               key={q.key}
-              className={`bg-white/5 rounded-lg p-3 flex flex-col items-center justify-center border transition-colors ${
+              className={`bg-white/5 rounded-lg p-3 flex flex-col items-center justify-center transition-colors ${
                 q.key === "final" 
-                  ? "border-yellow-500/30 bg-yellow-500/5" 
+                  ? "border-2 border-yellow-500/40 bg-yellow-500/10 shadow-[0_0_15px_rgba(234,179,8,0.4)]" 
                   : q.isRollover 
-                    ? "border-amber-500/20" 
-                    : "border-white/5"
+                    ? "border border-amber-500/20" 
+                    : "border border-white/5"
               }`}
             >
               {/* Period Label */}

@@ -115,10 +115,10 @@ function SingleGameWinners({ gameId }: { gameId: string }) {
     let currentRollover = 0;
     const results: any[] = [];
     const stages = [
-      { key: 'q1', label: "1st Quarter", done: p > 1 || isHalf || isFinal },
-      { key: 'q2', label: "Halftime", done: p > 2 || isFinal || (p === 2 && isHalf) },
-      { key: 'q3', label: "3rd Quarter", done: p > 3 || isFinal },
-      { key: 'final', label: "Final Score", done: isFinal }
+      { key: 'q1', label: "Q1", done: p > 1 || isHalf || isFinal },
+      { key: 'q2', label: "HALF", done: p > 2 || isFinal || (p === 2 && isHalf) },
+      { key: 'q3', label: "Q3", done: p > 3 || isFinal },
+      { key: 'final', label: "FINAL", done: isFinal }
     ];
 
     stages.forEach((stage) => {
@@ -162,7 +162,7 @@ function SingleGameWinners({ gameId }: { gameId: string }) {
           const isRollover = res.isRollover;
 
           return (
-            <div key={res.key} className={`relative overflow-hidden rounded-2xl border transition-all ${isFinal ? "border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-black" : isRollover ? "border-red-900/30 bg-[#1a1212]" : "border-white/10 bg-[#151725]"} p-6 shadow-xl`}>
+            <div key={res.key} className={`relative overflow-hidden rounded-2xl transition-all ${isFinal ? "border-2 border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-black shadow-[0_0_15px_rgba(234,179,8,0.4)]" : isRollover ? "border border-red-900/30 bg-[#1a1212]" : "border border-white/10 bg-[#151725]"} p-6 shadow-xl`}>
               {isFinal && <div className="absolute -right-4 -top-4 w-24 h-24 bg-yellow-500/20 blur-xl rounded-full" />}
               <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
                 <div className="flex flex-col items-center md:items-start min-w-[150px]">
@@ -444,6 +444,7 @@ function HallOfFame() {
             const q3Scores = game.quarterScores?.p3 || { teamA: 0, teamB: 0 };
             const finalScores = game.quarterScores?.final || game.scores || { teamA: 0, teamB: 0 };
 
+            // CUMULATIVE SCORES - Each milestone shows running total
             const quarterResults = [
               { 
                 key: "q1", 
@@ -457,8 +458,8 @@ function HallOfFame() {
               { 
                 key: "q2", 
                 label: "HALF", 
-                scoreA: q2Scores.teamA, 
-                scoreB: q2Scores.teamB, 
+                scoreA: q1Scores.teamA + q2Scores.teamA,  // Cumulative through halftime
+                scoreB: q1Scores.teamB + q2Scores.teamB,  // Cumulative through halftime
                 winners: null, 
                 payout: basePayouts.q2, 
                 isRollover: false 
@@ -466,8 +467,8 @@ function HallOfFame() {
               { 
                 key: "q3", 
                 label: "Q3", 
-                scoreA: q3Scores.teamA, 
-                scoreB: q3Scores.teamB, 
+                scoreA: q1Scores.teamA + q2Scores.teamA + q3Scores.teamA,  // Cumulative through Q3
+                scoreB: q1Scores.teamB + q2Scores.teamB + q3Scores.teamB,  // Cumulative through Q3
                 winners: null, 
                 payout: basePayouts.q3, 
                 isRollover: false 
@@ -475,8 +476,8 @@ function HallOfFame() {
               { 
                 key: "final", 
                 label: "FINAL", 
-                scoreA: finalScores.teamA, 
-                scoreB: finalScores.teamB, 
+                scoreA: finalScores.teamA,  // Final cumulative score
+                scoreB: finalScores.teamB,  // Final cumulative score
                 winners: null, 
                 payout: basePayouts.final, 
                 isRollover: false 
