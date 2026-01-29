@@ -171,3 +171,29 @@ body {
 .animate-slideDown {
   animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Custom Driver.js Theme for Electric Broth */
+.driverjs-electric-theme {
+  background-color: #0B0C15 !important;
+  color: #fff !important;
+  border: 1px solid #334155;
+}
+
+.driverjs-electric-theme .driver-popover-title {
+  color: #22d3ee; /* Cyan */
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.driverjs-electric-theme .driver-popover-description {
+  color: #cbd5e1; /* Slate-300 */
+  font-size: 0.9rem;
+}
+
+/* The Next/Prev Buttons */
+.driverjs-electric-theme .driver-popover-footer button {
+  background-color: #db2777 !important; /* Pink */
+  color: white !important;
+  text-shadow: none !important;
+  border-radius: 4px;
+}

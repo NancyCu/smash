@@ -276,6 +276,14 @@ const updateScores = async (home: any, away?: any) => {
               const j = Math.floor(Math.random() * (i + 1));
               [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
           }
+          
+          // Ensure 0 is never at index 0 (0,0 coordinates)
+          if (newArr[0] === 0) {
+              // Swap with a random position that's not 0
+              const swapIndex = Math.floor(Math.random() * 9) + 1; // Random index from 1-9
+              [newArr[0], newArr[swapIndex]] = [newArr[swapIndex], newArr[0]];
+          }
+          
           return newArr;
       };
       

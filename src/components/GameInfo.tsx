@@ -288,6 +288,7 @@ export default function GameInfo({
                         <span className="text-xs font-bold text-white/80">Lock & Scramble</span>
                     </div>
                     <button 
+                        id="tour-scramble-btn"  // <--- ADD THIS LINE HERE
                         onClick={handleToggleScramble}
                         className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-full transition-colors shadow-lg ${isScrambled ? "bg-red-500/80 text-white shadow-red-500/20" : "bg-green-500/80 text-white shadow-green-500/20"}`}
                     >

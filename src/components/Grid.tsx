@@ -203,6 +203,7 @@ export default function Grid({
         <>
           {/* Top Row Overlay: Team B Name with Logos */}
           <div
+          id="tour-team-top" // <--- ADD THIS ID
             style={{
               gridColumn: '3 / -1',
               gridRow: '2 / 3',
@@ -230,6 +231,7 @@ export default function Grid({
 
           {/* Left Column Overlay: Team A Name with Logos */}
           <div
+          id="tour-team-left" // <--- ADD THIS ID
             style={{
               gridColumn: '2 / 3',
               gridRow: '3 / -1',
