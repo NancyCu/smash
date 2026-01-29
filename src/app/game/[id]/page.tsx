@@ -318,10 +318,12 @@ export default function GamePage() {
         }
     }
 
-    const rowIndex = axis.row.indexOf(scoreA % 10);
-    const colIndex = axis.col.indexOf(scoreB % 10);
-    if (rowIndex === -1 || colIndex === -1) return null;
-    return { row: rowIndex, col: colIndex };
+      const rowIndex = axis.row.indexOf(scoreA % 10);
+      const colIndex = axis.col.indexOf(scoreB % 10);
+      if (rowIndex === -1 || colIndex === -1) return null;
+      // Swap mapping so that `col` (horizontal) corresponds to home (axis.row)
+      // and `row` (vertical) corresponds to away (axis.col).
+      return { row: colIndex, col: rowIndex };
   }, [currentScores, activePeriod, game, sportType]);
 
   // Current axis
@@ -660,7 +662,7 @@ export default function GamePage() {
           {/* GRID */}
           <div className="w-full shrink-0 aspect-square max-w-[500px] z-10 flex flex-col justify-center my-1">
             <div className="w-full h-full bg-[#0B0C15]/60 backdrop-blur-md rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.05)] border border-white/10 overflow-hidden ring-1 ring-white/5">
-              <Grid rows={currentAxis.row} cols={currentAxis.col} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamA || "Home"} teamB={game.teamB || "Away"} teamALogo={getTeamLogo(game.teamA)} teamBLogo={getTeamLogo(game.teamB)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} currentUserId={user?.uid} />
+              <Grid rows={currentAxis.col} cols={currentAxis.row} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamB || "Away"} teamB={game.teamA || "Home"} teamALogo={getTeamLogo(game.teamB)} teamBLogo={getTeamLogo(game.teamA)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} currentUserId={user?.uid} />
             </div>
           </div>
 
@@ -710,7 +712,7 @@ export default function GamePage() {
                             {selectedCell && <span className="text-white/60">Selected Square</span>}
                             {targetCell && (
                               <span className="flex items-center gap-1">
-                                (Row {currentAxis.row[targetCell.row]} • Col {currentAxis.col[targetCell.col]})
+                                (Row {currentAxis.col[targetCell.row]} • Col {currentAxis.row[targetCell.col]})
                                 {isTargetWinning && <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />}
                               </span>
                             )}

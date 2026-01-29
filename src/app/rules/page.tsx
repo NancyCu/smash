@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle2, Trophy, DollarSign, Shuffle, Hash, Grid3X3 } f
 
 export default function RulesPage() {
   return (
-    <div className="min-h-screen bg-slate-50 relative pb-20">
+    <div className="min-h-screen bg-slate-50 relative">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-50 px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
