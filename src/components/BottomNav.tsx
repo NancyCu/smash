@@ -143,10 +143,10 @@ export default function BottomNav() {
 
   // Task 2: Sync the Glow with Priority
   // - PULSE: Only if game is truly LIVE (currently in-progress with ESPN)
-  // - GLOW: If there's a valid active game (not finished)
+  // - GLOW: Only for actual live games (not finished games in storage)
   const hasLiveGames = liveGames.length > 0;
   const shouldPulse = hasLiveGames; // Only pulse for actual live games
-  const shouldGlow = hasLiveGames || (activeGameId !== null); // Glow for active or live
+  const shouldGlow = hasLiveGames; // Only glow for actual live games, not stored games
   const isOnActiveGame = pathname.includes('/game/') && (
     liveGames.some(g => pathname.includes(g.id)) || 
     pathname.includes(activeGameId || '')
