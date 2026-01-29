@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/context/GameContext";
 import { useEspnScores } from "@/hooks/useEspnScores";
-import { Calendar, Trophy, DollarSign, Target, ArrowRight, Loader2, Gamepad, Shield, Link } from "lucide-react";
+import { Calendar, Trophy, DollarSign, ArrowRight, Loader2, Gamepad, Shield, Link } from "lucide-react";
 import CyberInput from "@/components/ui/CyberInput";
 import TeamCombobox, { type TeamSelection } from "@/components/ui/TeamCombobox";
 
