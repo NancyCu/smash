@@ -1,17 +1,18 @@
 "use client";
 
-import React, { useEffect, useMemo, Suspense } from 'react';
+import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useGame } from '@/context/GameContext';
 import type { SquareData } from '@/context/GameContext';
-import { ArrowLeft, Check, X, DollarSign, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Check, X, DollarSign, ShieldCheck, Loader2 } from 'lucide-react';
 
 function PaymentsPageContent() {
   const { game, togglePaid, setGameId } = useGame();
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // --- HYDRATION ---
   useEffect(() => {
@@ -76,6 +77,19 @@ function PaymentsPageContent() {
           return a.paid ? 1 : -1;
       });
   }, [game]);
+
+  const handleTogglePaid = async (gridIndex: number, userId: string) => {
+    const toggleKey = `${gridIndex}-${userId}`;
+    setTogglingId(toggleKey);
+    try {
+      await togglePaid(gridIndex, userId);
+    } catch (error) {
+      console.error('Error toggling paid status:', error);
+      alert('Failed to update payment status. Please try again.');
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   if (!game) return <div className="min-h-screen bg-[#0B0C15] flex items-center justify-center text-white">Loading...</div>;
 
@@ -154,14 +168,17 @@ function PaymentsPageContent() {
                                </div>
 
                                <button 
-                                   onClick={() => togglePaid(c.gridIndex, c.userId)}
-                                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
+                                   onClick={() => handleTogglePaid(c.gridIndex, c.userId)}
+                                   disabled={togglingId === `${c.gridIndex}-${c.userId}`}
+                                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all disabled:opacity-50 ${
                                        c.paid 
                                        ? "bg-green-500 text-black hover:bg-green-400 shadow-[0_0_10px_rgba(34,197,94,0.4)]" 
                                        : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white"
                                    }`}
                                >
-                                   {c.paid ? (
+                                   {togglingId === `${c.gridIndex}-${c.userId}` ? (
+                                       <> <Loader2 className="w-3 h-3 animate-spin" /> Processing </>
+                                   ) : c.paid ? (
                                        <> <Check className="w-3 h-3" /> Paid </>
                                    ) : (
                                        <> <X className="w-3 h-3" /> Mark Paid </>

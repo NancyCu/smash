@@ -58,16 +58,16 @@ export default function Grid({
         <div className="w-full h-full">
           <div className="relative h-full w-full">
             
-            {/* Team B Header - Horizontal/Top - Overlapping */}
-            <div className="absolute top-0 left-[50%] -translate-x-1/2 -translate-y-[45%] z-30 pointer-events-none">
-              <span className="text-[#22d3ee] font-black uppercase tracking-[0.4em] text-sm md:text-lg select-none drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]">
+            {/* Team B Header - Horizontal/Top - Overlapping with Column Numbers */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+              <span className="text-[#22d3ee] font-black uppercase tracking-[0.4em] text-xs md:text-sm select-none drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] whitespace-nowrap text-center">
                 {teamB}
               </span>
             </div>
             
-            {/* Team A Header - Vertical/Left - Overlapping */}
-            <div className="absolute left-0 top-[50%] -translate-y-1/2 -translate-x-[35%] z-30 pointer-events-none">
-              <span className="text-[#db2777] font-black uppercase tracking-[0.4em] text-sm md:text-lg select-none rotate-[-90deg] whitespace-nowrap drop-shadow-[0_0_12px_rgba(219,39,119,0.8)]">
+            {/* Team A Header - Vertical/Left - Overlapping with Row Numbers */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 -ml-10 rotate-[-90deg] z-30 pointer-events-none">
+              <span className="text-[#db2777] font-black uppercase tracking-[0.4em] text-xs md:text-sm select-none whitespace-nowrap drop-shadow-[0_0_12px_rgba(219,39,119,0.8)] text-center">
                 {teamA}
               </span>
             </div>

@@ -318,50 +318,71 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
   };
 
   const togglePaid = async (gridIndex: number, targetUserId?: string) => {
-    if (!gameId || !game || !targetUserId) return;
-    
-    const ref = doc(db, "games", gameId);
-    const square = game.squares[gridIndex];
-    
-    if (!square) return;
-    
-    const updates: Record<string, unknown> = {};
-    let currentPaidStatus = false;
-    
-    // Handle both single and array claims
-    if (Array.isArray(square)) {
-      const updatedSquares = square.map(claim => {
-        if (claim.userId === targetUserId) {
-          // Toggle the paid status
-          const newPaidStatus = !claim.paid;
-          currentPaidStatus = newPaidStatus;
-          return {
-            ...claim,
-            paid: newPaidStatus,
-            paidAt: newPaidStatus ? serverTimestamp() : null
-          };
-        }
-        return claim;
-      });
-      updates[`squares.${gridIndex}`] = updatedSquares;
-    } else if (square.userId === targetUserId) {
-      // Single claim - toggle paid status
-      currentPaidStatus = !square.paid;
-      updates[`squares.${gridIndex}`] = {
-        ...square,
-        paid: currentPaidStatus,
-        paidAt: currentPaidStatus ? serverTimestamp() : null
-      };
+    if (!gameId || !game || !targetUserId) {
+      console.error('❌ togglePaid: Missing gameId, game, or targetUserId');
+      return;
     }
     
-    if (Object.keys(updates).length > 0) {
-      await updateDoc(ref, updates);
-      console.log(`✅ Payment toggled for square ${gridIndex}, user ${targetUserId}: ${currentPaidStatus ? 'PAID' : 'UNPAID'}`);
+    try {
+      const ref = doc(db, "games", gameId);
+      const squareKey = String(gridIndex); // Ensure we're using string key
+      const square = game.squares[squareKey];
       
-      // Send notification when payment is confirmed
-      if (currentPaidStatus) {
-        await sendPaymentConfirmation(targetUserId, gameId, game.price || 0, game.name);
+      if (!square) {
+        console.error(`❌ togglePaid: No square found at index ${gridIndex}`);
+        return;
       }
+      
+      const updates: Record<string, unknown> = {};
+      let currentPaidStatus = false;
+      let foundClaim = false;
+      
+      // Handle both single and array claims
+      if (Array.isArray(square)) {
+        const updatedSquares = square.map(claim => {
+          if (claim.userId === targetUserId) {
+            foundClaim = true;
+            // Toggle the paid status
+            const newPaidStatus = !claim.paid;
+            currentPaidStatus = newPaidStatus;
+            return {
+              ...claim,
+              paid: newPaidStatus,
+              paidAt: newPaidStatus ? serverTimestamp() : null
+            };
+          }
+          return claim;
+        });
+        if (foundClaim) {
+          updates[`squares.${squareKey}`] = updatedSquares;
+        }
+      } else if (square.userId === targetUserId) {
+        foundClaim = true;
+        // Single claim - toggle paid status
+        currentPaidStatus = !square.paid;
+        updates[`squares.${squareKey}`] = {
+          ...square,
+          paid: currentPaidStatus,
+          paidAt: currentPaidStatus ? serverTimestamp() : null
+        };
+      }
+      
+      if (!foundClaim) {
+        console.error(`❌ togglePaid: User ${targetUserId} not found in square ${gridIndex}`);
+        return;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        await updateDoc(ref, updates);
+        console.log(`✅ Payment toggled for square ${gridIndex}, user ${targetUserId}: ${currentPaidStatus ? 'PAID' : 'UNPAID'}`);
+        
+        // Send notification when payment is confirmed
+        if (currentPaidStatus) {
+          await sendPaymentConfirmation(targetUserId, gameId, game.price || 0, game.name);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error in togglePaid:', error);
     }
   };
 
