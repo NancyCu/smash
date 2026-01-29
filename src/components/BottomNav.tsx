@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Zap, Gamepad2, User, Trophy } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useGame } from '@/context/GameContext';
+import { useGame, type GameData } from '@/context/GameContext';
 import { useEspnScores } from '@/hooks/useEspnScores';
+import WarpMenu from './WarpMenu';
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -16,8 +17,8 @@ export default function BottomNav() {
   const { games: espnGames } = useEspnScores();
   
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
-  const [hasLiveGame, setHasLiveGame] = useState(false);
-  const [liveGameId, setLiveGameId] = useState<string | null>(null);
+  const [liveGames, setLiveGames] = useState<GameData[]>([]);
+  const [showWarpMenu, setShowWarpMenu] = useState(false);
 
   useEffect(() => {
     // Check localStorage for last active game
@@ -33,17 +34,19 @@ export default function BottomNav() {
     // Listen for custom event from game page
     window.addEventListener('activeGameIdChanged', checkActiveGame);
     
+    // Close warp menu when route changes
+    setShowWarpMenu(false);
+    
     return () => {
       window.removeEventListener('activeGameIdChanged', checkActiveGame);
     };
   }, [pathname]); // Re-check when route changes
 
-  // Task 1 & 2: Priority-Based Redirect Logic + Sync Glow with Priority
+  // Task 1 & 2: Priority-Based Redirect Logic + Multiple Live Games Support
   useEffect(() => {
-    const checkForLiveGame = async () => {
+    const checkForLiveGames = async () => {
       if (!user) {
-        setHasLiveGame(false);
-        setLiveGameId(null);
+        setLiveGames([]);
         return;
       }
 
@@ -51,8 +54,8 @@ export default function BottomNav() {
         // Fetch user's games
         const userGames = await getUserGames(user.uid);
         
-        // Find any game that is currently LIVE (matched with ESPN)
-        const liveGame = userGames.find(game => {
+        // Find ALL games that are currently LIVE (matched with ESPN)
+        const currentlyLive = userGames.filter(game => {
           // Skip completed games
           if (game.status === 'final') return false;
           
@@ -65,24 +68,19 @@ export default function BottomNav() {
           return false;
         });
 
-        if (liveGame) {
-          setHasLiveGame(true);
-          setLiveGameId(liveGame.id);
-        } else {
-          setHasLiveGame(false);
-          setLiveGameId(null);
-        }
+        setLiveGames(currentlyLive);
+        
+        console.log('[BottomNav] Found live games:', currentlyLive.length, currentlyLive.map(g => g.id));
       } catch (error) {
         console.error('[BottomNav] Error checking for live games:', error);
-        setHasLiveGame(false);
-        setLiveGameId(null);
+        setLiveGames([]);
       }
     };
 
-    checkForLiveGame();
+    checkForLiveGames();
     
     // Re-check every 30 seconds in case game status changes
-    const interval = setInterval(checkForLiveGame, 30000);
+    const interval = setInterval(checkForLiveGames, 30000);
     
     return () => clearInterval(interval);
   }, [user, getUserGames, espnGames]);
@@ -100,14 +98,22 @@ export default function BottomNav() {
   const handleLiveClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     
-    // Priority 1: Redirect to actual LIVE game (currently in-progress)
-    if (liveGameId) {
-      console.log('[BottomNav] Redirecting to LIVE game:', liveGameId);
-      router.push(`/game/${liveGameId}`);
+    // Task 2: Logic Trigger
+    // Priority 1: Multiple live games -> Show Warp Menu
+    if (liveGames.length > 1) {
+      console.log('[BottomNav] Multiple live games, toggling Warp Menu');
+      setShowWarpMenu(!showWarpMenu);
       return;
     }
     
-    // Priority 2: Fallback to last active game from localStorage (if not finished)
+    // Priority 2: Single live game -> Redirect immediately
+    if (liveGames.length === 1) {
+      console.log('[BottomNav] Single live game, redirecting:', liveGames[0].id);
+      router.push(`/game/${liveGames[0].id}`);
+      return;
+    }
+    
+    // Priority 3: No live games, fallback to last active game from localStorage (if not finished)
     if (activeGameId && user) {
       try {
         const userGames = await getUserGames(user.uid);
@@ -130,7 +136,7 @@ export default function BottomNav() {
       }
     }
     
-    // Priority 3: No live or valid active game - go to Play Hub
+    // Priority 4: No live or valid active game - go to Play Hub
     console.log('[BottomNav] No active game found, redirecting to Play Hub');
     router.push('/play');
   };
@@ -138,14 +144,27 @@ export default function BottomNav() {
   // Task 2: Sync the Glow with Priority
   // - PULSE: Only if game is truly LIVE (currently in-progress with ESPN)
   // - GLOW: If there's a valid active game (not finished)
-  const shouldPulse = hasLiveGame; // Only pulse for actual live games
-  const shouldGlow = hasLiveGame || (activeGameId !== null); // Glow for active or live
-  const isOnActiveGame = pathname.includes('/game/') && (pathname.includes(liveGameId || '') || pathname.includes(activeGameId || ''));
+  const hasLiveGames = liveGames.length > 0;
+  const shouldPulse = hasLiveGames; // Only pulse for actual live games
+  const shouldGlow = hasLiveGames || (activeGameId !== null); // Glow for active or live
+  const isOnActiveGame = pathname.includes('/game/') && (
+    liveGames.some(g => pathname.includes(g.id)) || 
+    pathname.includes(activeGameId || '')
+  );
   const isPlayActive = pathname === '/play' || pathname === '/create' || pathname === '/join';
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 h-16 pb-safe bg-[#0B0C15]/90 backdrop-blur-xl border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
-      <div className="flex justify-between items-center h-full px-2 max-w-lg mx-auto w-full">
+    <>
+      {/* Task 3: Warp Menu */}
+      {showWarpMenu && (
+        <WarpMenu 
+          liveGames={liveGames} 
+          onClose={() => setShowWarpMenu(false)} 
+        />
+      )}
+
+      <div className="fixed bottom-0 left-0 right-0 z-50 h-16 pb-safe bg-[#0B0C15]/90 backdrop-blur-xl border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+        <div className="flex justify-between items-center h-full px-2 max-w-lg mx-auto w-full">
         
         {/* 1. HOME */}
         <Link href="/" className={`${getLinkClass('/', [])} flex-1 h-full`} aria-label="Home" title="Home">
@@ -164,7 +183,12 @@ export default function BottomNav() {
             onClick={handleLiveClick} 
             className="relative -top-7 group flex flex-col items-center flex-1 h-full justify-start z-10" 
             aria-label="Live Game"
-            title={hasLiveGame ? "Jump to LIVE Game" : activeGameId ? "Jump to Active Game" : "No Active Game"}
+            title={
+              liveGames.length > 1 ? `${liveGames.length} LIVE Games - Quick Warp` :
+              liveGames.length === 1 ? "Jump to LIVE Game" : 
+              activeGameId ? "Jump to Active Game" : 
+              "No Active Game"
+            }
         >
           <div className="relative overflow-visible">
             {/* Active Ring - Shown when on the exact active game page */}
@@ -209,5 +233,6 @@ export default function BottomNav() {
 
       </div>
     </div>
+    </>
   );
 }
