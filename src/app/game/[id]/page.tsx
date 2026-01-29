@@ -626,6 +626,7 @@ export default function GamePage() {
                     <span className="text-pink-200 font-teko text-[10px] md:text-lg lg:text-2xl tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] lg:max-w-[180px] drop-shadow-sm">
                       {game.teamB}
                     </span>
+                    {getTeamLogo(game.teamB) && <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
                   </div>
                   <span className="text-4xl md:text-7xl lg:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-0.5">
                     {!game.espnGameId 
@@ -667,6 +668,7 @@ export default function GamePage() {
                 {/* HOME TEAM (Right - matches grid horizontal/cols - cyan) */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <div className="flex items-center gap-1 lg:gap-2 mb-0.5 justify-center w-full">
+                    {getTeamLogo(game.teamA) && <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
                     <span className="text-cyan-200 font-teko text-[10px] md:text-lg lg:text-2xl tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] lg:max-w-[180px] drop-shadow-sm">
                       {game.teamA}
                     </span>

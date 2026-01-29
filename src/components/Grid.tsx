@@ -218,7 +218,7 @@ export default function Grid({
                 className="w-8 h-8 md:w-12 md:h-12 object-contain drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]"
               />
             )}
-            <span className="text-cyan-300 font-bold tracking-[0.15em] text-lg md:text-3xl uppercase drop-shadow-[0_0_12px_rgba(34,211,238,1)]">
+            <span className="text-cyan-300 font-bold tracking-[0.15em] text-lg md:text-3xl uppercase drop-shadow-[0_0_12px_rgba(34,211,238,1)] text-center">
               {teamB}
             </span>
             {teamBLogo && (
@@ -249,7 +249,7 @@ export default function Grid({
                 style={{ transform: 'rotate(180deg)' }}
               />
             )}
-            <span className="text-pink-300 font-bold tracking-[0.15em] text-lg md:text-3xl uppercase drop-shadow-[0_0_12px_rgba(236,72,153,1)]">
+            <span className="text-pink-300 font-bold tracking-[0.15em] text-lg md:text-3xl uppercase drop-shadow-[0_0_12px_rgba(236,72,153,1)] text-center">
               {teamA}
             </span>
             {teamALogo && (
