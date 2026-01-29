@@ -51,6 +51,20 @@ export default function Grid({
     // OUTER CONTAINER - FLEX COLUMN (thin team bars like reference)
     // Added overflow-visible to prevent clipping of team names
     <div className="flex flex-col h-full w-full bg-[#0f111a] select-none overflow-visible relative">
+      {/* Team B label - positioned on top border (half in/half out) */}
+      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 -translate-y-1/2 z-50">
+        <span className="text-cyan-400 font-black uppercase tracking-[0.5em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]">
+          {teamB}
+        </span>
+      </div>
+
+      {/* Team A label - positioned on left border (half in/half out) */}
+      <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full z-50 flex items-center justify-end pr-1">
+        <span className="text-pink-500 font-black uppercase tracking-[0.5em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(236,72,153,0.6)] -rotate-90 origin-center">
+          {teamA}
+        </span>
+      </div>
+
       {/* === 1. TOP HEADER BAR (TEAM B - CYAN) === */}
       {!isScrambled && (
         <div
@@ -92,12 +106,11 @@ export default function Grid({
       )}
 
       {/* MAIN CONTENT */}
-      <div className="flex flex-1 min-h-0 relative overflow-visible z-10">
-        
-        {/* === 2. LEFT SIDEBAR (TEAM A - PINK) === */}
-        {!isScrambled && (
+       <div className="flex flex-1 min-h-0 relative">
+        {/* --- 2. LEFT SIDEBAR (TEAM A - PINK) --- */}
+        {isScrambled ? (
           <div
-            className="relative h-full border-r border-white/5 flex items-center justify-center bg-[#151725] w-8 md:w-10 overflow-hidden flex-shrink-0"
+            className="relative h-full border-r border-white/5 flex items-center justify-center bg-[#151725] w-8 md:w-10 overflow-hidden"
           >
             {/* Watermark Logo */}
             {teamALogo && (
@@ -107,7 +120,7 @@ export default function Grid({
                 alt=""
               />
             )}
-            
+
             <div
               className="flex flex-col items-center gap-2 relative z-10 py-2 h-full justify-center"
             >
@@ -119,7 +132,7 @@ export default function Grid({
                 />
               )}
               <span
-                className="text-pink-500 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(236,72,153,0.4)] text-lg md:text-2xl whitespace-nowrap [writing-mode:vertical-rl] rotate-180"
+                className="text-pink-500 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(236,72,153,0.4)] whitespace-nowrap [writing-mode:vertical-rl] rotate-180 text-lg md:text-2xl truncate"
               >
                 {teamA}
               </span>
@@ -132,36 +145,16 @@ export default function Grid({
               )}
             </div>
           </div>
-        )}
-        
-        {/* --- THE GRID --- */}
-        <div className="w-full h-full overflow-visible">
-          <div className="relative h-full w-full overflow-visible">
-            
-            {/* Team B (Horizontal) - positioned exactly on top border, half in/half out */}
-            {isScrambled && (
-              <>
-                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 -translate-y-1/2 z-50">
-                  <span className="text-cyan-400 font-black uppercase tracking-[0.5em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]">
-                    {teamB}
-                  </span>
-                </div>
-                
-                {/* Team A (Vertical) - positioned LEFT of grid, rotated -90deg, vertically centered */}
-                <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full z-50 flex items-center justify-end pr-1">
-                  <span className="text-pink-500 font-black uppercase tracking-[0.5em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(236,72,153,0.6)] -rotate-90 origin-center">
-                    {teamA}
-                  </span>
-                </div>
-              </>
-            )}
-            
-            <div className="grid grid-cols-[auto_repeat(10,1fr)] gap-px border-b border-r border-white/10 h-full w-full bg-transparent rounded-2xl overflow-visible relative">
-            
+        ) : null}
+
+        {/* --- 3. THE GRID --- */}
+        <div className={`${isScrambled ? "flex-1" : "w-full"} h-full`}>
+          <div className="relative h-full w-full">
+            <div className="grid grid-cols-11 border-b border-r border-white/5 h-full w-full bg-[#0f111a]">
             {/* HEADER ROW (COLUMNS) */}
             <div className="contents">
               {/* CORNER */}
-              <div className="bg-white/10 backdrop-blur-md border-r border-b border-white/10 flex items-center justify-center p-1 relative z-20 w-8 md:w-10">
+              <div className="bg-[#0B0C15] border-r border-b border-white/5 flex items-center justify-center p-1 relative z-20">
                 {isScrambled ? (
                   teamALogo && teamBLogo ? (
                     <div className="relative w-full h-full opacity-80">
@@ -176,18 +169,18 @@ export default function Grid({
                         alt=""
                       />
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[6px] font-bold text-white/50">
+                        <span className="text-[6px] font-bold text-white/30">
                           VS
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[8px] text-slate-300 font-bold">
+                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[8px] text-slate-500 font-bold">
                       VS
                     </div>
                   )
                 ) : (
-                  <Lock className="w-4 h-4 text-slate-400" />
+                  <Lock className="w-4 h-4 text-slate-600" />
                 )}
               </div>
 
@@ -197,7 +190,7 @@ export default function Grid({
                 return (
                   <div
                     key={`col-${i}`}
-                    className={`relative p-1 h-8 md:h-10 flex items-center justify-center border-b border-r border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden transition-all duration-300 ${isColHighlighted ? "bg-cyan-500/30 shadow-[inset_0_0_20px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.3)] z-40" : ""}`}
+                    className={`relative p-1 h-8 md:h-10 flex items-center justify-center border-b border-r border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isColHighlighted ? "bg-cyan-900/60 shadow-[inset_0_0_20px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.3)] z-40" : ""}`}
                   >
                     {!isScrambled && teamBLogo && (
                       <img
@@ -214,12 +207,12 @@ export default function Grid({
                     )}
                     {isScrambled ? (
                       <span
-                        className={`font-mono font-bold text-base md:text-2xl transition-all relative z-10 ${isColHighlighted ? "text-cyan-200 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" : "text-cyan-400"}`}
+                        className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isColHighlighted ? "text-cyan-300 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" : "text-cyan-600"}`}
                       >
                         {num}
                       </span>
                     ) : (
-                      <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
                     )}
                   </div>
                 );
@@ -233,7 +226,7 @@ export default function Grid({
                 <div key={`row-${rIndex}`} className="contents">
                   {/* ROW NUMBERS */}
                   <div
-                    className={`relative w-8 md:w-10 flex items-center justify-center border-r border-b border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden transition-all duration-300 ${isRowHighlighted ? "bg-pink-500/30 shadow-[inset_0_0_20px_rgba(236,72,153,0.4),0_0_20px_rgba(236,72,153,0.3)] z-40" : ""}`}
+                    className={`relative w-8 md:w-10 flex items-center justify-center border-r border-b border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isRowHighlighted ? "bg-pink-900/60 shadow-[inset_0_0_20px_rgba(236,72,153,0.4),0_0_20px_rgba(236,72,153,0.3)] z-40" : ""}`}
                   >
                     {!isScrambled && teamALogo && (
                       <img
@@ -250,12 +243,12 @@ export default function Grid({
                     )}
                     {isScrambled ? (
                       <span
-                        className={`font-mono font-bold text-base md:text-2xl transition-all relative z-10 ${isRowHighlighted ? "text-pink-200 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" : "text-pink-500"}`}
+                        className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isRowHighlighted ? "text-pink-300 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" : "text-pink-700"}`}
                       >
                         {rowNum}
                       </span>
                     ) : (
-                      <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
                     )}
                   </div>
 
