@@ -164,9 +164,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     if (Array.isArray(squareData)) {
       // Handle array of claims (stacking mode)
       const updatedSquares = squareData.map(claim => {
-        // If targetUserId is provided, only toggle that specific user's claim
-        // Otherwise toggle the first claim (shouldn't happen in practice)
-        if (!targetUserId || claim.userId === targetUserId) {
+        // Toggle the paid status for the specific user's claim
+        if (claim.userId === targetUserId) {
           return { ...claim, paid: !claim.paid };
         }
         return claim;
