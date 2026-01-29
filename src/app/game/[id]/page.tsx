@@ -22,6 +22,7 @@ import { useEspnScores } from "@/hooks/useEspnScores";
 import { getSportConfig, getDisplayPeriods, getPeriodLabel, type PeriodKey, type SportType } from "@/lib/sport-config";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { savePendingSelections, loadPendingSelections, clearPendingSelections, findConflicts } from "@/utils/selectionSuitcase";
 
 export default function GamePage() {
   const router = useRouter();
@@ -108,6 +109,8 @@ export default function GamePage() {
   const [isManualView, setIsManualView] = useState(false);
   const [pendingSquares, setPendingSquares] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [restorationToast, setRestorationToast] = useState<{ show: boolean; message: string; type: 'success' | 'warning' | 'error' }>({ show: false, message: '', type: 'success' });
+  const [restoringSquares, setRestoringSquares] = useState<number[]>([]);
 
   // Get sport configuration
   const sportType: SportType = game?.sport || 'default';
@@ -142,6 +145,76 @@ export default function GamePage() {
       // 4. Manual/Fallback -> Use DB State
       return (game?.currentPeriod as PeriodKey) || 'p1';
   }, [matchedGame, game, sportType]);
+
+  // --- 2a. TASK 2: RECOVERY LOGIC - Restore selections after authentication ---
+  useEffect(() => {
+    // Only run if user just authenticated and game is loaded
+    if (!user || !game || !id || loading) return;
+    
+    const gameId = id as string;
+    const savedSelections = loadPendingSelections(gameId);
+    
+    if (savedSelections && savedSelections.length > 0) {
+      console.log('[Recovery] Found saved selections, checking availability...');
+      
+      // Task 4: Check for conflicts
+      const { available, conflicts } = findConflicts(savedSelections, game.squares);
+      
+      // GRID SYNC: Sequential light-up animation
+      if (available.length > 0) {
+        // Animate squares one by one
+        available.forEach((squareIndex, i) => {
+          setTimeout(() => {
+            setRestoringSquares(prev => [...prev, squareIndex]);
+            
+            // Add to pending squares after brief flash
+            setTimeout(() => {
+              setPendingSquares(prev => [...prev, squareIndex]);
+            }, 100);
+          }, i * 80); // 80ms stagger between each square
+        });
+        
+        // Clear restoring animation after all squares are done
+        setTimeout(() => {
+          setRestoringSquares([]);
+        }, available.length * 80 + 1200);
+      }
+      
+      // Show appropriate toast based on conflicts
+      if (conflicts.length > 0) {
+        if (available.length > 0) {
+          // Partial recovery
+          setRestorationToast({
+            show: true,
+            message: `⚠️ ${conflicts.length} squares taken! ${available.length} restored.`,
+            type: 'warning'
+          });
+        } else {
+          // All squares taken
+          setRestorationToast({
+            show: true,
+            message: `❌ All ${conflicts.length} squares were claimed while you were signing in!`,
+            type: 'error'
+          });
+        }
+      } else {
+        // All squares still available
+        setRestorationToast({
+          show: true,
+          message: `✅ Restored ${available.length} squares - ready to claim!`,
+          type: 'success'
+        });
+      }
+      
+      // Task 2: Cleanup after restoration
+      clearPendingSelections(gameId);
+      
+      // Hide toast after 5 seconds
+      setTimeout(() => {
+        setRestorationToast({ show: false, message: '', type: 'success' });
+      }, 5000);
+    }
+  }, [user, game, id, loading]);
 
   // --- 2. SNAP BACK TIMER ---
   useEffect(() => {
@@ -545,6 +618,11 @@ export default function GamePage() {
     if (user) {
       await logOut(); 
     } else {
+      // Task 1: Save selections to "suitcase" before redirecting to auth
+      if (pendingSquares.length > 0 && id) {
+        savePendingSelections(id as string, pendingSquares);
+      }
+      
       // Pass the current game ID as a 'redirect' param so the login page knows where to send us back
       router.push(`/?action=login&redirect=${id}`); 
     }
@@ -613,6 +691,32 @@ export default function GamePage() {
 
   return (
     <main className="flex flex-col lg:flex-row h-dvh w-full overflow-hidden bg-[#0B0C15]">
+      {/* Task 3: UI Feedback Toast */}
+      {restorationToast.show && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-slideDown">
+          <div className={`
+            px-6 py-3 rounded-xl backdrop-blur-xl border shadow-2xl flex items-center gap-3 min-w-[280px] max-w-md
+            ${restorationToast.type === 'success' ? 'bg-green-500/20 border-green-500/50 text-green-100' : ''}
+            ${restorationToast.type === 'warning' ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-100' : ''}
+            ${restorationToast.type === 'error' ? 'bg-red-500/20 border-red-500/50 text-red-100' : ''}
+          `}>
+            <div className={`
+              w-2 h-2 rounded-full animate-pulse
+              ${restorationToast.type === 'success' ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]' : ''}
+              ${restorationToast.type === 'warning' ? 'bg-yellow-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]' : ''}
+              ${restorationToast.type === 'error' ? 'bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]' : ''}
+            `} />
+            <span className="text-sm font-bold flex-1">{restorationToast.message}</span>
+            <button 
+              onClick={() => setRestorationToast({ show: false, message: '', type: 'success' })}
+              className="p-1 hover:bg-white/10 rounded transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. MAIN AREA */}
       <div className="flex-1 flex flex-col h-full relative overflow-hidden">
         {/* MOBILE HEADER */}
@@ -727,7 +831,7 @@ export default function GamePage() {
           {/* GRID */}
           <div className="w-full shrink-0 aspect-square max-w-[500px] lg:max-w-[calc(100vh-260px)] lg:mx-auto z-10 flex flex-col justify-center my-1 lg:my-2">
             <div className="w-full h-full bg-[#0B0C15]/60 backdrop-blur-md rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.05)] border border-white/10 overflow-hidden ring-1 ring-white/5">
-              <Grid rows={currentAxis.col} cols={currentAxis.row} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamB || "Away"} teamB={game.teamA || "Home"} teamALogo={getTeamLogo(game.teamB)} teamBLogo={getTeamLogo(game.teamA)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} currentUserId={user?.uid} />
+              <Grid rows={currentAxis.col} cols={currentAxis.row} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamB || "Away"} teamB={game.teamA || "Home"} teamALogo={getTeamLogo(game.teamB)} teamBLogo={getTeamLogo(game.teamA)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} restoringIndices={restoringSquares} currentUserId={user?.uid} />
             </div>
           </div>
 
@@ -741,9 +845,34 @@ export default function GamePage() {
                 </div>
                 <button onClick={handleClearCart} className="text-xs text-white/70 hover:text-white underline shadow-sm">Clear</button>
               </div>
-              <button onClick={handleConfirmCart} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-500/30 hover:scale-[1.02] transition-transform disabled:opacity-50 flex items-center justify-center gap-2 border border-white/20">
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : user ? `Confirm & Claim ($${cartTotal})` : "Sign In to Claim"}
-              </button>
+<button 
+  onClick={handleConfirmCart} 
+  disabled={isSubmitting} 
+  className={`relative w-full py-4 rounded-2xl font-black text-sm uppercase tracking-tighter transition-all overflow-hidden group
+    ${!user && !isSubmitting 
+      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.5)]" 
+      : "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/30 hover:scale-[1.02]"
+    } disabled:opacity-50`}
+>
+  {/* THE PULSE LAYER - Enhanced for guests */}
+  {!user && !isSubmitting && (
+    <span className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none" />
+  )}
+
+  {/* THE CONTENT LAYER */}
+  <div className="relative z-10 flex items-center justify-center gap-2">
+    {isSubmitting ? (
+      <Loader2 className="w-4 h-4 animate-spin" />
+    ) : user ? (
+      <>Confirm & Claim (${cartTotal})</>
+    ) : (
+      <>
+        SIGN IN TO CLAIM
+        <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+      </>
+    )}
+  </div>
+</button>
             </div>
           ) : (
             // --- DETAILS PANEL ---

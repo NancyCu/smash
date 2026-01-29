@@ -155,3 +155,19 @@ body {
 .font-russo {
   font-family: var(--font-russo);
 }
+
+/* Slide down animation for toast notifications */
+@keyframes slideDown {
+  from {
+    transform: translate(-50%, -100%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

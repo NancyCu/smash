@@ -17,6 +17,7 @@ interface GridProps {
   selectedCell?: { row: number; col: number } | null;
   winningCell?: { row: number; col: number } | null;
   pendingIndices?: number[];
+  restoringIndices?: number[]; // Task 3: Squares being restored after auth
   currentUserId?: string;
 }
 
@@ -33,6 +34,7 @@ export default function Grid({
   selectedCell,
   winningCell,
   pendingIndices = [],
+  restoringIndices = [],
   currentUserId,
 }: GridProps) {
   // 1. HELPER: Get all owners for a cell
@@ -176,9 +178,9 @@ export default function Grid({
                     const cellKey = `${rIndex}-${cIndex}`;
                     const owners = getOwners(rIndex, cIndex);
                     const isMulti = owners.length > 1;
-                    const isPending = pendingIndices.includes(
-                      rIndex * cols.length + cIndex,
-                    );
+                    const cellIndex = rIndex * cols.length + cIndex;
+                    const isPending = pendingIndices.includes(cellIndex);
+                    const isRestoring = restoringIndices.includes(cellIndex); // Task 3: Check if restoring
                     const isExactSelected =
                       selectedCell &&
                       selectedCell.row === rIndex &&
@@ -239,6 +241,12 @@ export default function Grid({
                         " bg-[#22d3ee]/20 animate-pulse border-[#22d3ee]/40 backdrop-blur-sm";
                       textClass += " text-[#22d3ee]";
                     }
+                    // 4b. Restoring (Grid Sync Animation - Sequential Lock-In)
+                    else if (isRestoring) {
+                      containerClass +=
+                        " bg-green-400/30 border-green-400 backdrop-blur-sm shadow-[0_0_20px_rgba(74,222,128,0.5),inset_0_0_15px_rgba(74,222,128,0.2)] scale-105 transition-all duration-200";
+                      textClass += " text-green-200";
+                    }
                     // 5. Empty (Brighter Glass)
                     else {
                       containerClass +=
@@ -255,6 +263,13 @@ export default function Grid({
                         onClick={() => onSquareClick(rIndex, cIndex)}
                         className={containerClass}
                       >
+                        {/* Grid Sync: Scan line animation for restoring squares */}
+                        {isRestoring && (
+                          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-green-300/40 to-transparent h-full w-full animate-[slideDown_0.5s_ease-out]" />
+                          </div>
+                        )}
+                        
                         {isWinner && (
                           <div className="absolute -top-1 -right-1 text-[8px] z-40 pointer-events-none drop-shadow-md">
                             👑
@@ -320,9 +335,20 @@ export default function Grid({
                               <span className={textClass}>
                                 {owners[0].name}
                               </span>
-                            ) : isPending ? (
-                              <span className={textClass}>PICK</span>
+                            ) : isRestoring ? (
+                              <span className={textClass}>...</span>
                             ) : null}
+                          </div>
+                        )}
+
+                        {/* TACTICAL GLOW OUTLINE - Replaces "PICK" text */}
+                        {isPending && (
+                          <div className="absolute inset-0 z-20 border-2 border-cyan-400 rounded-sm animate-pulse pointer-events-none shadow-[inset_0_0_12px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.6)]">
+                            {/* Corner Accents - Targeting Reticle */}
+                            <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-white" />
+                            <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-white" />
+                            <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-white" />
+                            <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-white" />
                           </div>
                         )}
 
