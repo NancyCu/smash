@@ -6,8 +6,7 @@ import { useGame } from '@/context/GameContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link'; // Added missing Link
 import { 
-  LogOut, Trophy, Crown, ArrowLeft, ArrowRight, 
-  Loader2, LayoutGrid, ChevronRight 
+  Trophy, ArrowLeft, LayoutGrid, ChevronRight 
 } from 'lucide-react'; // Added missing Icons
 import Image from 'next/image';
 
