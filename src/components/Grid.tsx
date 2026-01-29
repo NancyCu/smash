@@ -50,11 +50,11 @@ export default function Grid({
   return (
     // OUTER CONTAINER - FLEX COLUMN (thin team bars like reference)
     // Added overflow-visible to prevent clipping of team names
-    <div className="flex flex-col h-full w-full bg-[#0f111a] select-none overflow-visible">
+    <div className="flex flex-col h-full w-full bg-[#0f111a] select-none overflow-visible relative">
       {/* === 1. TOP HEADER BAR (TEAM B - CYAN) === */}
-      {!isScrambled ? (
+      {!isScrambled && (
         <div
-          className="relative w-full flex items-center justify-center border-b border-white/5 bg-[#151725] h-8 min-h-[32px] overflow-hidden"
+          className="relative w-full flex items-center justify-center border-b border-white/5 bg-[#151725] h-8 min-h-[32px] overflow-hidden flex-shrink-0"
         >
           {/* Watermark Logo */}
           {teamBLogo && (
@@ -89,15 +89,15 @@ export default function Grid({
             )}
           </div>
         </div>
-      ) : null}
+      )}
 
       {/* MAIN CONTENT */}
-      <div className="flex flex-1 min-h-0 relative overflow-visible">
+      <div className="flex flex-1 min-h-0 relative overflow-visible z-10">
         
         {/* === 2. LEFT SIDEBAR (TEAM A - PINK) === */}
-        {!isScrambled ? (
+        {!isScrambled && (
           <div
-            className="relative h-full border-r border-white/5 flex items-center justify-center bg-[#151725] w-8 md:w-10 overflow-hidden"
+            className="relative h-full border-r border-white/5 flex items-center justify-center bg-[#151725] w-8 md:w-10 overflow-hidden flex-shrink-0"
           >
             {/* Watermark Logo */}
             {teamALogo && (
@@ -132,24 +132,24 @@ export default function Grid({
               )}
             </div>
           </div>
-        ) : null}
+        )}
         
         {/* --- THE GRID --- */}
         <div className="w-full h-full overflow-visible">
           <div className="relative h-full w-full overflow-visible">
             
-            {/* Team B (Horizontal) - positioned HALF IN, HALF OUT of top grid edge */}
+            {/* Team B (Horizontal) - positioned exactly on top border, half in/half out */}
             {isScrambled && (
               <>
-                <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-50">
-                  <span className="text-cyan-400 font-black uppercase tracking-[0.6em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]">
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 -translate-y-1/2 z-50">
+                  <span className="text-cyan-400 font-black uppercase tracking-[0.5em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]">
                     {teamB}
                   </span>
                 </div>
                 
                 {/* Team A (Vertical) - positioned LEFT of grid, rotated -90deg, vertically centered */}
-                <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full flex items-center justify-center z-50 pr-1">
-                  <span className="text-pink-500 font-black uppercase tracking-[0.6em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(236,72,153,0.6)] origin-center rotate-[-90deg]">
+                <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full z-50 flex items-center justify-end pr-1">
+                  <span className="text-pink-500 font-black uppercase tracking-[0.5em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(236,72,153,0.6)] -rotate-90 origin-center">
                     {teamA}
                   </span>
                 </div>
