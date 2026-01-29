@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
 /* 1. GLOBAL RESET & THEME COLORS */
 :root {
   --background: #0B0C15;
@@ -8,24 +12,36 @@
 
 /* 2. BASE STYLES */
 body {
-  background-color: var(--background);
+  /* Neon Vaporwave Gradient: Pink/Purple/Cyan mix */
+  background: radial-gradient(at top center, #2a1b3d, #0B0C15, #1a1625); /* Fallback */
+  background: linear-gradient(135deg, rgba(219, 39, 119, 0.3), #1e1b4b, rgba(34, 211, 238, 0.3));
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
 /* 3. UTILITIES (The Glass Effect) */
 /* We use standard CSS here to prevent Tailwind parsing errors */
 .glass-panel {
   background-color: rgba(17, 24, 39, 0.7); /* Dark Blue-Grey with opacity */
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(75, 85, 99, 0.4);
 }
 
 /* 4. HIDE SCROLLBARS (For cleaner mobile UI) */
 ::-webkit-scrollbar {
   display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
 }
 
 /* 5. CUSTOM UTILITY CLASSES (Neon text + animations) */
@@ -119,4 +135,23 @@ body {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* Gradient animation for text */
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  animation: gradient 3s ease infinite;
+}
+
+/* Custom font family for Russo One */
+.font-russo {
+  font-family: var(--font-russo);
 }

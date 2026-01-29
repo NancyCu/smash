@@ -7,7 +7,7 @@ import CreatePropBetForm from '@/components/CreatePropBetForm'; // Optional: If 
 
 export default function PropsPage() {
   return (
-    <main className="min-h-screen pt-6 pb-24 px-4 bg-[#0B0C15]">
+    <main className="min-h-screen pt-6 px-4 bg-[#0B0C15]">
       <div className="flex flex-col items-center mb-6">
         <h1 className="text-3xl font-teko text-white uppercase tracking-wider">
           Prop Bets

@@ -1,250 +1,187 @@
 "use client";
 
-import { useGame } from "@/context/GameContext";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { ArrowLeft, Check, X, Calendar } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import React, { useEffect, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { useGame } from '@/context/GameContext';
+import type { SquareData } from '@/context/GameContext';
+import { ArrowLeft, Check, X, DollarSign, ShieldCheck } from 'lucide-react';
 
-export default function PaymentsPage() {
-  const { activeGame, players, settings, togglePaid } = useGame();
-  const { isAdmin } = useAuth();
+function PaymentsPageContent() {
+  const { game, togglePaid, setGameId } = useGame();
+  const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // --- HYDRATION ---
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (id && (!game || game.id !== id)) {
+        setGameId(id);
+    }
+  }, [searchParams, game, setGameId]);
 
   useEffect(() => {
-    if (!activeGame) {
-      router.push("/");
-      return;
+    // Security redirect: Only Host can see this
+    if (game && user && game.host !== user.uid) {
+      router.push(`/game/${game.id}`);
     }
-    // Check if current user is host (simple client side check for UI, real security is Firestore rules)
-    // We actually don't have the current user ID easily available in this context without auth hook
-    // But GameContext has players.
-    // Let's just show it to everyone for transparency, or maybe restricting edits to host.
-    // The prompt implies a "page with all the users", transparency is usually good for pots.
-  }, [activeGame, router]);
+    if (!game && !user) {
+        router.push('/');
+    }
+  }, [game, user, router]);
 
-  if (!activeGame) return null;
+  // --- FLATTEN DATA FOR LIST VIEW ---
+  // This converts the complex "Squares" map (which might contain Arrays) 
+  // into a flat, easy-to-read list of claims.
+  const claims = useMemo(() => {
+      if (!game) return [];
+      
+      const list: { 
+          gridIndex: number; 
+          userId: string; 
+          name: string; 
+          paid: boolean; 
+          row: number; 
+          col: number 
+      }[] = [];
 
-  const totalPot = players.reduce((sum, p) => sum + (p.squares * settings.pricePerSquare), 0);
-  const collectedAmount = players.reduce((sum, p) => sum + (p.paid ? (p.squares * settings.pricePerSquare) : 0), 0);
-  const percentCollected = totalPot > 0 ? (collectedAmount / totalPot) * 100 : 0;
+      Object.entries(game.squares).forEach(([key, value]) => {
+          const index = parseInt(key);
+          if (isNaN(index)) return;
+
+          // Helper to standardize the data
+          const addToList = (sq: SquareData) => {
+              list.push({
+                  gridIndex: index,
+                  userId: sq.userId,
+                  name: sq.displayName,
+                  paid: !!sq.paid, // Ensure boolean
+                  row: Math.floor(index / 10),
+                  col: index % 10
+              });
+          };
+
+          // Handle "Stacking" (Arrays) vs "Legacy" (Single Objects)
+          if (Array.isArray(value)) {
+              value.forEach(addToList);
+          } else {
+              addToList(value as SquareData);
+          }
+      });
+      
+      // Sort by Paid Status (Unpaid first), then Name
+      return list.sort((a, b) => {
+          if (a.paid === b.paid) return a.name.localeCompare(b.name);
+          return a.paid ? 1 : -1;
+      });
+  }, [game]);
+
+  if (!game) return <div className="min-h-screen bg-[#0B0C15] flex items-center justify-center text-white">Loading...</div>;
+
+  const totalCollected = claims.filter(c => c.paid).length * game.price;
+  const totalPot = claims.length * game.price;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => router.push("/")}
-            className="p-2 hover:bg-slate-800 rounded-full transition-colors"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Payment Ledger</h1>
-            <p className="text-slate-400">{settings.name}</p>
-          </div>
-        </div>
+    <main className="min-h-screen bg-[#0B0C15] p-4 lg:p-8 relative">
+       
+       {/* HEADER */}
+       <div className="max-w-4xl mx-auto mb-8 flex items-center justify-between">
+           <div onClick={() => game ? router.push(`/game/${game.id}`) : router.back()} className="flex items-center gap-2 text-slate-400 hover:text-white cursor-pointer transition-colors">
+               <ArrowLeft className="w-5 h-5" />
+               <span className="font-bold uppercase text-xs tracking-widest">Back to Game</span>
+           </div>
+           <div className="flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
+               <ShieldCheck className="w-4 h-4 text-indigo-400" />
+               <span className="text-xs font-bold text-indigo-300 uppercase">Host Admin</span>
+           </div>
+       </div>
 
-        {/* Stats Card */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-            <div className="text-slate-400 text-sm mb-1">Total Pot</div>
-            <div className="text-3xl font-bold text-green-400 format-money">
-              ${totalPot.toLocaleString()}
-            </div>
-            <div className="text-xs text-slate-500 mt-2">
-              {players.reduce((sum, p) => sum + p.squares, 0)} squares claim
-            </div>
-          </div>
-          
-          <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-            <div className="text-slate-400 text-sm mb-1">Collected</div>
-            <div className="text-3xl font-bold text-blue-400">
-              ${collectedAmount.toLocaleString()}
-            </div>
-            <div className="text-xs text-slate-500 mt-2">
-              {percentCollected.toFixed(1)}% of total
-            </div>
-          </div>
-
-          <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-             <div className="text-slate-400 text-sm mb-1">Price Per Square</div>
-             <div className="text-3xl font-bold text-white">
-               ${settings.pricePerSquare}
-             </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-          {/* Mobile View (Card List) */}
-          <div className="md:hidden divide-y divide-slate-800">
-             {players.length === 0 ? (
-               <div className="p-8 text-center text-slate-500">
-                 No players have joined yet.
-               </div>
-             ) : (
-                players
-                  .sort((a, b) => {
-                      if (a.paid === b.paid) return a.name.localeCompare(b.name);
-                      return a.paid ? 1 : -1;
-                  })
-                  .map((player) => {
-                    const amountOwed = player.squares * settings.pricePerSquare;
-                    return (
-                       <div key={player.id} className="p-4 flex items-center justify-between">
-                          <div className="flex flex-col gap-1">
-                             <div className="flex items-center gap-2">
-                                <span className="font-bold text-white text-base">{player.name}</span>
-                                {player.id === activeGame.hostUserId && (
-                                  <span className="text-[10px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">HOST</span>
-                                )}
-                             </div>
-                             <div className="flex items-center gap-3 text-xs text-slate-400 font-medium">
-                                <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-300">{player.squares} squares</span>
-                                <span className="text-emerald-400 font-mono">${amountOwed}</span>
-                             </div>
-                          </div>
-                          
-                          <div className="flex flex-col items-end gap-2">
-                            {isAdmin ? (
-                              <button
-                                  onClick={() => togglePaid(player.id)}
-                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                                    player.paid
-                                      ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                      : "bg-red-500/20 text-red-400 border border-red-500/30"
-                                  }`}
-                                >
-                                  {player.paid ? "PAID" : "UNPAID"}
-                                </button>
-                            ) : (
-                              <div
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border cursor-default ${
-                                  player.paid
-                                    ? "bg-green-500/10 text-green-400/80 border-green-500/20"
-                                    : "bg-red-500/10 text-red-400/80 border-red-500/20"
-                                }`}
-                              >
-                                {player.paid ? "PAID" : "UNPAID"}
-                              </div>
-                            )}
-                             {player.paid && player.paidAt && (
-                                <span className="text-[10px] text-slate-500">
-                                   {new Date(player.paidAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                </span>
-                             )}
-                          </div>
+       <div className="max-w-4xl mx-auto grid gap-8 md:grid-cols-[300px_1fr]">
+           
+           {/* SIDEBAR SUMMARY */}
+           <div className="space-y-4">
+               <div className="bg-[#151725] border border-white/10 rounded-2xl p-6 shadow-xl">
+                   <div className="flex items-center gap-4 mb-6">
+                        <div className="relative h-12 w-auto rounded-xl overflow-hidden shadow-lg">
+                             <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-12 w-auto object-contain" />
+                        </div>
+                        <div>
+                            <h1 className="text-white font-black text-lg leading-none mb-1">PAYMENT LEDGER</h1>
+                            <p className="text-slate-500 text-xs font-mono">{game.name}</p>
+                        </div>
+                   </div>
+                   
+                   <div className="space-y-4">
+                       <div className="bg-black/20 p-4 rounded-xl border border-white/5">
+                           <span className="block text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Total Pot</span>
+                           <span className="block text-3xl font-black text-white">${totalPot}</span>
                        </div>
-                    );
-                  })
-             )}
-          </div>
+                       <div className="bg-green-500/10 p-4 rounded-xl border border-green-500/20">
+                           <span className="block text-xs text-green-400 uppercase font-bold tracking-widest mb-1">Collected</span>
+                           <span className="block text-3xl font-black text-green-400">${totalCollected}</span>
+                       </div>
+                       <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20">
+                           <span className="block text-xs text-red-400 uppercase font-bold tracking-widest mb-1">Outstanding</span>
+                           <span className="block text-3xl font-black text-red-400">${totalPot - totalCollected}</span>
+                       </div>
+                   </div>
+               </div>
+           </div>
 
-          {/* Desktop View (Table) */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-950/50 border-b border-slate-800 text-slate-400 text-sm uppercase tracking-wider">
-                  <th className="p-4 font-medium">Player</th>
-                  <th className="p-4 font-medium text-center">Squares</th>
-                  <th className="p-4 font-medium text-right">Amount</th>
-                  <th className="p-4 font-medium text-center">Status</th>
-                  <th className="p-4 font-medium text-right">Payment Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {players.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500">
-                      No players have joined yet.
-                    </td>
-                  </tr>
-                ) : (
-                  players
-                    .sort((a, b) => {
-                        // Sort by paid status (unpaid first), then name
-                        if (a.paid === b.paid) return a.name.localeCompare(b.name);
-                        return a.paid ? 1 : -1;
-                    })
-                    .map((player) => {
-                      const amountOwed = player.squares * settings.pricePerSquare;
-                      return (
-                        <tr key={player.id} className="hover:bg-slate-800/50 transition-colors">
-                          <td className="p-4 font-medium text-white">
-                            {player.name}
-                            {player.id === activeGame.hostUserId && (
-                              <span className="ml-2 text-xs bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded-full">HOST</span>
-                            )}
-                          </td>
-                          <td className="p-4 text-center text-slate-300">
-                            {player.squares}
-                          </td>
-                          <td className="p-4 text-right font-mono text-slate-200">
-                            ${amountOwed.toLocaleString()}
-                          </td>
-                          <td className="p-4 text-center">
-                            {isAdmin ? (
-                              <button
-                                onClick={() => togglePaid(player.id)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                                  player.paid
-                                    ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                                    : "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                                }`}
-                              >
-                                {player.paid ? (
-                                  <>
-                                    <Check className="w-3 h-3" /> Paid
-                                  </>
-                                ) : (
-                                  <>
-                                    <X className="w-3 h-3" /> Unpaid
-                                  </>
-                                )}
-                              </button>
-                            ) : (
-                              <div
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border cursor-default ${
-                                  player.paid
-                                    ? "bg-green-500/10 text-green-400/80 border-green-500/20"
-                                    : "bg-red-500/10 text-red-400/80 border-red-500/20"
-                                }`}
-                              >
-                                {player.paid ? (
-                                  <>
-                                    <Check className="w-3 h-3" /> Paid
-                                  </>
-                                ) : (
-                                  <>
-                                    <X className="w-3 h-3" /> Unpaid
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-4 text-right text-sm text-slate-400">
-                            {player.paid && player.paidAt ? (
-                              <span className="flex items-center justify-end gap-1.5" title={new Date(player.paidAt).toLocaleString()}>
-                                <Calendar className="w-3 h-3 opacity-50" />
-                                {new Date(player.paidAt).toLocaleDateString()}
-                              </span>
-                            ) : player.paid ? (
-                                <span className="opacity-50">Manual</span>
-                            ) : (
-                              <span className="opacity-20">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+           {/* MAIN LIST */}
+           <div className="bg-[#151725] border border-white/10 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+               <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
+                   <h2 className="font-bold text-white text-sm uppercase tracking-widest flex items-center gap-2">
+                       <DollarSign className="w-4 h-4 text-slate-400" /> Transactions ({claims.length})
+                   </h2>
+               </div>
+
+               <div className="overflow-y-auto max-h-[600px] p-2 space-y-2">
+                   {claims.length === 0 ? (
+                       <div className="p-8 text-center text-slate-500 text-sm">No squares claimed yet.</div>
+                   ) : (
+                       claims.map((c, i) => (
+                           <div key={`${c.gridIndex}-${c.userId}-${i}`} className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5 hover:bg-white/5 transition-colors group">
+                               <div className="flex items-center gap-4">
+                                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-xs border ${c.paid ? "bg-green-500/20 border-green-500/30 text-green-400" : "bg-red-500/20 border-red-500/30 text-red-400"}`}>
+                                       ${game.price}
+                                   </div>
+                                   <div>
+                                       <div className="font-bold text-white text-sm">{c.name}</div>
+                                       <div className="text-xs text-slate-500 font-mono">Row {c.row} • Col {c.col}</div>
+                                   </div>
+                               </div>
+
+                               <button 
+                                   onClick={() => togglePaid(c.gridIndex, c.userId)}
+                                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
+                                       c.paid 
+                                       ? "bg-green-500 text-black hover:bg-green-400 shadow-[0_0_10px_rgba(34,197,94,0.4)]" 
+                                       : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white"
+                                   }`}
+                               >
+                                   {c.paid ? (
+                                       <> <Check className="w-3 h-3" /> Paid </>
+                                   ) : (
+                                       <> <X className="w-3 h-3" /> Mark Paid </>
+                                   )}
+                               </button>
+                           </div>
+                       ))
+                   )}
+               </div>
+           </div>
+
+       </div>
+    </main>
+  );
+}
+
+export default function PaymentsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0B0C15] flex items-center justify-center text-white">Loading Payments...</div>}>
+      <PaymentsPageContent />
+    </Suspense>
   );
 }

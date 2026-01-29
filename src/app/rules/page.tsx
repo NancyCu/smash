@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle2, Trophy, DollarSign, Shuffle, Hash, Grid3X3 } f
 
 export default function RulesPage() {
   return (
-    <div className="min-h-screen bg-slate-50 relative pb-20">
+    <div className="min-h-screen bg-slate-50 relative">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-50 px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
@@ -19,8 +19,8 @@ export default function RulesPage() {
             <span>Back to Game</span>
           </Link>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200">
-              <Image src="/SouperBowlDark.png" alt="logo" width={32} height={32} className="object-cover" />
+            <div className="h-10 w-auto rounded-full overflow-hidden">
+              <img src="/image_9.png" alt="Souper Bowl LX Logo" className="h-10 w-auto object-contain" />
             </div>
             <span className="text-sm font-black text-slate-900 uppercase tracking-widest hidden sm:block">Rules of Play</span>
           </div>

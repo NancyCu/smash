@@ -1,289 +1,177 @@
-'use client';
+"use client";
 
-import React, { useMemo, useState, Suspense } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
+import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { LogOut } from 'lucide-react';
-
-// Component Imports
-import QuarterTabs from '@/components/QuarterTabs';
-import TrophyCase from '@/components/TrophyCase';
-import Grid from '@/components/Grid';
-import GameInfo from '@/components/GameInfo';
-import PlayerList from '@/components/PlayerList';
-import JoinGameForm from '@/components/JoinGameForm';
-import SquareDetails from '@/components/SquareDetails';
-import AuthModal from '@/components/AuthModal';
-import BottomNav from '@/components/BottomNav';
-
 import { useAuth } from '@/context/AuthContext';
-import { useGame } from '@/context/GameContext';
-import { type EspnScoreData, useEspnScores } from '@/hooks/useEspnScores';
+import { Plus, ArrowRight, Loader2, Mail, Lock } from 'lucide-react';
 
-type View = 'home' | 'create' | 'game' | 'join' | 'props';
-
-function SquaresApp() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, logout, loading, isAdmin } = useAuth();
-  const { activeGame, settings, squares, players, scores, claimSquare, unclaimSquare, togglePaid, deletePlayer, updateScores, scrambleGridDigits, resetGridDigits, updateSettings, logPayout, payoutHistory, deleteGame } = useGame();
-  const { games: liveGames } = useEspnScores();
+  const { user, signIn, signUp, logOut } = useAuth(); // Needs signIn/signUp from AuthContext
+
+  const initialGameCode = searchParams.get('code') || searchParams.get('redirect') || '';
+  const [gameCode, setGameCode] = useState(initialGameCode);
+  const [isJoining, setIsJoining] = useState(false);
   
-  const initialGameCode = searchParams.get('code') || '';
-  const currentView = (searchParams.get('view') as View) || (activeGame ? 'game' : (initialGameCode ? 'join' : 'home'));
-
-  const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
-  type QuarterKey = 'q1' | 'q2' | 'q3' | 'final';
-  const [viewQuarter, setViewQuarter] = useState<QuarterKey>('q1');
-
-  const matchedLiveGame = useMemo(() => {
-    if (!activeGame || liveGames.length === 0) return null;
-    return liveGames.find(g => g.id === settings.espnGameId) || null;
-  }, [liveGames, activeGame, settings.espnGameId]);
-
-  // Sync quarter view with live game period during render (React pattern for adjusting state based on props)
-  const [prevPeriod, setPrevPeriod] = useState<number | undefined>(matchedLiveGame?.period);
-  if (matchedLiveGame?.period !== prevPeriod) {
-    setPrevPeriod(matchedLiveGame?.period);
-    if (matchedLiveGame?.period) {
-      const p = matchedLiveGame.period;
-      setViewQuarter(p === 1 ? 'q1' : p === 2 ? 'q2' : p === 3 ? 'q3' : 'final');
+  // Auto-focus logic
+  useEffect(() => {
+    if (initialGameCode) {
+        const input = document.getElementById('game-code-input');
+        if (input) input.focus();
     }
-  }
+  }, [initialGameCode]);
 
-  const totalPot = useMemo(() => {
-    return players.reduce((acc, p) => acc + (p.squares * settings.pricePerSquare), 0);
-  }, [players, settings.pricePerSquare]);
+  // Auto-redirect after login if context exists (e.g. came from "Sign In to Claim")
+  useEffect(() => {
+    if (user && initialGameCode) {
+      router.push(`/game/${initialGameCode}`);
+    }
+  }, [user, initialGameCode, router]);
 
-  const payouts = useMemo(() => {
-    const distribution = [0.20, 0.20, 0.20, 0.40];
-    const defaults = ["Q1 Winner", "Q2 Winner", "Q3 Winner", "Final Winner"];
-    return distribution.map((pct, i) => ({
-      label: settings.payouts?.[i]?.label || defaults[i],
-      amount: Math.floor(totalPot * pct)
-    }));
-  }, [totalPot, settings.payouts]);
+  // Auth State
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
 
-  const setView = (v: View) => {
-    router.push(`/?view=${v}`);
+  // Check for ?action=login in URL
+  useEffect(() => {
+     if (searchParams.get('action') === 'login') {
+         const form = document.getElementById('auth-form');
+         if (form) form.scrollIntoView({ behavior: 'smooth' });
+     }
+  }, [searchParams]);
+
+  const handleJoin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!gameCode.trim()) return;
+    setIsJoining(true);
+    router.push(`/game/${gameCode.trim()}`);
   };
 
-  const canManage = isAdmin || (!!user && !!activeGame && user.uid === activeGame.hostUserId);
-  const currentUserName = user?.displayName || user?.email || 'Anonymous';
-  const currentUserRole = canManage ? 'Admin' : 'Player';
-
-  const currentAxis = useMemo(() => {
-    const axisData = settings.axisValues;
-    const defaultIndices = Array.from({ length: 10 }, (_, i) => i);
-    if (axisData?.[viewQuarter]) return axisData[viewQuarter];
-    if (!settings.rows || settings.rows.length === 0) return { rows: defaultIndices, cols: defaultIndices };
-    return { rows: settings.rows, cols: settings.cols };
-  }, [settings, viewQuarter]);
-
-  const winningCell = useMemo(() => {
-    const rowDigit = scores.teamA % 10;
-    const colDigit = scores.teamB % 10;
-    const rowIndex = currentAxis.rows.indexOf(rowDigit);
-    const colIndex = currentAxis.cols.indexOf(colDigit);
-    if (rowIndex < 0 || colIndex < 0) return null;
-    return { row: rowIndex, col: colIndex };
-  }, [scores, currentAxis]);
-
-  const logos = useMemo(() => {
-    if (!matchedLiveGame) return { teamA: undefined, teamB: undefined };
-    const { homeTeam, awayTeam } = matchedLiveGame;
-    const teamAName = settings.teamA.toLowerCase();
-    const teamBName = settings.teamB.toLowerCase();
-    let logoA, logoB;
-    if (teamAName.includes(homeTeam.name.toLowerCase())) logoA = homeTeam.logo; else if (teamAName.includes(awayTeam.name.toLowerCase())) logoA = awayTeam.logo;
-    if (teamBName.includes(homeTeam.name.toLowerCase())) logoB = homeTeam.logo; else if (teamBName.includes(awayTeam.name.toLowerCase())) logoB = awayTeam.logo;
-    return { teamA: logoA, teamB: logoB };
-  }, [matchedLiveGame, settings.teamA, settings.teamB]);
-
-  const isGameStarted = settings.isScrambled || (matchedLiveGame?.isLive ?? false);
-
-  const handleSquareClick = (row: number, col: number) => {
-    setSelectedCell({ row, col });
-    if (!user || isGameStarted) return;
-    const key = `${row}-${col}`;
-    const userClaim = squares[key]?.find(c => c.uid === user.uid);
-    if (userClaim) {
-      if (confirm('Remove your claim on this square?')) {
-        void unclaimSquare(row, col, user.uid);
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!email || !password) return;
+      setAuthLoading(true);
+      try {
+          if (authMode === 'login') {
+              await signIn(email, password);
+          } else {
+              if (!name) { alert("Please enter a display name"); return; }
+              await signUp(email, password, name);
+          }
+      } catch (err) {
+          console.error(err);
+      } finally {
+          setAuthLoading(false);
       }
-    } else {
-      void claimSquare(row, col, { id: user.uid, name: user.displayName || 'Anonymous' });
-    }
   };
-  
-  // --- RESTORED HANDLER FUNCTIONS ---
-  const handleEventSelect = (game: EspnScoreData | null) => {
-    if (!canManage) return;
-    if (game) {
-      void updateSettings({
-        teamA: game.awayTeam.name,
-        teamB: game.homeTeam.name,
-        espnGameId: game.id,
-        eventName: game.name,
-        espnLeague: game.league,
-        eventDate: game.date,
-      });
-    } else {
-      void updateSettings({ espnGameId: '', eventName: '', espnLeague: '', eventDate: '' });
-    }
-  };
-
-  const handleDeleteGame = async () => {
-    if (!canManage) return;
-    if (window.confirm('Are you sure you want to PERMANENTLY DELETE this game? This action cannot be undone.')) {
-      if (window.confirm('Please confirm one last time: Delete Game Forever?')) {
-        await deleteGame();
-        setView('home');
-      }
-    }
-  };
-
-  const handleManualPayout = async (teamA: number, teamB: number) => {
-    if (!canManage || !activeGame) return;
-    await updateScores(teamA, teamB);
-    const rowDigit = teamA % 10;
-    const colDigit = teamB % 10;
-    const rowIndex = currentAxis.rows.indexOf(rowDigit);
-    const colIndex = currentAxis.cols.indexOf(colDigit);
-
-    if (rowIndex < 0 || colIndex < 0) {
-      alert('Cannot determine winner: Grid digits are invalid.');
-      return;
-    }
-
-    const key = `${rowIndex}-${colIndex}`;
-    const claims = squares[key] || [];
-    const standardLabels = ["Q1 Winner", "Q2 Winner", "Q3 Winner", "Final Winner"];
-    const nextLabelIndex = Math.min(payoutHistory.length, standardLabels.length - 1);
-    const label = standardLabels[nextLabelIndex];
-    const payoutInfo = payouts.find(p => p.label === label) || payouts[payouts.length - 1];
-    const amount = payoutInfo?.amount || 0;
-
-    if (claims.length === 0 && !confirm(`No player on square ${teamA}-${teamB}. Log \"No Winner\"?`)) return;
-
-    const winners = claims.map(c => ({ uid: c.uid, name: c.name }));
-    const primaryWinner = winners[0] || { uid: 'NONE', name: 'No Winner' };
-    const winnerNames = winners.length > 0 ? winners.map(w => w.name).join(', ') : primaryWinner.name;
-
-    await logPayout({
-      id: `manual_${Date.now()}`,
-      period: nextLabelIndex + 1,
-      label,
-      amount,
-      winnerUserId: primaryWinner.uid,
-      winnerName: winnerNames,
-      winners,
-      timestamp: Date.now(),
-      teamAScore: teamA,
-      teamBScore: teamB,
-      gameId: activeGame.id,
-      gameName: settings.name,
-      teamA: settings.teamA,
-      teamB: settings.teamB,
-      eventDate: settings.eventDate
-    });
-  };
-
-
-  if (loading) return null;
-  if (!user) return <AuthModal />;
 
   return (
-    <div className='min-h-screen bg-slate-50 dark:bg-slate-900 pb-40 md:pb-24 text-slate-800 dark:text-slate-200 transition-colors duration-300'>
-      <header className="bg-white/80 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200 dark:border-white/5 sticky top-0 z-40 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-           <Link href="/" className="flex items-center gap-3">
-                <div className="relative w-10 h-10 rounded-xl overflow-hidden shadow-md dark:shadow-[0_0_15px_rgba(99,102,241,0.5)] ring-2 ring-indigo-500/50 rotate-[-2deg]">
-                    <Image src="/SouperBowlDark.png" alt="Souper Bowl Logo" fill sizes="40px" className="object-cover" priority />
-                </div>
-                <div className="flex flex-col leading-none">
-                    <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase drop-shadow-md">The Souper Bowl</h1>
-                    <div className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] text-shadow-neon">Squares</div>
-                </div>
-            </Link>
-            <div className="flex items-center gap-4">
-                <button onClick={logout} className="p-2 text-slate-400 hover:text-red-600 transition-colors" title="Logout">
-                    <LogOut className="w-5 h-5" />
-                </button>
-            </div>
-        </div>
-      </header>
-
-      <main className='w-full px-4 lg:px-8 max-w-7xl mx-auto py-6'>
-        {currentView === 'game' && activeGame ? (
-          <div className='flex flex-col lg:flex-row items-stretch lg:items-start gap-4 animate-in fade-in duration-500 max-w-[2200px] mx-auto w-full'>
-            <div className='flex-1 flex flex-col gap-2 w-full min-w-0'>
-              <div className='w-full relative rounded-2xl ring-1 ring-slate-200 dark:ring-white/10 shadow-xl bg-white/60 dark:bg-slate-800/50 backdrop-blur-md p-4'>
-                <TrophyCase payouts={payouts} history={payoutHistory} totalPot={totalPot} />
-                <QuarterTabs activeQuarter={viewQuarter} setActiveQuarter={setViewQuarter} isGameStarted={isGameStarted} />
-              </div>
-              <div className='w-full relative rounded-2xl ring-1 ring-slate-200 dark:ring-white/10 shadow-2xl bg-white/60 dark:bg-slate-800/50 backdrop-blur-md'>
-                <Grid 
-                  rows={currentAxis.rows} 
-                  cols={currentAxis.cols} 
-                  squares={squares}
-                  winningCell={winningCell}
-                  selectedCell={selectedCell}
-                  onSquareClick={handleSquareClick}
-                  teamA={settings.teamA}
-                  teamB={settings.teamB}
-                  teamALogo={logos.teamA}
-                  teamBLogo={logos.teamB}
-                  isScrambled={settings.isScrambled}
-                />
-              </div>
-              <SquareDetails cell={selectedCell || winningCell} squares={squares} settings={{...settings, rows: currentAxis.rows, cols: currentAxis.cols}} />
-            </div>
-            <div className='w-full lg:w-[480px] lg:shrink-0 flex flex-col gap-3'>
-               <GameInfo 
-                 gameId={activeGame.id}
-                 gameName={settings.name}
-                 host={activeGame.hostName}
-                 pricePerSquare={settings.pricePerSquare}
-                 totalPot={totalPot}
-                 payouts={payouts}
-                 matchup={{ teamA: settings.teamA, teamB: settings.teamB }}
-                 scores={scores}
-                 isAdmin={canManage}
-                 isScrambled={settings.isScrambled ?? false}
-                 onUpdateScores={updateScores}
-                 onScrambleGridDigits={scrambleGridDigits}
-                 onDeleteGame={handleDeleteGame} // <-- RESTORED
-                 onSelectEvent={handleEventSelect} // <-- RESTORED
-                 selectedEventId={settings.espnGameId ?? ''}
-                 eventDate={settings.eventDate ?? ''}
-                 eventName={settings.eventName ?? ''}
-                 eventLeague={settings.espnLeague ?? ''}
-                 availableGames={liveGames}
-                 onResetGridDigits={resetGridDigits}
-                 onManualPayout={handleManualPayout} // <-- RESTORED
-                 currentUserName={currentUserName}
-                 currentUserRole={currentUserRole}
-               />
-               <PlayerList players={players} pricePerSquare={settings.pricePerSquare} canManagePayments={isAdmin} canManagePlayers={canManage} onTogglePaid={togglePaid} onDeletePlayer={deletePlayer} />
-            </div>
-          </div>
-        ) : (
-            <div className='animate-in fade-in zoom-in-95 duration-300 max-w-lg mx-auto pt-8'>
-              <JoinGameForm onSuccess={() => setView('game')} initialGameId={initialGameCode} />
-            </div>
-        )}
-      </main>
+    <div className="w-full max-w-md flex flex-col items-center gap-8 relative z-10 pb-20">
       
+      {/* LOGO SECTION */}
+      <div className="flex flex-col items-center gap-4">
+        <div className="text-center">
+          <img 
+            src="/image_9.png" 
+            alt="Souper Bowl LX Logo" 
+            className="w-40 md:w-full md:max-w-[320px] mx-auto mb-2 md:mb-6 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.3)]"
+          />
+          <div className="text-center mt-2 md:mt-6 mb-4 md:mb-8 relative z-10">
+            <h1 className="font-russo text-4xl md:text-7xl tracking-tighter uppercase italic leading-[0.95] overflow-visible pb-1">
+              <span className="text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.9)]">
+                Souper Bowl
+              </span>
+              <br />
+              <span className="bg-gradient-to-r from-[#db2777] via-[#22d3ee] to-[#db2777] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]">
+                SQUARES
+              </span>
+            </h1>
+            <p className="text-[#22d3ee] text-[10px] md:text-base font-bold mt-2 md:mt-3 tracking-[0.2em] uppercase opacity-90 max-w-[280px] md:max-w-none mx-auto">
+              &ldquo;Because with us, a Nguyen is always a Win&rdquo;
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN CARD */}
+      <div className="w-full bg-[#151725] border border-white/10 p-4 md:p-6 rounded-3xl shadow-2xl flex flex-col gap-4 md:gap-6">
+         
+         {/* JOIN SECTION */}
+         <form onSubmit={handleJoin} className="flex flex-col gap-2 md:gap-3">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Join Existing Game</label>
+            <div className="flex gap-2">
+              <input 
+                id="game-code-input"
+                type="text" value={gameCode} onChange={(e) => setGameCode(e.target.value)}
+                placeholder="Enter Game Code" 
+                className={`flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors ${initialGameCode ? "border-green-500/50 bg-green-900/10" : ""}`}
+              />
+              <button 
+                type="submit" 
+                disabled={isJoining || !gameCode} 
+                className={`bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl px-4 flex items-center justify-center ${initialGameCode ? "animate-pulse shadow-[0_0_15px_rgba(79,70,229,0.5)]" : ""}`}
+              >
+                {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
+              </button>
+            </div>
+         </form>
+
+         <div className="h-px w-full bg-white/5" />
+
+         {/* AUTH SECTION (Replaces Google Button) */}
+         {user ? (
+             <div className="flex flex-col gap-3">
+                 <div className="bg-green-500/10 border border-green-500/20 p-3 rounded-xl flex items-center justify-center gap-2">
+                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/>
+                     <span className="text-green-400 text-sm font-bold">Logged in as {user.displayName}</span>
+                 </div>
+                 <button onClick={() => router.push('/create')} className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black text-sm uppercase tracking-widest hover:scale-[1.02] transition-transform flex items-center justify-center gap-2">
+                    <Plus className="w-5 h-5" /> Host New Game
+                 </button>
+                 <button onClick={() => logOut()} className="w-full py-3 rounded-xl bg-white/5 text-slate-400 font-bold text-xs uppercase tracking-widest hover:text-white transition-colors">Sign Out</button>
+             </div>
+         ) : (
+             <div id="auth-form" className="flex flex-col gap-4">
+                 <div className="flex gap-4 border-b border-white/10 pb-2">
+                     <button onClick={() => setAuthMode('login')} className={`flex-1 text-sm font-bold uppercase tracking-wider pb-2 transition-colors ${authMode === 'login' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500'}`}>Login</button>
+                     <button onClick={() => setAuthMode('signup')} className={`flex-1 text-sm font-bold uppercase tracking-wider pb-2 transition-colors ${authMode === 'signup' ? 'text-white border-b-2 border-indigo-500' : 'text-slate-500'}`}>Sign Up</button>
+                 </div>
+                 
+                 <form onSubmit={handleAuthSubmit} className="flex flex-col gap-3">
+                     {authMode === 'signup' && (
+                         <input type="text" placeholder="Display Name" value={name} onChange={e => setName(e.target.value)} className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500" />
+                     )}
+                     <div className="relative">
+                        <Mail className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+                        <input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500" />
+                     </div>
+                     <div className="relative">
+                        <Lock className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+                        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500" />
+                     </div>
+                     <button type="submit" disabled={authLoading} className="mt-2 w-full py-3 rounded-xl bg-white text-black font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
+                         {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (authMode === 'login' ? "Log In" : "Create Account")}
+                     </button>
+                 </form>
+             </div>
+         )}
+      </div>
     </div>
   );
 }
 
-export default function Page() {
+export default function Home() {
   return (
-    <Suspense fallback={<div className='min-h-screen flex items-center justify-center text-slate-500'>Loading...</div>}>
-      <SquaresApp />
-    </Suspense>
+    <main className="min-h-screen bg-[#0B0C15] flex flex-col items-center justify-start md:justify-center p-4 pt-10 md:pt-4 relative overflow-x-hidden overflow-y-auto">
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
+      <Suspense fallback={<div className="text-white animate-pulse">Loading...</div>}>
+        <HomeContent />
+      </Suspense>
+    </main>
   );
 }

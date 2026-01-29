@@ -22,31 +22,31 @@ export default function SquareDetails({ cell, squares, settings }: SquareDetails
     const colDigit = settings.cols[cell.col];
 
     return (
-        <div className="shrink-0 w-full bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border-t border-slate-200 dark:border-white/10 transition-all">
+        <div className="shrink-0 w-full bg-white/10 backdrop-blur-xl p-3 border-t border-white/20 transition-all shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
             <div className="flex items-center justify-between mb-2">
-                <h3 className="font-black text-xs uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+                <h3 className="font-black text-xs uppercase text-white/50 tracking-wider">
                     Square Details
                 </h3>
                 <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-500/30">
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-pink-500/10 text-pink-200 border border-pink-500/20 shadow-[0_0_8px_rgba(236,72,153,0.1)]">
                         {settings.teamA}: {settings.isScrambled ? rowDigit : "TBD"}
                     </span>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30">
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-200 border border-cyan-500/20 shadow-[0_0_8px_rgba(34,211,238,0.1)]">
                         {settings.teamB}: {settings.isScrambled ? colDigit : "TBD"}
                     </span>
                 </div>
             </div>
 
             {claims.length === 0 ? (
-                <div className="text-xs text-slate-400 italic text-center py-1">
+                <div className="text-xs text-white/30 italic text-center py-1">
                     Empty Square
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 max-h-32 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
-                    {claims.map(c => (
-                        <div key={c.uid} className="flex items-center gap-1.5 bg-white dark:bg-slate-900/50 px-2 py-1.5 rounded border border-slate-200 dark:border-white/5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                            <span className="text-[10px] font-bold truncate text-slate-700 dark:text-slate-200" title={c.name}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 max-h-32 overflow-y-auto pr-1">
+                    {claims.map((c, i) => (
+                        <div key={i} className="flex items-center gap-1.5 bg-white/5 px-2 py-1.5 rounded border border-white/10 hover:bg-white/10 transition-colors">
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0 shadow-[0_0_4px_#818cf8]" />
+                            <span className="text-[10px] font-bold truncate text-white/90" title={c.name}>
                                 {c.name}
                             </span>
                         </div>

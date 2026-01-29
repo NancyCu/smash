@@ -4,13 +4,13 @@ import {
   onAuthStateChanged, 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,      // <--- ADDED
+  GoogleAuthProvider,   // <--- ADDED
   updateProfile,
   signOut,
   User 
 } from "firebase/auth";
-// IMPORT THE ENGINE WE FIXED:
-import { auth } from "../lib/firebase"; 
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase"; // Cleaned up imports
 import { doc, onSnapshot } from "firebase/firestore";
 
 interface AuthContextType {
@@ -19,7 +19,8 @@ interface AuthContextType {
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logOut: () => Promise<void>;         // <--- RENAMED (was logout)
+  googleSignIn: () => Promise<void>;   // <--- ADDED
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,7 +29,8 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   signIn: async () => {},
   signUp: async () => {},
-  logout: async () => {},
+  logOut: async () => {},
+  googleSignIn: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -45,6 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
+  // Admin Check Logic
   useEffect(() => {
     if (!user) {
       setIsAdmin(false);
@@ -84,7 +87,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const logout = async () => {
+  // --- NEW: GOOGLE SIGN IN ---
+  const googleSignIn = async () => {
+    try {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+    } catch (error) {
+        console.error("Google Sign In Error:", error);
+    }
+  };
+
+  // --- RENAMED: logout -> logOut ---
+  const logOut = async () => {
     try {
       await signOut(auth);
       setUser(null);
@@ -94,7 +108,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signUp, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signUp, logOut, googleSignIn }}>
       {children}
     </AuthContext.Provider>
   );

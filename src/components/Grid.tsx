@@ -1,225 +1,345 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Image from 'next/image';
-import { cn } from '@/lib/utils';
-
-// --- Types ---
-type SquareClaim = {
-  uid: string;
-  name: string;
-  claimedAt: number;
-};
+import React from "react";
+import { Lock } from "lucide-react";
+import { getNeonColor } from "../utils/colorHash";
 
 interface GridProps {
   rows: number[];
   cols: number[];
-  squares: Record<string, SquareClaim[]>; // cellKey => claims
+  squares: Record<string, { uid: string; name: string }[]>;
   onSquareClick: (row: number, col: number) => void;
   teamA: string;
   teamB: string;
   teamALogo?: string;
   teamBLogo?: string;
   isScrambled?: boolean;
-  winningCell?: { row: number; col: number } | null;
   selectedCell?: { row: number; col: number } | null;
+  winningCell?: { row: number; col: number } | null;
+  pendingIndices?: number[];
+  currentUserId?: string;
 }
 
-// --- Helpers ---
-function hashToHue(input: string): number {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
-  }
-  return hash % 360;
-}
+export default function Grid({
+  rows,
+  cols,
+  squares,
+  onSquareClick,
+  teamA,
+  teamB,
+  teamALogo,
+  teamBLogo,
+  isScrambled,
+  selectedCell,
+  winningCell,
+  pendingIndices = [],
+  currentUserId,
+}: GridProps) {
+  // 1. HELPER: Get all owners for a cell
+  const getOwners = (r: number, c: number) => {
+    const data = squares[`${r}-${c}`];
+    if (!data) return [];
+    return Array.isArray(data) ? data : [data];
+  };
 
-const USER_COLOR_CLASSES = [
-  { bg: 'bg-rose-200 dark:bg-rose-900/60', text: 'text-rose-900 dark:text-rose-100', border: 'border-rose-300 dark:border-rose-500/60' },
-  { bg: 'bg-red-200 dark:bg-red-900/60', text: 'text-red-900 dark:text-red-100', border: 'border-red-300 dark:border-red-500/60' },
-  { bg: 'bg-orange-200 dark:bg-orange-900/60', text: 'text-orange-900 dark:text-orange-100', border: 'border-orange-300 dark:border-orange-500/60' },
-  { bg: 'bg-amber-200 dark:bg-amber-900/60', text: 'text-amber-900 dark:text-amber-100', border: 'border-amber-300 dark:border-amber-500/60' },
-  { bg: 'bg-yellow-200 dark:bg-yellow-900/60', text: 'text-yellow-900 dark:text-yellow-100', border: 'border-yellow-300 dark:border-yellow-500/60' },
-  { bg: 'bg-lime-200 dark:bg-lime-900/60', text: 'text-lime-900 dark:text-lime-100', border: 'border-lime-300 dark:border-lime-500/60' },
-  { bg: 'bg-green-200 dark:bg-green-900/60', text: 'text-green-900 dark:text-green-100', border: 'border-green-300 dark:border-green-500/60' },
-  { bg: 'bg-emerald-200 dark:bg-emerald-900/60', text: 'text-emerald-900 dark:text-emerald-100', border: 'border-emerald-300 dark:border-emerald-500/60' },
-  { bg: 'bg-teal-200 dark:bg-teal-900/60', text: 'text-teal-900 dark:text-teal-100', border: 'border-teal-300 dark:border-teal-500/60' },
-  { bg: 'bg-cyan-200 dark:bg-cyan-900/60', text: 'text-cyan-900 dark:text-cyan-100', border: 'border-cyan-300 dark:border-cyan-500/60' },
-  { bg: 'bg-sky-200 dark:bg-sky-900/60', text: 'text-sky-900 dark:text-sky-100', border: 'border-sky-300 dark:border-sky-500/60' },
-  { bg: 'bg-blue-200 dark:bg-blue-900/60', text: 'text-blue-900 dark:text-blue-100', border: 'border-blue-300 dark:border-blue-500/60' },
-  { bg: 'bg-indigo-200 dark:bg-indigo-900/60', text: 'text-indigo-900 dark:text-indigo-100', border: 'border-indigo-300 dark:border-indigo-500/60' },
-  { bg: 'bg-violet-200 dark:bg-violet-900/60', text: 'text-violet-900 dark:text-violet-100', border: 'border-violet-300 dark:border-violet-500/60' },
-  { bg: 'bg-purple-200 dark:bg-purple-900/60', text: 'text-purple-900 dark:text-purple-100', border: 'border-purple-300 dark:border-purple-500/60' },
-  { bg: 'bg-fuchsia-200 dark:bg-fuchsia-900/60', text: 'text-fuchsia-900 dark:text-fuchsia-100', border: 'border-fuchsia-300 dark:border-fuchsia-500/60' },
-  { bg: 'bg-pink-200 dark:bg-pink-900/60', text: 'text-pink-900 dark:text-pink-100', border: 'border-pink-300 dark:border-pink-500/60' },
-  { bg: 'bg-rose-300 dark:bg-rose-800/70', text: 'text-rose-950 dark:text-rose-100', border: 'border-rose-400 dark:border-rose-500/70' },
-  { bg: 'bg-cyan-300 dark:bg-cyan-800/70', text: 'text-cyan-950 dark:text-cyan-100', border: 'border-cyan-400 dark:border-cyan-500/70' },
-  { bg: 'bg-emerald-300 dark:bg-emerald-800/70', text: 'text-emerald-950 dark:text-emerald-100', border: 'border-emerald-400 dark:border-emerald-500/70' },
-  { bg: 'bg-indigo-300 dark:bg-indigo-800/70', text: 'text-indigo-950 dark:text-indigo-100', border: 'border-indigo-400 dark:border-indigo-500/70' },
-];
-
-function classesForUid(uid: string) {
-  const idx = hashToHue(uid) % USER_COLOR_CLASSES.length;
-  return USER_COLOR_CLASSES[idx];
-}
-
-// --- Component ---
-export default function Grid({ rows, cols, squares, onSquareClick, teamA, teamB, teamALogo, teamBLogo, isScrambled, winningCell, selectedCell }: GridProps) {
-  const showLogos = !isScrambled;
+  // 2. Active Focus Logic
+  const activeFocus = selectedCell ?? winningCell ?? null;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center pt-2 pl-6 md:pt-4 md:pl-10">
+    // OUTER CONTAINER - FLEX COLUMN (thin team bars like reference)
+    <div className="flex flex-col h-full w-full bg-transparent select-none rounded-2xl relative overflow-visible">
+      
+      {/* MAIN CONTENT - FLEX ROW */}
+      <div className="flex flex-1 min-h-0 relative overflow-visible">
+        
+        {/* --- 3. THE GRID --- */}
+        <div className="w-full h-full">
+          <div className="relative h-full w-full">
+            {/* Team B name overlay - Watermark Style */}
+            <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-2 z-0">
+                <span className="text-[#22d3ee] font-black uppercase tracking-widest opacity-20 text-4xl md:text-6xl select-none">
+                {teamB}
+                </span>
+            </div>
 
-      {/* Team B Label (Horizontal Top) */}
-      <div className="absolute top-0 left-0 right-0 pl-6 md:pl-10 flex items-center justify-center gap-3 z-30 pointer-events-none -translate-y-3/4">
-        <span className="text-center font-black text-xl md:text-3xl text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.2em] drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
-          {teamB}
-        </span>
-        {showLogos && teamBLogo && (
-          <div className="relative w-8 h-8 md:w-10 md:h-10 shrink-0">
-            <Image src={teamBLogo} alt={teamB} fill className="object-contain drop-shadow-md" />
-          </div>
-        )}
-      </div>
+            {/* Team A name overlay - Watermark Style */}
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-start pl-2 z-0">
+                <span className="text-[#db2777] font-black uppercase tracking-widest opacity-20 text-4xl md:text-6xl select-none whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
+                {teamA}
+                </span>
+            </div>
 
-      {/* Team A Label (Vertical Left) */}
-      {/* FIX: ensure logic keeps logo at the TOP of the vertical text */}
-      <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center z-30 pointer-events-none -translate-x-1/3">
-        <div className="transform -rotate-90 flex items-center gap-3 whitespace-nowrap origin-center">
-            
-            {/* 1. TEAM NAME (First = Bottom after -90deg rotation) */}
-            <span className="font-black text-xl md:text-3xl text-pink-600 dark:text-pink-500 uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">
-              {teamA}
-            </span>
-
-            {/* 2. TEAM LOGO (Second = Top after -90deg rotation) */}
-            {showLogos && teamALogo && (
-                <div className="relative w-6 h-6 md:w-8 md:h-8 shrink-0">
-                  <Image src={teamALogo} alt={teamA} fill className="object-contain drop-shadow-md" />
-                </div>
-            )}
-        </div>
-      </div>
-
-      {/* The Grid Wrapper */}
-      <div className="relative w-full aspect-square rounded-xl shadow-2xl bg-slate-300 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-700/50 p-0.5 md:p-1">
-        <div className="grid grid-cols-11 w-full h-full bg-slate-100 dark:bg-slate-900">
-            {/* Top-left empty corner */}
-            <div className="aspect-square bg-black dark:bg-black shadow-md border-b border-r border-slate-300 dark:border-white/10"></div>
-
-            {/* Column Headers (0-9) */}
-            {cols.map((num) => (
-              <div
-                key={`col-${num}`}
-                className="aspect-square flex items-center justify-center bg-black dark:bg-black border-b border-r border-slate-200 dark:border-white/10 text-cyan-600 dark:text-cyan-400 font-black text-xs sm:text-sm md:text-xl shadow-sm relative overflow-hidden"
-              >
+            <div className="grid grid-cols-[auto_repeat(10,1fr)] gap-px border-b border-r border-white/10 h-full w-full bg-transparent rounded-2xl overflow-visible">
+            {/* HEADER ROW (COLUMNS) */}
+            <div className="contents">
+              {/* CORNER */}
+              <div className="bg-white/10 backdrop-blur-md border-r border-b border-white/10 flex items-center justify-center p-1 relative z-20 w-8 md:w-10">
                 {isScrambled ? (
-                  <span className="relative z-10">{num}</span>
-                ) : (
-                  teamBLogo && (
-                    <div className="absolute inset-0 flex items-center justify-center p-2">
-                      <div
-                        className="relative w-full h-full"
-                        style={{
-                          mask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
-                          WebkitMask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
-                        }}
-                      >
-                        <Image src={teamBLogo} alt={teamB} fill className="object-contain opacity-80" />
+                  teamALogo && teamBLogo ? (
+                    <div className="relative w-full h-full opacity-80">
+                      <img
+                        src={teamALogo}
+                        className="absolute top-0 left-0 w-[45%] h-[45%] object-contain"
+                        alt=""
+                      />
+                      <img
+                        src={teamBLogo}
+                        className="absolute bottom-0 right-0 w-[45%] h-[45%] object-contain"
+                        alt=""
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-[6px] font-bold text-white/50">
+                          VS
+                        </span>
                       </div>
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[8px] text-slate-300 font-bold">
+                      VS
                     </div>
                   )
+                ) : (
+                  <Lock className="w-4 h-4 text-slate-400" />
                 )}
               </div>
-            ))}
 
-            {/* Rows & Cells */}
-            {rows.map((rowNum, rowIndex) => (
-              <React.Fragment key={`row-${rowNum}`}>
-                {/* Row Header */}
-                <div className="aspect-square flex items-center justify-center bg-black dark:bg-black border-r border-b border-slate-200 dark:border-white/10 text-pink-600 dark:text-pink-500 font-black text-xs sm:text-sm md:text-xl shadow-sm relative overflow-hidden">
-                  {isScrambled ? (
-                    <span className="relative z-10">{rowNum}</span>
-                  ) : (
-                    teamALogo && (
-                      <div className="absolute inset-0 flex items-center justify-center p-2">
-                        <div
-                          className="relative w-full h-full"
-                          style={{
-                            mask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
-                            WebkitMask: 'radial-gradient(ellipse at center, black 0%, black 55%, transparent 100%)',
-                          }}
-                        >
-                          <Image src={teamALogo} alt={teamA} fill className="object-contain opacity-80" />
-                        </div>
+              {/* COLUMN NUMBERS */}
+              {cols.map((num, i) => {
+                const isColHighlighted = activeFocus?.col === i;
+                return (
+                  <div
+                    key={`col-${i}`}
+                    className={`relative p-1 h-8 md:h-10 flex items-center justify-center border-b border-r border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden transition-all duration-300 ${isColHighlighted ? "bg-cyan-500/30 shadow-[inset_0_0_20px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.3)] z-40" : ""}`}
+                  >
+                    {!isScrambled && teamBLogo && (
+                      <img
+                        src={teamBLogo}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-contain opacity-[0.08] grayscale pointer-events-none"
+                      />
+                    )}
+                    {isColHighlighted && (
+                      <>
+                        <div className="absolute inset-0 border-b-4 border-cyan-400 animate-pulse"></div>
+                        <div className="absolute inset-0 bg-gradient-to-b from-cyan-400/20 to-transparent"></div>
+                      </>
+                    )}
+                    {isScrambled ? (
+                      <span
+                        className={`font-mono font-bold text-base md:text-2xl transition-all relative z-10 ${isColHighlighted ? "text-cyan-200 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" : "text-cyan-400"}`}
+                      >
+                        {num}
+                      </span>
+                    ) : (
+                      <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* GRID ROWS */}
+            {rows.map((rowNum, rIndex) => {
+              const isRowHighlighted = activeFocus?.row === rIndex;
+              return (
+                <div key={`row-${rIndex}`} className="contents">
+                  {/* ROW NUMBERS */}
+                  <div
+                    className={`relative w-8 md:w-10 flex items-center justify-center border-r border-b border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden transition-all duration-300 ${isRowHighlighted ? "bg-pink-500/30 shadow-[inset_0_0_20px_rgba(236,72,153,0.4),0_0_20px_rgba(236,72,153,0.3)] z-40" : ""}`}
+                  >
+                    {!isScrambled && teamALogo && (
+                      <img
+                        src={teamALogo}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-contain opacity-[0.08] grayscale pointer-events-none"
+                      />
+                    )}
+                    {isRowHighlighted && (
+                      <>
+                        <div className="absolute inset-0 border-r-4 border-pink-400 animate-pulse"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-pink-400/20 to-transparent"></div>
+                      </>
+                    )}
+                    {isScrambled ? (
+                      <span
+                        className={`font-mono font-bold text-base md:text-2xl transition-all relative z-10 ${isRowHighlighted ? "text-pink-200 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" : "text-pink-500"}`}
+                      >
+                        {rowNum}
+                      </span>
+                    ) : (
+                      <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                    )}
+                  </div>
+
+                  {/* SQUARES (Using your original multi-user logic) */}
+                  {cols.map((_, cIndex) => {
+                    const cellKey = `${rIndex}-${cIndex}`;
+                    const owners = getOwners(rIndex, cIndex);
+                    const isMulti = owners.length > 1;
+                    const isPending = pendingIndices.includes(
+                      rIndex * cols.length + cIndex,
+                    );
+                    const isExactSelected =
+                      selectedCell &&
+                      selectedCell.row === rIndex &&
+                      selectedCell.col === cIndex;
+                    const isWinner =
+                      winningCell &&
+                      winningCell.row === rIndex &&
+                      winningCell.col === cIndex;
+                    const isInHighlightedRow =
+                      activeFocus && activeFocus.row === rIndex;
+                    const isInHighlightedCol =
+                      activeFocus && activeFocus.col === cIndex;
+                    const isInCrosshair =
+                      isInHighlightedRow || isInHighlightedCol;
+
+                    // --- NEW STYLE LOGIC ---
+                    const firstOwnerIsMe =
+                      owners.length > 0 &&
+                      owners[0].uid === currentUserId;
+
+                    let containerClass =
+                      "relative w-full aspect-square cursor-pointer transition-all duration-300 overflow-hidden rounded-sm border border-white/10";
+                    let textClass =
+                      "text-[8px] md:text-[10px] font-bold whitespace-normal break-words leading-tight text-center px-0.5 z-10 select-none";
+
+                    // 1. Winner
+                    if (isWinner) {
+                      containerClass =
+                        "relative w-full aspect-square cursor-pointer overflow-hidden rounded-sm bg-[#22d3ee] shadow-[0_0_20px_#22d3ee,inset_0_0_10px_white] border-white ring-2 ring-[#22d3ee]/50 z-50 animate-pulse";
+                      textClass =
+                        "text-[8px] md:text-[10px] font-bold whitespace-normal break-words leading-tight text-center px-0.5 z-10 text-black";
+                    }
+                    // 2. Selected
+                    else if (isExactSelected) {
+                      containerClass +=
+                        " bg-[#22d3ee]/30 z-40 border-[#22d3ee] shadow-[0_0_15px_rgba(34,211,238,0.5)] scale-105 backdrop-blur-sm";
+                      textClass += " text-white";
+                    }
+                    // 3. Owned
+                    else if (owners.length > 0) {
+                      if (isMulti) {
+                        // Base for multi, content handled inside
+                        containerClass += " bg-white/20 backdrop-blur-sm";
+                      } else {
+                        // Dynamic Neon Color for Single Owner
+                        const neonClass = getNeonColor(owners[0].name, firstOwnerIsMe);
+                        containerClass += ` ${neonClass} backdrop-blur-sm`;
+                        if (!firstOwnerIsMe) {
+                           textClass += " text-white/90";
+                        } else {
+                           textClass += " text-cyan-50 drop-shadow-[0_0_2px_rgba(34,211,238,0.8)]";
+                        }
+                      }
+                    }
+                    // 4. Pending
+                    else if (isPending) {
+                      containerClass +=
+                        " bg-[#22d3ee]/20 animate-pulse border-[#22d3ee]/40 backdrop-blur-sm";
+                      textClass += " text-[#22d3ee]";
+                    }
+                    // 5. Empty (Brighter Glass)
+                    else {
+                      containerClass +=
+                        " bg-white/10 hover:bg-white/20 shadow-[inset_0_1px_4px_rgba(255,255,255,0.05)] backdrop-blur-[2px]";
+                      if (isInCrosshair) {
+                        containerClass +=
+                          " bg-white/20 shadow-[inset_0_0_12px_rgba(255,255,255,0.15)] border-white/20";
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={cellKey}
+                        onClick={() => onSquareClick(rIndex, cIndex)}
+                        className={containerClass}
+                      >
+                        {isWinner && (
+                          <div className="absolute -top-1 -right-1 text-[8px] z-40 pointer-events-none drop-shadow-md">
+                            👑
+                          </div>
+                        )}
+
+                        {isMulti ? (
+                          // MULTI-OWNER LAYOUT
+                          owners.length <= 4 ? (
+                            <div className="w-full h-full flex flex-col">
+                              {owners.map((o, idx) => {
+                                const isSubMe =
+                                  currentUserId && o.uid === currentUserId;
+                                const subClass = isSubMe
+                                  ? "bg-[#22d3ee]/40 text-cyan-50 border-[#22d3ee]/30"
+                                  : "bg-[#db2777]/30 text-pink-100 border-[#db2777]/20";
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`flex-1 flex items-center justify-center border-b last:border-0 border-white/10 ${subClass}`}
+                                  >
+                                    <span className="text-[6px] md:text-[8px] font-bold leading-none truncate px-0.5">
+                                      {o.name}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+                              {owners.slice(0, 9).map((o, idx) => {
+                                const isSubMe =
+                                  currentUserId && o.uid === currentUserId;
+                                const subClass = isSubMe
+                                  ? "bg-[#22d3ee]/40 text-cyan-50"
+                                  : "bg-[#db2777]/30 text-pink-100";
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`flex items-center justify-center border-[0.5px] border-white/10 ${subClass}`}
+                                  >
+                                    <span className="text-[4px] md:text-[6px] font-bold leading-none">
+                                      {o.name.slice(0, 2).toUpperCase()}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                              {owners.length > 9 && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="bg-black/60 backdrop-blur-sm rounded-full w-4 h-4 flex items-center justify-center border border-white/30 shadow-lg z-10">
+                                    <span className="text-[6px] font-bold text-white">
+                                      +{owners.length - 9}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        ) : (
+                          // SINGLE OWNER / EMPTY LAYOUT
+                          <div className="flex items-center justify-center w-full h-full p-0.5">
+                            {owners.length === 1 ? (
+                              <span className={textClass}>
+                                {owners[0].name}
+                              </span>
+                            ) : isPending ? (
+                              <span className={textClass}>PICK</span>
+                            ) : null}
+                          </div>
+                        )}
+
+                        {/* SELECTION DOT */}
+                        {isExactSelected && (
+                          <div className="absolute top-0.5 right-0.5 w-1 h-1 bg-[#22d3ee] rounded-full shadow-[0_0_4px_#22d3ee]" />
+                        )}
                       </div>
-                    )
-                  )}
+                    );
+                  })}
                 </div>
-
-                {/* Squares */}
-                {cols.map((colNum, colIndex) => {
-                  const key = `${rowIndex}-${colIndex}`;
-                  const claims = (squares[key] ?? []).slice(0, 10);
-                  const isFull = claims.length >= 10;
-                  const isWinner = !!winningCell && winningCell.row === rowIndex && winningCell.col === colIndex;
-                  const isSelected = !!selectedCell && selectedCell.row === rowIndex && selectedCell.col === colIndex;
-
-                  return (
-                    <div
-                      key={key}
-                      onClick={() => onSquareClick(rowIndex, colIndex)}
-                      className={cn(
-                        'aspect-square relative w-full h-full gap-[1px] group overflow-hidden border-[0.5px] border-slate-200/50 dark:border-white/5',
-                        claims.length > 0 ? 'bg-slate-50 dark:bg-slate-800/60' : 'bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/80',
-                        isFull ? 'cursor-not-allowed opacity-90' : 'cursor-pointer',
-                        (isWinner || isSelected) && 'z-10',
-                        isWinner && 'ring-2 ring-yellow-400 bg-yellow-400/20 animate-pulse shadow-[0_0_20px_rgba(250,204,21,0.5)] z-20',
-                        isSelected && !isWinner && 'ring-2 ring-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)] z-20'
-                      )}
-                    >
-                      {claims.length === 0 ? (
-                          <div className="absolute inset-0 m-auto w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700/50 group-hover:bg-cyan-500/50 transition-colors" />
-                      ) : claims.length <= 4 ? (
-                        <div className="w-full h-full flex flex-col">
-                          {claims.map((c, idx) => (
-                            <div
-                              key={c.uid}
-                              className={cn(
-                                'flex-1 flex items-center justify-center text-[8px] lg:text-[10px] leading-none font-bold truncate px-0.5',
-                                classesForUid(c.uid).bg,
-                                classesForUid(c.uid).text
-                              )}
-                              title={c.name}
-                            >
-                              {c.name}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="w-full h-full grid grid-cols-3 grid-rows-3 gap-[1px]">
-                          {claims.map((c) => (
-                             <div
-                              key={c.uid}
-                              className={cn(
-                                'flex items-center justify-center text-[6px] lg:text-[8px] font-white font-bold leading-none',
-                                classesForUid(c.uid).bg,
-                                classesForUid(c.uid).text
-                              )}
-                              title={c.name}
-                            >
-                              {c.name.charAt(0).toUpperCase()}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
+              );
+            })}
+            </div>
           </div>
         </div>
+      </div>
     </div>
   );
 }

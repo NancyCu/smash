@@ -1,131 +1,128 @@
-# 🏈 Squares Royale
+# 🏈 SmashedBox - Souper Bowl Squares
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+> **"Because with us, a Nguyen is always a Win"**
 
-<div align="center">
-  <img src="./public/SouperBowlDark.png" alt="Squares Royale Logo" width="200" height="200" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);" />
-  
-  <h2 className="text-3xl font-bold">The Ultimate Sports Grid Platform</h2>
-  <p>Host your game pools with a beautiful, responsive interface that works perfectly on mobile and desktop.</p>
-</div>
+![App Banner](public/SouperBowlDark.png)
 
----
+## 📖 Introduction
 
-## 🎨 User Guide
+**SmashedBox** is a modern, real-time web application designed to take your Super Bowl Squares pool to the next level. Built with **Next.js 15**, **Firebase**, and **Tailwind CSS**, it offers a sleek, dark-themed interface for hosting and joining flexible sports betting games.
 
-Welcome to **Squares Royale**! Whether you're hosting a game or joining one, getting started is easy.
-
-### 1️⃣ How to Sign Up & Sign In
-
-Our secure login system keeps your game history safe.
-
-#### **📝 Sign Up & Login**
-Toggle easily between Sign In and Sign Up to get started.
-
-1. Click **"Log In"** to open the secure portal.
-2. Toggle between **"Sign In"** and **"Sign Up"**.
-3. Enter your details to jump into the action!
-
-<div align="center">
-  <img src="./public/screenshots/auth-flow.png" alt="Authentication Screen" width="300" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 20px 0;" />
-</div>
-
-> 💡 **Tip:** You can see all your games in your **Profile** dashboard after logging in!
-
----
-
-### 🔗 Joining a Game
-
-Received a code? Enter the arena instantly!
-
-1. **Enter Game Code**: Type in the unique code shared by your host (e.g., `IX8Z4080`).
-2. **Auto-Fill**: If you clicked a link, this is filled for you!
-
-<div align="center">
-  <img src="./public/screenshots/join-game.png" alt="Join Game Screen" width="300" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 20px 0;" />
-</div>
-
----
-
-### 📱 Mobile-First Grid Experience
-
-Our grid is optimized for every device.
-
-<div align="center">
-  <img src="./public/screenshots/grid-view.png" alt="Mobile Grid View" width="300" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 20px 0;" />
-</div>
-
----
-
-### 🚀 Easy Sharing
-
-Invite friends via text or social media with one click. The preview card looks great!
-
-<div align="center">
-  <img src="./public/screenshots/share-preview.png" alt="Sharing Preview" width="300" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 20px 0;" />
-</div>
-
----
+Say goodbye to paper grids and spreadsheets. SmashedBox handles the randomization, user management, and live scoring updates automatically.
 
 ## ✨ Key Features
 
-### 🎮 **Live Game Grid**
-- **10x10 Interactive Grid**: Click any open square to claim it.
-- **Micro-Symmetrical Layout**: Even with 5+ players on one square, our smart layout keeps it readable!
-- **Desktop & Mobile Optimized**: Looks great on your phone or your ultra-wide monitor.
+*   **🏆 Dynamic Grids:** Automated, fair randomization of row/column numbers using the Fisher-Yates shuffle algorithm for every quarter (Q1, Q2, Q3, Final).
+*   **🔐 Secure Authentication:** Robust email/password login and account management powered by Firebase Auth.
+*   **⚡ Real-Time Updates:** Live integration with ESPN scores to track game progress and automatically determine winning squares.
+*   **📱 Responsive UI:** Mobile-first design ensuring a great experience on any device, featuring smooth animations with **Framer Motion**.
+*   **🎲 Prop Bets:** Create and manage side bets alongside the main grid.
+*   **🤝 Easy Sharing:** Simple game codes allow friends to join your pool instantly.
+*   **🎨 Personalized Profiles:** Track your game history and stats.
 
-### 🏆 **Real-Time Scoring**
-- **Live Updates**: Scores update automatically. No refreshing needed!
-- **Winner Highlighting**: See who is winning the current quarter instantly.
-- **Payout Ledger**: Track exactly who won what and when.
+## 🚀 Technologies Used
 
-### 👤 **Player Profiles**
-- **Game History**: See every game you've ever played or hosted.
-- **One-Click Rejoin**: Jump back into active games from your dashboard.
-- **Stats**: Track your wins and total games played.
+*   **Framework:** [Next.js 15](https://nextjs.org/) (App Router)
+*   **Language:** [TypeScript](https://www.typescriptlang.org/)
+*   **Styling:** [Tailwind CSS](https://tailwindcss.com/) & [Tailwind Merge](https://github.com/dcastil/tailwind-merge)
+*   **Icons:** [Lucide React](https://lucide.dev/)
+*   **Backend / Auth:** [Firebase](https://firebase.google.com/)
+*   **Animations:** [Framer Motion](https://www.framer.com/motion/)
+
+## 📸 Screenshots
+
+### 🏠 Join & Authentication
+*Sleek landing page for logging in or joining a game via code.*  
+![Join Game](public/screenshots/join-game.png)
+
+### 📊 Interactive Grid View
+*Navigate through different quarters and view the automated numbers.*  
+![Grid View](public/screenshots/grid-view.png)
+
+### 👥 Secure Auth Flow
+*User-friendly account creation and login process.*  
+![Auth Flow](public/screenshots/auth-flow.png)
+
+### 📲 Share & Preview
+*Easily invite others to your game instance.*  
+![Share Preview](public/screenshots/share-preview.png)
+
+## 🛠️ Getting Started
+
+<<<<<<< ours
+Follow these steps to set up the project locally.
+=======
+#### 📍 **How to Access Your Game History**
+
+Your complete game history can be found in your **Profile** page. Here's how to access it:
+
+1. **Log in** to your account
+2. Click on your **Profile** icon/button in the navigation
+3. View all your games, including:
+   - Games you've **hosted** (marked with a HOST badge)
+   - Games you've **joined** and participated in
+   - **Live games** currently in progress
+   - Completed games
+
+Your game history automatically shows all games where you've claimed at least one square, making it easy to track your participation across multiple pools!
 
 ---
+>>>>>>> theirs
 
-## 🛠️ Developer Setup
+### Prerequisites
 
-If you want to run this code yourself, here is how to get started.
+*   Node.js (v18+ recommended)
+*   npm or yarn
+*   A Firebase project with Authentication and Firestore enabled.
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/NancyCu/squares.git
-   cd squares
-   ```
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/NancyCu/smash.git
+    cd smashedbox
+    ```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-3. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) to see the app.
+3.  **Environment Setup:**
+    Create a `.env.local` file in the root directory and add your Firebase configuration keys:
+    ```env
+    NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_bucket
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+    NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+    ```
 
-### Configuration
+4.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
 
-This app uses **Firebase** for backend services.
-1. Create a project in [Firebase Console](https://console.firebase.google.com/).
-2. Enable **Authentication** (Email/Password).
-3. Create a **Firestore Database**.
-4. Create a `.env.local` file with your credentials:
-   ```env
-   NEXT_PUBLIC_FIREBASE_API_KEY=...
-   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-   NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
-   ```
+5.  Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## 🎲 Game Logic
+
+The integrity of the game is paramount. We use the **Fisher-Yates Shuffle** algorithm to generate unique, random number pairings for the rows and columns for **each quarter** of the game.
+
+*   **Q1, Q2, Q3, & Final:** Distinctive sets of numbers are generated for every stage of the game, keeping the excitement alive until the very end.
+
+```typescript
+// Example Logic from src/lib/game-logic.ts
+export const generateQuarterlyNumbers = (): GameAxisData => {
+  return {
+    q1: { rows: shuffle(base), cols: shuffle(base) },
+    q2: { rows: shuffle(base), cols: shuffle(base) },
+    // ...
+  };
+};
+```
 
 ---
 
-<p align="center">
-  Built with ❤️ by <strong>NancyCu</strong>
-</p>
+Made with ❤️ by Michael Nguyen & Nancy Cu

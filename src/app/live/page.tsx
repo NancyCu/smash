@@ -3,28 +3,33 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/context/GameContext";
+import WormholeLoader from "@/components/ui/WormholeLoader";
 
 export default function LiveRedirectPage() {
   const router = useRouter();
-  const { activeGame } = useGame();
+  const { game } = useGame();
 
   useEffect(() => {
-    const storedGameId = typeof window !== "undefined" ? localStorage.getItem("activeGameId") : null;
-    const targetGameId = activeGame?.id || storedGameId;
+    // Small delay to show off the loader (and ensure hydration)
+    const timer = setTimeout(() => {
+      const storedGameId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("activeGameId")
+          : null;
+      // Prefer context game ID, fall back to local storage
+      const targetGameId = game?.id || storedGameId;
 
-    if (targetGameId) {
-      router.replace("/?view=game");
-    } else {
-      router.replace("/join");
-    }
-  }, [activeGame?.id, router]);
+      if (targetGameId) {
+        // Redirect to the dynamic game route
+        router.replace(`/game/${targetGameId}`);
+      } else {
+        // No game found? Go to create/join
+        router.replace("/join");
+      }
+    }, 1500); // 1.5s simulated warp time
 
-  return (
-    <main className="min-h-screen flex items-center justify-center bg-[#0B0C15]">
-      <div className="flex flex-col items-center gap-4">
-        <div className="h-12 w-12 rounded-full border-4 border-cyan-400/30 border-t-cyan-400 animate-spin" />
-        <p className="text-sm text-cyan-300 font-bold uppercase tracking-widest">Warping to Live Grid...</p>
-      </div>
-    </main>
-  );
+    return () => clearTimeout(timer);
+  }, [game?.id, router]);
+
+  return <WormholeLoader />;
 }
