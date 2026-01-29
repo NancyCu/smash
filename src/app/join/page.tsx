@@ -4,7 +4,6 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import JoinGameForm from '@/components/JoinGameForm';
 import { ArrowLeft, Search } from 'lucide-react';
-import Image from 'next/image';
 
 export default function JoinPage() {
   const router = useRouter();
