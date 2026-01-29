@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2 } from "lucide-react";
+import { Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2, Copy } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getDisplayPeriods, getPeriodLabel, type SportType } from "@/lib/sport-config";
@@ -38,6 +38,7 @@ export default function GameInfo({
   const { user } = useAuth();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [isEditingScores, setIsEditingScores] = useState(false);
   
   const [editScores, setEditScores] = useState({ 
@@ -72,6 +73,12 @@ export default function GameInfo({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleCopyCode = () => {
+      navigator.clipboard.writeText(gameId);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
   };
 
   const handleSaveScores = async () => {
@@ -164,11 +171,19 @@ export default function GameInfo({
         {/* GAME HEADER */}
         <div>
             <h2 className="text-2xl font-black text-white uppercase tracking-wide leading-none drop-shadow-md">{gameName}</h2>
-            <div className="flex items-center gap-2 mt-2 text-xs text-white/60 font-mono">
-                <span>ID: {gameId.slice(0, 8)}...</span>
-                <button onClick={handleShare} className="hover:text-white transition-colors flex items-center gap-1">
+            <div className="flex items-center gap-3 mt-2 text-xs text-white/60 font-mono">
+                <button 
+                  onClick={handleCopyCode} 
+                  className="hover:text-white transition-colors flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-1 rounded border border-white/10"
+                  title="Copy Game Code"
+                >
+                  <span>Code: <span className="font-bold">{gameId.slice(0, 6)}</span></span>
+                  {codeCopied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                </button>
+                
+                <button onClick={handleShare} className="hover:text-white transition-colors flex items-center gap-1 ml-auto md:ml-0">
                     {copied ? <Check className="w-3 h-3 text-green-400" /> : <Share2 className="w-3 h-3" />}
-                    <span className="text-[10px] uppercase font-bold underline">Share</span>
+                    <span className="text-[10px] uppercase font-bold underline">Share Link</span>
                 </button>
             </div>
             <div className="mt-1 text-xs text-white/50">
