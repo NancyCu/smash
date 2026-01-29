@@ -52,7 +52,20 @@ export default function GamePage() {
     }
   }, [id, setGameId]);
   
-  // 2b. The Bouncer (Auth Guard) - REMOVED to allow new players to join/view
+  // 2b. Store as active game when successfully loaded
+  useEffect(() => {
+    if (!loading && game && id && typeof window !== 'undefined') {
+      // Only set if the game exists and has valid data
+      if (game.teamA && game.teamB) {
+        console.log(`[GamePage] Setting activeGameId: ${id}`);
+        localStorage.setItem("activeGameId", id as string);
+        // Dispatch event to notify BottomNav
+        window.dispatchEvent(new Event('activeGameIdChanged'));
+      }
+    }
+  }, [loading, game, id]);
+  
+  // 2c. The Bouncer (Auth Guard) - REMOVED to allow new players to join/view
   // useEffect(() => {
   //   if (!loading && game && id) {
   //      // Allow if user is participant OR if user is the Host (Admin)
@@ -575,6 +588,8 @@ export default function GamePage() {
       if (storedId === id) {
         console.warn(`Clearing invalid activeGameId: ${id}`);
         localStorage.removeItem("activeGameId");
+        // Notify BottomNav of the change
+        window.dispatchEvent(new Event('activeGameIdChanged'));
       }
     }
     

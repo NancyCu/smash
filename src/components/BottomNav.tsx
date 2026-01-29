@@ -12,10 +12,21 @@ export default function BottomNav() {
 
   useEffect(() => {
     // Check if we have a stored game ID
-    if (typeof window !== 'undefined') {
+    const checkActiveGame = () => {
+      if (typeof window !== 'undefined') {
         const stored = localStorage.getItem("activeGameId");
-        if (stored) setActiveGameId(stored);
-    }
+        setActiveGameId(stored);
+      }
+    };
+    
+    checkActiveGame();
+    
+    // Listen for custom event from game page
+    window.addEventListener('activeGameIdChanged', checkActiveGame);
+    
+    return () => {
+      window.removeEventListener('activeGameIdChanged', checkActiveGame);
+    };
   }, [pathname]); // Re-check when route changes
 
   const getLinkClass = (path: string, altPaths: string[] = [], isWinners: boolean = false) => {
