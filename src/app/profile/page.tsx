@@ -74,8 +74,8 @@ const handleEnterGame = async (gameId: string) => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <p className="bg-white dark:bg-slate-900 px-6 py-4 rounded-2xl shadow-lg text-slate-600 dark:text-slate-300 font-semibold border border-slate-200 dark:border-white/5">
+      <div className="min-h-screen bg-[#0B0C15] flex items-center justify-center">
+        <p className="bg-[#0B0C15]/60 backdrop-blur-xl px-6 py-4 rounded-2xl shadow-lg text-slate-300 font-semibold border border-white/10">
           Please sign in to view your profile.
         </p>
       </div>
@@ -86,27 +86,27 @@ const handleEnterGame = async (gameId: string) => {
   const ownedGames = games.filter(g => g.host === user.uid);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-100 dark:border-white/5 sticky top-0 z-40 transition-colors">
+    <div className="min-h-screen bg-[#0B0C15] text-slate-100 transition-colors duration-300">
+      <header className="bg-[#0B0C15]/90 backdrop-blur border-b border-white/10 sticky top-0 z-40 transition-colors">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+          <Link href="/" className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
             <ArrowLeft className="w-5 h-5" /> 
             <span className="font-bold text-sm">Back</span>
           </Link>
           <div className="flex items-center gap-3">
-             <h1 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-widest hidden sm:block">My Profile</h1>
+             <h1 className="text-lg font-black text-white uppercase tracking-widest hidden sm:block">My Profile</h1>
           </div>
           <button
             onClick={logOut}
-            className="px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="px-4 py-2 rounded-full border border-white/10 text-xs font-black uppercase tracking-wider text-slate-400 hover:bg-white/5 transition-colors"
           >
             Log Out
           </button>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-        <section className="bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 dark:from-black dark:via-indigo-950 dark:to-black text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden border border-white/10">
+      <main className="max-w-4xl mx-auto px-4 py-8 space-y-8 pb-24">
+        <section className="bg-gradient-to-br from-indigo-900/40 via-purple-900/30 to-cyan-900/40 text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden border border-white/10">
           <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">
             <div className="w-20 h-20 rounded-full border-4 border-white/20 shadow-xl overflow-hidden bg-indigo-600 flex items-center justify-center shrink-0">
                {user.photoURL ? (
@@ -116,7 +116,7 @@ const handleEnterGame = async (gameId: string) => {
                )}
             </div>
             <div className="text-center sm:text-left">
-              <p className="text-xs uppercase tracking-[0.3em] text-indigo-300 mb-1">Welcome back</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-cyan-300 mb-1">Welcome back</p>
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight">{user.displayName || user.email?.split('@')[0] || "Player"}</h2>
               <div className="flex flex-wrap gap-2 justify-center sm:justify-start mt-3">
                  <div className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-wider">
@@ -133,14 +133,14 @@ const handleEnterGame = async (gameId: string) => {
               </div>
             </div>
           </div>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -translate-y-16 translate-x-16"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl translate-y-16 -translate-x-16"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/20 rounded-full blur-3xl -translate-y-16 translate-x-16"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl translate-y-16 -translate-x-16"></div>
         </section>
 
         <section className="space-y-6">
           <div className="flex items-center justify-between">
-             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Your Games</h3>
-             <Link href="/?view=create" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Your Games</h3>
+             <Link href="/?view=create" className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors">
                + Create New
              </Link>
           </div>
@@ -148,21 +148,21 @@ const handleEnterGame = async (gameId: string) => {
           {loading ? (
             <div className="space-y-4">
               {[1, 2].map(i => (
-                <div key={i} className="h-24 bg-slate-200 dark:bg-slate-800 rounded-2xl animate-pulse"></div>
+                <div key={i} className="h-24 bg-white/5 rounded-2xl animate-pulse"></div>
               ))}
             </div>
           ) : sortedGames.length === 0 ? (
-            <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-white/5">
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+            <div className="text-center py-12 bg-[#0B0C15]/60 backdrop-blur-xl rounded-3xl border border-white/10">
+              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
                 <LayoutGrid className="w-8 h-8" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No Games Yet</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mb-6 max-w-xs mx-auto">
+              <h3 className="text-lg font-bold text-white mb-2">No Games Yet</h3>
+              <p className="text-slate-400 text-sm mb-6 max-w-xs mx-auto">
                 You haven't joined or created any games. Get started by joining a pool!
               </p>
               <div className="flex gap-3 justify-center">
-                <Link href="/?view=create" className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold">Create Game</Link>
-                <Link href="/?view=join" className="px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-bold">Join Game</Link>
+                <Link href="/?view=create" className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white rounded-xl text-sm font-bold transition-all">Create Game</Link>
+                <Link href="/?view=join" className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-bold transition-all border border-white/10">Join Game</Link>
               </div>
             </div>
           ) : (
@@ -173,31 +173,31 @@ const handleEnterGame = async (gameId: string) => {
                   <button
                     key={game.id}
                     onClick={() => handleEnterGame(game.id)}
-                    className="w-full text-left group relative overflow-hidden bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-white/5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                    className="w-full text-left group relative overflow-hidden bg-[#0B0C15]/60 backdrop-blur-xl p-5 rounded-2xl border border-white/10 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-cyan-500/50"
                   >
                     <div className="relative z-10 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-black text-lg shadow-inner ${isHost ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-black text-lg shadow-inner ${isHost ? 'bg-gradient-to-br from-pink-500/20 to-purple-500/20 text-pink-300 border border-pink-500/30' : 'bg-white/5 text-slate-400 border border-white/10'}`}>
                           <Trophy className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className="font-bold text-lg text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          <h4 className="font-bold text-lg text-white leading-tight group-hover:text-cyan-400 transition-colors">
                             {game.name}
                           </h4>
                           <div className="flex items-center gap-2 mt-1">
                             {isHost && (
-                              <span className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide">
+                              <span className="bg-pink-500/20 text-pink-300 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide border border-pink-500/30">
                                 HOST
                               </span>
                             )}
-                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            <span className="text-xs text-slate-400 font-medium">
                               {game.teamA} vs {game.teamB}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-1 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 transition-colors">
+                        <div className="flex items-center gap-1 text-slate-500 group-hover:text-cyan-400 transition-colors">
                            <span className="text-[10px] uppercase font-bold tracking-widest hidden sm:inline">Enter</span>
                            <ChevronRight className="w-4 h-4" />
                         </div>

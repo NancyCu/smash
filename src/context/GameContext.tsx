@@ -74,6 +74,7 @@ interface GameContextType {
   unclaimSquare: (index: number) => Promise<void>;
   togglePaid: (index: number, targetUserId?: string) => Promise<void>;
   updateScores: (home: any, away?: any) => Promise<void>;
+  updateQuarterScores: (gameId: string, quarterScores: any) => Promise<void>;
   scrambleGrid: () => Promise<void>;
   resetGrid: () => Promise<void>;
   deleteGame: () => Promise<void>;
@@ -221,9 +222,20 @@ const updateScores = async (home: any, away?: any) => {
       console.log("✅ Scores updated manually:", newScores);
   } catch (err) {
       console.error("❌ Failed to update scores:", err);
-      // Optional: Add a toast notification here if you have one
   }
 };
+
+  const updateQuarterScores = async (targetGameId: string, quarterScores: any) => {
+    try {
+      await updateDoc(doc(db, "games", targetGameId), { 
+        quarterScores,
+        scores: quarterScores.final || { teamA: 0, teamB: 0 }
+      });
+      console.log("✅ Quarter scores updated:", quarterScores);
+    } catch (err) {
+      console.error("❌ Failed to update quarter scores:", err);
+    }
+  };
 
   const setGamePhase = async (period: string) => {
   if (gameId) {
@@ -297,12 +309,13 @@ return (
       togglePaid: async () => {}, 
       createGame, 
       updateScores, 
+      updateQuarterScores,
       scrambleGrid, 
       resetGrid, 
       deleteGame, 
       getUserGames, 
       setGamePhase,
-      joinGame // <--- THIS WAS MISSING
+      joinGame
     }}>
       {children}
     </GameContext.Provider>

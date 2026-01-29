@@ -42,8 +42,8 @@ export default function CreateGameForm() {
       
       setFormData(prev => ({
         ...prev,
-        teamA: c[0].team.name, // Home
-        teamB: c[1].team.name, // Away
+        teamA: c[0].team.name, // Home (Horizontal)
+        teamB: c[1].team.name, // Away (Vertical)
         teamALogo: homeLogo,
         teamBLogo: awayLogo,
         teamAColor: homeColor,
@@ -185,25 +185,6 @@ export default function CreateGameForm() {
                     <TeamCombobox
                         label="VERTICAL TEAM"
                         icon={<Shield className="w-5 h-5 -rotate-90" />}
-                        placeholder="Search home team..."
-                        value={formData.teamA}
-                        selectedLogo={formData.teamALogo}
-                        onSelect={(team: TeamSelection) => setFormData(prev => ({
-                          ...prev,
-                          teamA: team.name,
-                          teamALogo: team.logo,
-                          teamAColor: team.color
-                        }))}
-                        onClear={() => setFormData(prev => ({
-                          ...prev,
-                          teamA: "",
-                          teamALogo: "",
-                          teamAColor: ""
-                        }))}
-                    />
-                    <TeamCombobox
-                        label="HORIZONTAL TEAM"
-                        icon={<Shield className="w-5 h-5" />}
                         placeholder="Search away team..."
                         value={formData.teamB}
                         selectedLogo={formData.teamBLogo}
@@ -218,6 +199,25 @@ export default function CreateGameForm() {
                           teamB: "",
                           teamBLogo: "",
                           teamBColor: ""
+                        }))}
+                    />
+                    <TeamCombobox
+                        label="HORIZONTAL TEAM"
+                        icon={<Shield className="w-5 h-5" />}
+                        placeholder="Search home team..."
+                        value={formData.teamA}
+                        selectedLogo={formData.teamALogo}
+                        onSelect={(team: TeamSelection) => setFormData(prev => ({
+                          ...prev,
+                          teamA: team.name,
+                          teamALogo: team.logo,
+                          teamAColor: team.color
+                        }))}
+                        onClear={() => setFormData(prev => ({
+                          ...prev,
+                          teamA: "",
+                          teamALogo: "",
+                          teamAColor: ""
                         }))}
                     />
                 </div>

@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useGame, type SquareData, type GameData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import { useEspnScores } from "@/hooks/useEspnScores";
-import { ArrowLeft, Trophy, Crown, ArrowDown, Ban, Ghost, Sparkles } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, ArrowDown, Ban, Ghost, Sparkles, Edit2 } from "lucide-react";
 import GameHistoryCard from "@/components/GameHistoryCard";
 
 // ============================================================================
@@ -217,9 +217,16 @@ function SingleGameWinners({ gameId }: { gameId: string }) {
 function HallOfFame() {
   const router = useRouter();
   const { user } = useAuth();
-  const { getUserGames } = useGame();
+  const { getUserGames, updateQuarterScores } = useGame();
   const [games, setGames] = useState<GameData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingGame, setEditingGame] = useState<string | null>(null);
+  const [editScores, setEditScores] = useState({
+    p1: { teamA: 0, teamB: 0 },
+    p2: { teamA: 0, teamB: 0 },
+    p3: { teamA: 0, teamB: 0 },
+    final: { teamA: 0, teamB: 0 }
+  });
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -271,6 +278,32 @@ function HallOfFame() {
   }
 
   const totalPots = games.reduce((sum, g) => sum + (g.totalPot || g.pot || Object.keys(g.squares || {}).length * g.price), 0);
+
+  const handleEditScores = (game: GameData) => {
+    setEditingGame(game.id);
+    setEditScores({
+      p1: game.quarterScores?.p1 || { teamA: 0, teamB: 0 },
+      p2: game.quarterScores?.p2 || { teamA: 0, teamB: 0 },
+      p3: game.quarterScores?.p3 || { teamA: 0, teamB: 0 },
+      final: game.quarterScores?.final || game.scores || { teamA: 0, teamB: 0 }
+    });
+  };
+
+  const handleSaveScores = async () => {
+    if (!editingGame) return;
+    await updateQuarterScores(editingGame, editScores);
+    setEditingGame(null);
+    // Refresh games
+    if (user) {
+      const userGames = await getUserGames(user.uid);
+      const sorted = userGames.sort((a, b) => {
+        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+        return dateB.getTime() - dateA.getTime();
+      });
+      setGames(sorted);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto relative z-10 pb-20">
@@ -337,6 +370,64 @@ function HallOfFame() {
         </div>
       ) : (
         <div className="space-y-0">
+          {/* Score Edit Modal */}
+          {editingGame && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-[#0B0C15] border border-white/20 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                <h3 className="text-xl font-black text-white uppercase tracking-wider mb-4">Edit Scores</h3>
+                
+                <div className="space-y-3">
+                  {['p1', 'p2', 'p3', 'final'].map((period) => (
+                    <div key={period} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                      <label className="text-xs text-white/60 uppercase tracking-widest font-bold block mb-2">
+                        {period === 'p1' ? 'Q1' : period === 'p2' ? 'HALF' : period === 'p3' ? 'Q3' : 'FINAL'}
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Team A"
+                          value={editScores[period as keyof typeof editScores].teamA}
+                          onChange={(e) => setEditScores(prev => ({
+                            ...prev,
+                            [period]: { ...prev[period as keyof typeof prev], teamA: Number(e.target.value) }
+                          }))}
+                          className="bg-black/20 border border-white/20 rounded px-3 py-2 text-white text-center font-mono focus:outline-none focus:border-cyan-400"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Team B"
+                          value={editScores[period as keyof typeof editScores].teamB}
+                          onChange={(e) => setEditScores(prev => ({
+                            ...prev,
+                            [period]: { ...prev[period as keyof typeof prev], teamB: Number(e.target.value) }
+                          }))}
+                          className="bg-black/20 border border-white/20 rounded px-3 py-2 text-white text-center font-mono focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                  <button
+                    onClick={handleSaveScores}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#db2777] to-[#22d3ee] text-white font-black text-sm uppercase tracking-widest hover:opacity-90 transition-all"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingGame(null)}
+                    className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm uppercase tracking-widest transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {games.map((game) => {
             // Calculate quarter results with actual scores from game data
             const totalPot = game.totalPot || game.pot || (Object.keys(game.squares || {}).length * game.price);
@@ -392,7 +483,27 @@ function HallOfFame() {
               },
             ];
 
-            return <GameHistoryCard key={game.id} game={game} quarterResults={quarterResults} />;
+            const hasScores = finalScores.teamA > 0 || finalScores.teamB > 0;
+            const isHost = user && game.host === user.uid;
+
+            return (
+              <div key={game.id} className="relative">
+                {!hasScores && isHost && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleEditScores(game);
+                    }}
+                    className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-300 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    Add Scores
+                  </button>
+                )}
+                <GameHistoryCard game={game} quarterResults={quarterResults} />
+              </div>
+            );
           })}
         </div>
       )}

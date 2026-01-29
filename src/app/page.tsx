@@ -70,35 +70,48 @@ function HomeContent() {
   };
 
   return (
-    <div className="w-full max-w-md flex flex-col items-center gap-8 relative z-10 pb-20">
+    <div className="w-full max-w-md flex flex-col items-center gap-0 relative z-10 pb-20">
       
       {/* LOGO SECTION */}
       <div className="flex flex-col items-center gap-4">
-        <div className="text-center">
-          <img 
-            src="/image_9.png" 
-            alt="Souper Bowl LX Logo" 
-            className="w-40 md:w-full md:max-w-[320px] mx-auto mb-2 md:mb-6 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.3)]"
-          />
-          <div className="text-center mt-2 md:mt-6 mb-4 md:mb-8 relative z-10">
-            <h1 className="font-russo text-4xl md:text-7xl tracking-tighter uppercase italic leading-[0.95] overflow-visible pb-1">
-              <span className="text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.9)]">
-                Souper Bowl
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-[#db2777] via-[#22d3ee] to-[#db2777] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]">
-                SQUARES
-              </span>
-            </h1>
-            <p className="text-[#22d3ee] text-[10px] md:text-base font-bold mt-2 md:mt-3 tracking-[0.2em] uppercase opacity-90 max-w-[280px] md:max-w-none mx-auto">
-              &ldquo;Because with us, a Nguyen is always a Win&rdquo;
-            </p>
+        {/* Radial Gradient Backdrop for Logo */}
+        <div className="relative">
+          <div className="absolute inset-0 -m-20 bg-[radial-gradient(circle,_rgba(34,211,238,0.15)_0%,_transparent_70%)] pointer-events-none" />
+          
+          <div className="text-center relative z-10">
+            <img 
+              src="/image_9.png" 
+              alt="Souper Bowl LX Logo" 
+              className="w-56 md:max-w-[450px] mx-auto mb-4 md:mb-8 object-contain transition-transform duration-300 hover:scale-110"
+              style={{
+                filter: 'drop-shadow(0 0 20px rgba(219,39,119,0.4)) drop-shadow(0 0 40px rgba(34,211,238,0.2)) drop-shadow(0 0 60px rgba(34,211,238,0.15))'
+              }}
+            />
+            <div className="text-center mt-4 md:mt-8 mb-6 md:mb-10 relative z-10">
+              <h1 className="font-russo text-4xl md:text-7xl tracking-tighter uppercase italic leading-[0.95] overflow-visible pb-1">
+                <span className="text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.9)]">
+                  Souper Bowl
+                </span>
+                <br />
+                <span className="bg-gradient-to-r from-[#db2777] via-[#22d3ee] to-[#db2777] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]">
+                  SQUARES
+                </span>
+              </h1>
+              <p 
+                className="text-[#22d3ee] text-xs md:text-lg font-black mt-4 md:mt-6 tracking-[0.4em] uppercase italic font-mono max-w-[320px] md:max-w-none mx-auto"
+                style={{
+                  textShadow: '0 0 7px #22d3ee, 0 0 10px #22d3ee, 0 0 21px #22d3ee'
+                }}
+              >
+                &ldquo;A NGUYEN IS ALWAYS A WIN&rdquo;
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* MAIN CARD */}
-      <div className="w-full bg-[#151725] border border-white/10 p-4 md:p-6 rounded-3xl shadow-2xl flex flex-col gap-4 md:gap-6">
+      <div className="w-full bg-[#151725] border border-white/10 p-4 md:p-6 rounded-3xl shadow-2xl flex flex-col gap-4 md:gap-6 mt-12 md:mt-16">
          
          {/* JOIN SECTION */}
          <form onSubmit={handleJoin} className="flex flex-col gap-2 md:gap-3">
