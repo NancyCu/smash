@@ -117,6 +117,18 @@ export function useEspnScores() {
 
             seenGameIds.add(game.id);
 
+            // Log the raw data for debugging
+            console.log(`[ESPN] Game: ${game.name}`, {
+              id: game.id,
+              period: status.period,
+              clock: status.displayClock,
+              state,
+              homeScore: home.score,
+              awayScore: away.score,
+              homeLinescores: home.linescores?.length || 0,
+              awayLinescores: away.linescores?.length || 0,
+            });
+
             allGames.push({
               id: game.id,
               name: game.name,

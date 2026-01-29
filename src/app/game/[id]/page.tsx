@@ -69,7 +69,21 @@ export default function GamePage() {
 
   // 4. Live Game Sync
   const matchedGame = useMemo(
-    () => game?.espnGameId ? liveGames.find((g) => g.id === game.espnGameId) : null,
+    () => {
+      const matched = game?.espnGameId ? liveGames.find((g) => g.id === game.espnGameId) : null;
+      if (matched) {
+        console.log('[GamePage] Matched ESPN Game:', {
+          id: matched.id,
+          name: matched.name,
+          period: matched.period,
+          clock: matched.clock,
+          status: matched.status,
+          isLive: matched.isLive,
+          competitors: matched.competitors?.length,
+        });
+      }
+      return matched;
+    },
     [game, liveGames]
   );
    
@@ -159,7 +173,8 @@ export default function GamePage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (comp && (comp as any).team?.logo) return (comp as any).team.logo;
     }
-    return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/${safeName.toLowerCase().slice(0, 3)}.png&h=200&w=200`;
+    // Return empty string instead of broken ESPN URL - let the component handle missing logos gracefully
+    return "";
   };
 
   // --- SCORES ---
@@ -204,7 +219,7 @@ export default function GamePage() {
       const getScore = (c: any, i: number) =>
         c?.linescores?.[i]?.value ? Number(c.linescores[i].value) : 0;
 
-      return {
+      const scores = {
         p1: { home: getScore(compA, 0), away: getScore(compB, 0) },
         p2: { home: getScore(compA, 1), away: getScore(compB, 1) },
         p3: { home: getScore(compA, 2), away: getScore(compB, 2) },
@@ -216,6 +231,18 @@ export default function GamePage() {
         teamA: Number(compA?.score || 0),
         teamB: Number(compB?.score || 0),
       };
+
+      console.log('[GamePage] Calculated ESPN Scores:', {
+        compA_name: compA?.team?.name,
+        compB_name: compB?.team?.name,
+        compA_score: compA?.score,
+        compB_score: compB?.score,
+        compA_linescores_count: compA?.linescores?.length,
+        compB_linescores_count: compB?.linescores?.length,
+        scores
+      });
+
+      return scores;
     }
     
     // --- MANUAL FALLBACK ---
@@ -561,7 +588,7 @@ export default function GamePage() {
                 {/* TEAM A */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <div className="flex items-center gap-1 mb-0.5 justify-center w-full">
-                    <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
+                    {getTeamLogo(game.teamA) && <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
                     <span className="text-pink-200 font-teko text-[10px] md:text-lg tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] drop-shadow-sm">
                       {game.teamA}
                     </span>
@@ -610,7 +637,7 @@ export default function GamePage() {
                     <span className="text-cyan-200 font-teko text-[10px] md:text-lg tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] drop-shadow-sm">
                       {game.teamB}
                     </span>
-                    <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
+                    {getTeamLogo(game.teamB) && <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
                   </div>
                   <span className="text-4xl md:text-7xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-0.5">
                     {!game.espnGameId 

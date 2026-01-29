@@ -6,6 +6,18 @@ interface LiveGameClockProps {
 }
 
 export default function LiveGameClock({ game }: LiveGameClockProps) {
+  // Debug log to see what data we're receiving
+  if (game) {
+    console.log('[LiveGameClock] Game Data:', {
+      name: game.name,
+      isLive: game.isLive,
+      period: game.period,
+      clock: game.clock,
+      status: game.status,
+      statusDetail: game.statusDetail,
+    });
+  }
+
   if (!game) return <div className="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Offline</div>;
   
   const { isLive, clock, period, statusDetail, league } = game;
