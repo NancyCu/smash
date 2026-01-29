@@ -463,6 +463,33 @@ function HallOfFame() {
             const q3Scores = game.quarterScores?.p3 || { teamA: 0, teamB: 0 };
             const finalScores = game.quarterScores?.final || game.scores || { teamA: 0, teamB: 0 };
 
+            // Helper function to get winners for a specific score
+            const getWinnersForScore = (scoreA: number, scoreB: number, quarterKey: string) => {
+              const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+              const axisConfig = (game?.isScrambled && game?.axis?.[quarterKey as keyof typeof game.axis]) || { row: defaultAxis, col: defaultAxis };
+              const axisRow = Array.isArray(axisConfig.row) ? axisConfig.row : defaultAxis;
+              const axisCol = Array.isArray(axisConfig.col) ? axisConfig.col : defaultAxis;
+
+              const lastDigitA = scoreA % 10;
+              const lastDigitB = scoreB % 10;
+              const rowIdx = axisRow.indexOf(lastDigitA);
+              const colIdx = axisCol.indexOf(lastDigitB);
+              
+              if (rowIdx === -1 || colIdx === -1) return null;
+
+              const cellIndex = rowIdx * 10 + colIdx;
+              const cellData = game?.squares ? game.squares[cellIndex] : undefined;
+              let winners: SquareData[] = [];
+              
+              if (Array.isArray(cellData)) {
+                winners = cellData as SquareData[];
+              } else if (cellData) {
+                winners = [cellData as SquareData];
+              }
+
+              return winners.length > 0 ? winners : null;
+            };
+
             // CUMULATIVE SCORES - Each milestone shows running total
             const quarterResults = [
               { 
@@ -470,7 +497,7 @@ function HallOfFame() {
                 label: "Q1", 
                 scoreA: q1Scores.teamA, 
                 scoreB: q1Scores.teamB, 
-                winners: null, 
+                winners: getWinnersForScore(q1Scores.teamA, q1Scores.teamB, "q1"), 
                 payout: basePayouts.q1, 
                 isRollover: false 
               },
@@ -479,7 +506,7 @@ function HallOfFame() {
                 label: "HALF", 
                 scoreA: q1Scores.teamA + q2Scores.teamA,  // Cumulative through halftime
                 scoreB: q1Scores.teamB + q2Scores.teamB,  // Cumulative through halftime
-                winners: null, 
+                winners: getWinnersForScore(q1Scores.teamA + q2Scores.teamA, q1Scores.teamB + q2Scores.teamB, "q2"), 
                 payout: basePayouts.q2, 
                 isRollover: false 
               },
@@ -488,7 +515,7 @@ function HallOfFame() {
                 label: "Q3", 
                 scoreA: q1Scores.teamA + q2Scores.teamA + q3Scores.teamA,  // Cumulative through Q3
                 scoreB: q1Scores.teamB + q2Scores.teamB + q3Scores.teamB,  // Cumulative through Q3
-                winners: null, 
+                winners: getWinnersForScore(q1Scores.teamA + q2Scores.teamA + q3Scores.teamA, q1Scores.teamB + q2Scores.teamB + q3Scores.teamB, "q3"), 
                 payout: basePayouts.q3, 
                 isRollover: false 
               },
@@ -497,7 +524,7 @@ function HallOfFame() {
                 label: "FINAL", 
                 scoreA: finalScores.teamA,  // Final cumulative score
                 scoreB: finalScores.teamB,  // Final cumulative score
-                winners: null, 
+                winners: getWinnersForScore(finalScores.teamA, finalScores.teamB, "final"), 
                 payout: basePayouts.final, 
                 isRollover: false 
               },

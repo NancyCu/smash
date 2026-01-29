@@ -49,7 +49,8 @@ export default function Grid({
 
   return (
     // OUTER CONTAINER - FLEX COLUMN (thin team bars like reference)
-    <div className="flex flex-col h-full w-full bg-[#0f111a] select-none">
+    // Added overflow-visible to prevent clipping of team names
+    <div className="flex flex-col h-full w-full bg-[#0f111a] select-none overflow-visible">
       {/* === 1. TOP HEADER BAR (TEAM B - CYAN) === */}
       {!isScrambled ? (
         <div
@@ -91,7 +92,8 @@ export default function Grid({
       ) : null}
 
       {/* MAIN CONTENT */}
-      <div className="flex flex-1 min-h-0 relative overflow-visible">
+      {/* Added pt-8 for top headroom and pl-8 for left elbow room when scrambled */}
+      <div className={`flex flex-1 min-h-0 relative overflow-visible ${isScrambled ? 'pt-8 pl-8' : ''}`}>
         
         {/* === 2. LEFT SIDEBAR (TEAM A - PINK) === */}
         {!isScrambled ? (
@@ -134,20 +136,20 @@ export default function Grid({
         ) : null}
         
         {/* --- THE GRID --- */}
-        <div className="w-full h-full">
-          <div className="relative h-full w-full">
+        <div className="w-full h-full overflow-visible">
+          <div className="relative h-full w-full overflow-visible">
             
-            {/* Team B name overlay across the top header row (inside grid) */}
+            {/* Team B name overlay - positioned ABOVE the grid with negative top */}
             {isScrambled && (
               <>
-                <div className="pointer-events-none absolute top-0 left-8 md:left-10 right-0 h-8 md:h-10 flex items-center justify-center z-50">
-                  <span className="text-cyan-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] text-sm md:text-base truncate max-w-[80%]">
+                <div className="pointer-events-none absolute -top-6 left-8 md:left-10 right-0 flex items-center justify-center z-50 mb-2">
+                  <span className="text-cyan-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] text-sm md:text-base truncate max-w-[80%] whitespace-nowrap">
                     {teamB}
                   </span>
                 </div>
                 
-                {/* Team A name overlay down the left header column (inside grid) */}
-                <div className="pointer-events-none absolute top-8 md:top-10 left-0 w-8 md:w-10 bottom-0 flex items-center justify-center z-50">
+                {/* Team A name overlay - positioned LEFT of the grid with negative left */}
+                <div className="pointer-events-none absolute top-8 md:top-10 -left-6 md:-left-8 bottom-0 flex items-center justify-center z-50 mr-2">
                   <span className="text-pink-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(236,72,153,0.5)] text-sm md:text-base whitespace-nowrap [writing-mode:vertical-rl]">
                     {teamA}
                   </span>
@@ -155,7 +157,7 @@ export default function Grid({
               </>
             )}
             
-            <div className="grid grid-cols-[auto_repeat(10,1fr)] gap-px border-b border-r border-white/10 h-full w-full bg-transparent rounded-2xl overflow-visible">
+            <div className="grid grid-cols-[auto_repeat(10,1fr)] gap-px border-b border-r border-white/10 h-full w-full bg-transparent rounded-2xl overflow-visible relative">
             
             {/* HEADER ROW (COLUMNS) */}
             <div className="contents">

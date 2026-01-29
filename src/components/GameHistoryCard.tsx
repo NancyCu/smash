@@ -222,19 +222,25 @@ export default function GameHistoryCard({ game, quarterResults }: GameHistoryCar
               ) : isRecipient ? (
                 <div className="flex flex-col items-center w-full">
                   <Trophy className="w-3 h-3 text-yellow-400 mb-1" />
-                  <span className="text-[#22d3ee] font-bold text-xs truncate max-w-[80px] mb-1">
-                    {q.winners?.[0]?.displayName || "Winner"}
-                  </span>
-                  <div className="text-[8px] text-green-400 font-bold">
+                  <div className="flex flex-col items-center gap-0.5 w-full">
+                    {q.winners?.map((winner, winnerIdx) => (
+                      <span key={winnerIdx} className="text-[#22d3ee] font-bold text-[10px] truncate max-w-full">
+                        {winner?.displayName || "Winner"}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="text-[8px] text-green-400 font-bold mt-1">
                     +${q.rolloverAmount} BONUS
                   </div>
                 </div>
               ) : q.winners && q.winners.length > 0 ? (
-                <div className="flex items-center gap-1">
+                <div className="flex flex-col items-center gap-0.5 w-full">
                   <Trophy className="w-3 h-3 text-yellow-400" />
-                  <span className="text-[#22d3ee] font-bold text-xs drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] truncate max-w-[80px]">
-                    {q.winners[0]?.displayName || "Winner"}
-                  </span>
+                  {q.winners.map((winner, winnerIdx) => (
+                    <span key={winnerIdx} className="text-[#22d3ee] font-bold text-[10px] drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] truncate max-w-full">
+                      {winner?.displayName || "Winner"}
+                    </span>
+                  ))}
                 </div>
               ) : (
                 <div className="flex items-center gap-1">
