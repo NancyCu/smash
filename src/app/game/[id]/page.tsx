@@ -696,12 +696,16 @@ export default function GamePage() {
                              const cellData = formattedSquares[cellKey] || [];
                              return cellData.length > 0 ? (
                                 <div className="flex flex-row flex-wrap gap-2 items-center mb-2">
-                                  {cellData.map((p, i) => (
-                                    <div key={i} className="flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-md border border-white/10">
-                                      <span className={`text-xl font-bold ${p.uid === user?.uid ? "text-cyan-200 drop-shadow-sm" : "text-white"}`}>{p.name}</span>
-                                      {!isWinnerView && (isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-300 transition-colors text-white/50"><Trash2 className="w-3.5 h-3.5" /></button>}
-                                    </div>
-                                  ))}
+                                    {cellData.map((p, i) => (
+                                      <div key={i} className="relative flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-md border border-white/10">
+                                        {/* Trophy in top-right corner of the name badge */}
+                                        <span className="absolute -top-2 -right-2 bg-black/60 rounded-full p-0.5 drop-shadow-md">
+                                          <Trophy className="w-3 h-3 text-yellow-300" aria-hidden="true" />
+                                        </span>
+                                        <span className={`text-xl font-bold ${p.uid === user?.uid ? "text-cyan-200 drop-shadow-sm" : "text-white"}`}>{p.name}</span>
+                                        {!isWinnerView && (isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-300 transition-colors text-white/50"><Trash2 className="w-3.5 h-3.5" /></button>}
+                                      </div>
+                                    ))}
                                 </div>
                              ) : null;
                           })()}
