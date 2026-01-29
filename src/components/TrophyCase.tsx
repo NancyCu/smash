@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Medal, Crown } from 'lucide-react';
+import { Trophy, Crown } from 'lucide-react';
 import { PayoutLog } from '@/context/GameContext';
 
 interface TrophyCaseProps {
