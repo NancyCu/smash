@@ -279,6 +279,39 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
     });
   };
 
+  const togglePaid = async (index: number, targetUserId?: string) => {
+    if (!gameId || !isAdmin || !game) return;
+    
+    const key = index.toString();
+    const currentSquare = game.squares[key];
+    
+    if (!currentSquare) return;
+
+    try {
+      // Handle both array (stacking) and single object cases
+      if (Array.isArray(currentSquare)) {
+        // Find the specific claim to toggle
+        const updatedArray = currentSquare.map(claim => {
+          if (claim.userId === targetUserId) {
+            return { ...claim, paid: !claim.paid };
+          }
+          return claim;
+        });
+        
+        await updateDoc(doc(db, "games", gameId), {
+          [`squares.${key}`]: updatedArray
+        });
+      } else {
+        // Single claim - toggle the paid status
+        await updateDoc(doc(db, "games", gameId), {
+          [`squares.${key}.paid`]: !currentSquare.paid
+        });
+      }
+    } catch (e) {
+      console.error("Toggle paid failed", e);
+    }
+  };
+
 return (
     <GameContext.Provider value={{ 
       game, 
@@ -288,7 +321,7 @@ return (
       setGameId, 
       claimSquare, 
       unclaimSquare, 
-      togglePaid: async () => {}, 
+      togglePaid, 
       createGame, 
       updateScores, 
       scrambleGrid, 
