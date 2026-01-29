@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/context/GameContext";
 import { useEspnScores } from "@/hooks/useEspnScores";
-import { Calendar, Trophy, DollarSign, ArrowRight, Loader2, Gamepad, Shield, Link } from "lucide-react";
+import { Calendar, Trophy, DollarSign, ArrowRight, Loader2, Gamepad, Shield, Link, Phone } from "lucide-react";
 import CyberInput from "@/components/ui/CyberInput";
 import TeamCombobox, { type TeamSelection } from "@/components/ui/TeamCombobox";
 
@@ -27,6 +27,7 @@ export default function CreateGameForm() {
     price: 10,
     espnGameId: "",
     paymentLink: "",
+    zellePhone: "",
   });
 
   const [selectedGame, setSelectedGame] = useState<any>(null);
@@ -86,6 +87,7 @@ export default function CreateGameForm() {
         teamBColor: formData.teamBColor || null,
         espnGameId: formData.espnGameId || null,
         paymentLink: formData.paymentLink || null, // Ensure saved
+        zellePhone: formData.zellePhone || null, // Zelle phone number
         league: selectedGame?.league || null,
         payouts: {
             q1: price * 10,   
@@ -240,6 +242,25 @@ export default function CreateGameForm() {
                     placeholder="Venmo/CashApp URL (Optional)"
                     value={formData.paymentLink}
                     onChange={e => setFormData({...formData, paymentLink: e.target.value})}
+                />
+
+                <CyberInput
+                    label="ZELLE PHONE"
+                    icon={<Phone className="w-5 h-5" />}
+                    placeholder="(123) 456-7890 (Optional)"
+                    value={formData.zellePhone}
+                    onChange={e => {
+                      // Format phone number as user types
+                      const cleaned = e.target.value.replace(/\D/g, '');
+                      let formatted = cleaned;
+                      if (cleaned.length >= 6) {
+                        formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+                      } else if (cleaned.length >= 3) {
+                        formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+                      }
+                      setFormData({...formData, zellePhone: formatted});
+                    }}
+                    maxLength={14}
                 />
 
                 <button 

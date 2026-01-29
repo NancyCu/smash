@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2, Copy, MoveRight, ArrowDownRight } from "lucide-react";
+import { Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2, Copy, MoveRight, ArrowDownRight, CreditCard } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getDisplayPeriods, getPeriodLabel, type SportType } from "@/lib/sport-config";
+import PaymentModal from "@/components/PaymentModal";
 
 interface GameInfoProps {
   gameId: string;
@@ -26,13 +27,16 @@ interface GameInfoProps {
   selectedEventId?: string;
   availableGames?: any[];
   sportType?: SportType;
+  paymentLink?: string | null;
+  zellePhone?: string | null;
 }
 
 export default function GameInfo({
   gameId, gameName, host, pricePerSquare, totalPot,
   payouts, winners, matchup, scores, isAdmin, isScrambled,
   eventDate, onUpdateScores, onDeleteGame,
-  onScrambleGridDigits, onResetGridDigits, sportType = 'default'
+  onScrambleGridDigits, onResetGridDigits, sportType = 'default',
+  paymentLink, zellePhone
 }: GameInfoProps) {
   
   const { user } = useAuth();
@@ -40,6 +44,7 @@ export default function GameInfo({
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [isEditingScores, setIsEditingScores] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   
   const [editScores, setEditScores] = useState({ 
      teamA: scores?.teamA || 0, 
@@ -239,7 +244,29 @@ export default function GameInfo({
                 <span>Price per Square:</span>
                 <span className="text-white font-bold">${pricePerSquare}</span>
             </div>
+            
+            {/* Pay Host Button */}
+            {!isAdmin && (paymentLink || zellePhone) && (
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full mt-3 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-black text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                Pay Host
+              </button>
+            )}
         </div>
+
+        {/* Payment Modal */}
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          paymentLink={paymentLink}
+          zellePhone={zellePhone}
+          hostName={"Host"}
+          totalOwed={pricePerSquare}
+          gameName={gameName}
+        />
 
         {/* PAYOUTS */}
         <div>
@@ -302,7 +329,7 @@ export default function GameInfo({
         {/* NAVIGATION LINKS */}
         <div className="grid grid-cols-2 gap-2 pt-2">
             <button onClick={() => router.push('/winners')} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 uppercase border border-white/5 hover:border-white/20 transition-all">Hall of Fame</button>
-            <button onClick={() => router.push(`/payments?id=${gameId}`)} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 uppercase border border-white/5 hover:border-white/20 transition-all">Payment Ledger</button>
+            <button onClick={() => router.push(`/game/${gameId}/ledger`)} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 uppercase border border-white/5 hover:border-white/20 transition-all">Payment Ledger</button>
         </div>
 
     </div>

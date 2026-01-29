@@ -9,6 +9,7 @@ import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
 import GameBar from "@/components/GameBar";
 import LiveGameClock from "@/components/LiveGameClock";
+import PaymentModal from "@/components/PaymentModal";
 import {
   ShoppingCart,
   LogIn,
@@ -111,6 +112,8 @@ export default function GamePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [restorationToast, setRestorationToast] = useState<{ show: boolean; message: string; type: 'success' | 'warning' | 'error' }>({ show: false, message: '', type: 'success' });
   const [restoringSquares, setRestoringSquares] = useState<number[]>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [claimedSquaresCount, setClaimedSquaresCount] = useState(0);
 
   // Get sport configuration
   const sportType: SportType = game?.sport || 'default';
@@ -631,9 +634,16 @@ export default function GamePage() {
     if (!user) { await handleAuth(); return; }
     if (pendingSquares.length === 0) return;
     setIsSubmitting(true);
+    const squareCount = pendingSquares.length;
     try {
       for (const index of pendingSquares) await claimSquare(index);
       setPendingSquares([]); setSelectedCell(null);
+      
+      // Show payment modal after successful claim
+      if (game && (game.paymentLink || game.zellePhone)) {
+        setClaimedSquaresCount(squareCount);
+        setShowPaymentModal(true);
+      }
     } catch (err) { alert("Error claiming squares"); } finally { setIsSubmitting(false); }
   };
   const handleClearCart = () => setPendingSquares([]);
@@ -948,6 +958,8 @@ export default function GamePage() {
               isScrambled={game.isScrambled}
               eventDate={matchedGame?.date || game.createdAt?.toDate?.()?.toString() || new Date().toISOString()}
               onUpdateScores={updateScores}
+              paymentLink={game.paymentLink}
+              zellePhone={game.zellePhone}
               onDeleteGame={handleDelete}
               onScrambleGridDigits={scrambleGrid}
               onResetGridDigits={resetGrid}
@@ -998,12 +1010,27 @@ export default function GamePage() {
           onUpdateScores={updateScores}
           onDeleteGame={handleDelete}
           onScrambleGridDigits={scrambleGrid}
+          paymentLink={game.paymentLink}
+          zellePhone={game.zellePhone}
           onResetGridDigits={resetGrid}
           selectedEventId={game.espnGameId}
           availableGames={liveGames}
           sportType={sportType}
         />
       </div>
+
+      {/* Payment Modal - Shows after claiming squares */}
+      {game && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          paymentLink={game.paymentLink}
+          zellePhone={game.zellePhone}
+          hostName={game.hostDisplayName || "Host"}
+          totalOwed={claimedSquaresCount * game.price}
+          gameName={game.name}
+        />
+      )}
     </main>
   );
 }

@@ -7,7 +7,7 @@ import { getNeonColor } from "../utils/colorHash";
 interface GridProps {
   rows: number[];
   cols: number[];
-  squares: Record<string, { uid: string; name: string }[]>;
+  squares: Record<string, { uid: string; name: string; paid?: boolean }[]>;
   onSquareClick: (row: number, col: number) => void;
   teamA: string;
   teamB: string;
@@ -48,29 +48,29 @@ export default function Grid({
   const activeFocus = selectedCell ?? winningCell ?? null;
 
   return (
-    // OUTER CONTAINER - FLEX COLUMN (thin team bars like reference)
-    <div className="flex flex-col h-full w-full bg-transparent select-none rounded-2xl relative overflow-visible">
+    // OUTER CONTAINER
+    <div className="flex flex-col h-full w-full bg-[#0B0C15] select-none rounded-2xl relative overflow-visible">
       
-      {/* MAIN CONTENT - FLEX ROW */}
+      {/* MAIN CONTENT */}
       <div className="flex flex-1 min-h-0 relative overflow-visible">
         
-        {/* --- 3. THE GRID --- */}
+        {/* --- THE GRID --- */}
         <div className="w-full h-full">
           <div className="relative h-full w-full">
-            {/* Team B name overlay - Watermark Style */}
-            <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-2 z-0">
-                <span className="text-[#22d3ee] font-black uppercase tracking-widest opacity-20 text-4xl md:text-6xl select-none">
+            
+            {/* Team B Header - Horizontal/Top - Overlapping */}
+            <div className="absolute top-0 left-[50%] -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+              <span className="text-[#22d3ee] font-black uppercase tracking-[0.3em] text-xs md:text-sm select-none drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">
                 {teamB}
-                </span>
+              </span>
             </div>
-
-            {/* Team A name overlay - Watermark Style */}
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-start pl-2 z-0">
-                <span className="text-[#db2777] font-black uppercase tracking-widest opacity-20 text-4xl md:text-6xl select-none whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
+            
+            {/* Team A Header - Vertical/Left - Overlapping */}
+            <div className="absolute left-0 top-[50%] -translate-y-1/2 -translate-x-1/2 z-30 pointer-events-none">
+              <span className="text-[#db2777] font-black uppercase tracking-[0.3em] text-xs md:text-sm select-none rotate-90 whitespace-nowrap drop-shadow-[0_0_8px_rgba(219,39,119,0.6)]">
                 {teamA}
-                </span>
+              </span>
             </div>
-
             <div className="grid grid-cols-[auto_repeat(10,1fr)] gap-px border-b border-r border-white/10 h-full w-full bg-transparent rounded-2xl overflow-visible">
             {/* HEADER ROW (COLUMNS) */}
             <div className="contents">
@@ -355,6 +355,11 @@ export default function Grid({
                         {/* SELECTION DOT */}
                         {isExactSelected && (
                           <div className="absolute top-0.5 right-0.5 w-1 h-1 bg-[#22d3ee] rounded-full shadow-[0_0_4px_#22d3ee]" />
+                        )}
+
+                        {/* UNPAID INDICATOR - Red Dot for squares with unpaid status */}
+                        {owners.length > 0 && owners.some(o => !o.paid) && (
+                          <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 bg-red-500 rounded-full shadow-[0_0_6px_rgba(239,68,68,0.8)] border border-red-300 z-30 animate-pulse" />
                         )}
                       </div>
                     );

@@ -3,11 +3,12 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { 
   doc, onSnapshot, updateDoc, deleteDoc, setDoc, 
   collection, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteField,
-  query, where, getDocs 
+  query, where, getDocs, writeBatch
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthContext";
 import { detectSportType, getSportConfig, type SportType, type PeriodKey } from "@/lib/sport-config";
+import { sendPaymentConfirmation } from "@/utils/paymentNotifications";
 
 // Task 3: Storage Cleanup Utility
 export const cleanupActiveGameStorage = (gameId: string) => {
@@ -28,6 +29,7 @@ export type SquareData = {
   photoURL?: string;
   claimedAt?: any;
   paid?: boolean;
+  paidAt?: any; // Timestamp when payment was confirmed
 };
 
 export type PayoutLog = {
@@ -73,6 +75,8 @@ export interface GameData { // Changed 'type' to 'export interface'
   payoutHistory: PayoutLog[]; 
   currentPeriod?: string;
   status: 'open' | 'active' | 'final';
+  paymentLink?: string | null; // Venmo/CashApp URL
+  zellePhone?: string | null; // Zelle phone number
 }
 
 interface GameContextType {
@@ -91,6 +95,7 @@ interface GameContextType {
   resetGrid: () => Promise<void>;
   deleteGame: () => Promise<void>;
   createGame: (data: any) => Promise<string>;
+  togglePaymentStatus: (userId: string, isPaid: boolean) => Promise<void>;
   getUserGames: (userId: string) => Promise<GameData[]>;
   setGamePhase: (period: string) => Promise<void>;
 }
@@ -312,6 +317,56 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
     });
   };
 
+  const togglePaymentStatus = async (targetUserId: string, isPaid: boolean) => {
+    if (!gameId || !game) return;
+    
+    const batch = writeBatch(db);
+    const ref = doc(db, "games", gameId);
+    
+    // Find all squares owned by the target user
+    const updates: Record<string, any> = {};
+    let squareCount = 0;
+    
+    for (let i = 0; i < 100; i++) {
+      const square = game.squares[i];
+      if (!square) continue;
+      
+      // Handle both single and array claims
+      if (Array.isArray(square)) {
+        const updatedSquares = square.map(claim => {
+          if (claim.userId === targetUserId) {
+            squareCount++;
+            return {
+              ...claim,
+              paid: isPaid,
+              paidAt: isPaid ? serverTimestamp() : null
+            };
+          }
+          return claim;
+        });
+        updates[`squares.${i}`] = updatedSquares;
+      } else if (square.userId === targetUserId) {
+        squareCount++;
+        updates[`squares.${i}`] = {
+          ...square,
+          paid: isPaid,
+          paidAt: isPaid ? serverTimestamp() : null
+        };
+      }
+    }
+    
+    // Apply all updates in a single batch
+    batch.update(ref, updates);
+    await batch.commit();
+    console.log(`✅ Payment status updated for user ${targetUserId}: ${isPaid ? 'PAID' : 'UNPAID'}`);
+    
+    // Send notification when payment is confirmed
+    if (isPaid && squareCount > 0) {
+      const totalAmount = squareCount * (game.price || 0);
+      await sendPaymentConfirmation(targetUserId, gameId, totalAmount, game.name);
+    }
+  };
+
 return (
     <GameContext.Provider value={{ 
       game, 
@@ -330,7 +385,8 @@ return (
       deleteGame, 
       getUserGames, 
       setGamePhase,
-      joinGame
+      joinGame,
+      togglePaymentStatus
     }}>
       {children}
     </GameContext.Provider>
