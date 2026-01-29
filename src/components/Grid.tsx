@@ -47,114 +47,47 @@ export default function Grid({
   // 2. Active Focus Logic
   const activeFocus = selectedCell ?? winningCell ?? null;
 
+  // Grid configuration
+  const config = {
+    labelSize: '16px',
+    squareSize: '1fr',
+    gridGap: '2px',
+  };
+
   return (
-    // OUTER CONTAINER - FLEX COLUMN (thin team bars like reference)
-    // Added overflow-visible to prevent clipping of team names
-    <div className="flex flex-col h-full w-full bg-[#0f111a] select-none overflow-visible relative">
-      {/* Team B label - positioned on top border (half in/half out) */}
-      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 -translate-y-1/2 z-50">
-        <span className="text-cyan-400 font-black uppercase tracking-[0.5em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]">
-          {teamB}
-        </span>
+    // CSS Grid Container with explicit rows and columns
+    <div 
+      className="h-full w-full bg-[#0f111a] select-none"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: `${config.labelSize} ${config.squareSize} repeat(10, ${config.squareSize})`,
+        gridTemplateRows: `${config.labelSize} ${config.squareSize} repeat(10, ${config.squareSize})`,
+        gap: config.gridGap,
+      }}
+    >
+      {/* --- 1. HORIZONTAL TEAM NAME (Top) --- */}
+      <div style={{
+        gridColumn: '3 / -1', // Span across all game columns
+        gridRow: '1 / 2',     // Top label row
+      }} className="flex items-center justify-center text-cyan-400 font-bold tracking-[0.12em] text-sm md:text-base uppercase relative z-50 pointer-events-none">
+        {teamB}
       </div>
 
-      {/* Team A label - positioned on left border (half in/half out) */}
-      <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full z-50 flex items-center justify-end pr-1">
-        <span className="text-pink-500 font-black uppercase tracking-[0.5em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(236,72,153,0.6)] -rotate-90 origin-center">
-          {teamA}
-        </span>
+      {/* --- 2. VERTICAL TEAM NAME (Left) --- */}
+      <div style={{
+        gridColumn: '1 / 2',  // Left label column
+        gridRow: '3 / -1',    // Span down all game rows
+        writingMode: 'vertical-rl',
+        transform: 'rotate(180deg)',
+      }} className="flex items-center justify-center text-pink-500 font-bold tracking-[0.12em] text-sm md:text-base uppercase relative z-50 pointer-events-none">
+        {teamA}
       </div>
 
-      {/* === 1. TOP HEADER BAR (TEAM B - CYAN) === */}
-      {!isScrambled && (
-        <div
-          className="relative w-full flex items-center justify-center border-b border-white/5 bg-[#151725] h-8 min-h-[32px] overflow-hidden flex-shrink-0"
-        >
-          {/* Watermark Logo */}
-          {teamBLogo && (
-            <img
-              src={teamBLogo}
-              className="absolute inset-0 w-full h-full object-cover opacity-[0.05] grayscale"
-              alt=""
-            />
-          )}
-          
-          <div
-            className="flex items-center gap-2 relative z-10 px-2 h-full justify-center"
-          >
-            {teamBLogo && (
-              <img
-                src={teamBLogo}
-                className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
-                alt=""
-              />
-            )}
-            <span
-              className="text-cyan-400 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(34,211,238,0.4)] text-lg md:text-2xl truncate max-w-[80%]"
-            >
-              {teamB}
-            </span>
-            {teamBLogo && (
-              <img
-                src={teamBLogo}
-                className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
-                alt=""
-              />
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* MAIN CONTENT */}
-       <div className="flex flex-1 min-h-0 relative">
-        {/* --- 2. LEFT SIDEBAR (TEAM A - PINK) --- */}
-        {isScrambled ? (
-          <div
-            className="relative h-full border-r border-white/5 flex items-center justify-center bg-[#151725] w-8 md:w-10 overflow-hidden"
-          >
-            {/* Watermark Logo */}
-            {teamALogo && (
-              <img
-                src={teamALogo}
-                className="absolute inset-0 w-full h-full object-cover opacity-[0.05] grayscale"
-                alt=""
-              />
-            )}
-
-            <div
-              className="flex flex-col items-center gap-2 relative z-10 py-2 h-full justify-center"
-            >
-              {teamALogo && (
-                <img
-                  src={teamALogo}
-                  className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
-                  alt=""
-                />
-              )}
-              <span
-                className="text-pink-500 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(236,72,153,0.4)] whitespace-nowrap [writing-mode:vertical-rl] rotate-180 text-lg md:text-2xl truncate"
-              >
-                {teamA}
-              </span>
-              {teamALogo && (
-                <img
-                  src={teamALogo}
-                  className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
-                  alt=""
-                />
-              )}
-            </div>
-          </div>
-        ) : null}
-
-        {/* --- 3. THE GRID --- */}
-        <div className={`${isScrambled ? "flex-1" : "w-full"} h-full`}>
-          <div className="relative h-full w-full">
-            <div className="grid grid-cols-11 border-b border-r border-white/5 h-full w-full bg-[#0f111a]">
-            {/* HEADER ROW (COLUMNS) */}
-            <div className="contents">
-              {/* CORNER */}
-              <div className="bg-[#0B0C15] border-r border-b border-white/5 flex items-center justify-center p-1 relative z-20">
+      {/* --- 3. TOP-LEFT CORNER --- */}
+      <div style={{
+        gridColumn: '2 / 3',
+        gridRow: '2 / 3',
+      }} className="bg-[#0B0C15] border border-white/5 flex items-center justify-center p-1 relative z-20">
                 {isScrambled ? (
                   teamALogo && teamBLogo ? (
                     <div className="relative w-full h-full opacity-80">
@@ -184,13 +117,17 @@ export default function Grid({
                 )}
               </div>
 
-              {/* COLUMN NUMBERS */}
+              {/* --- 4. TOP NUMBERS HEADER (Columns) --- */}
               {cols.map((num, i) => {
                 const isColHighlighted = activeFocus?.col === i;
                 return (
                   <div
                     key={`col-${i}`}
-                    className={`relative p-1 h-8 md:h-10 flex items-center justify-center border-b border-r border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isColHighlighted ? "bg-cyan-900/60 shadow-[inset_0_0_20px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.3)] z-40" : ""}`}
+                    style={{
+                      gridColumn: i + 3, // Start at column 3
+                      gridRow: '2 / 3',
+                    }}
+                    className={`relative p-1 flex items-center justify-center border border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isColHighlighted ? "bg-cyan-900/60 shadow-[inset_0_0_20px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.3)] z-40" : ""}`}
                   >
                     {!isScrambled && teamBLogo && (
                       <img
@@ -217,16 +154,18 @@ export default function Grid({
                   </div>
                 );
               })}
-            </div>
 
-            {/* GRID ROWS */}
-            {rows.map((rowNum, rIndex) => {
-              const isRowHighlighted = activeFocus?.row === rIndex;
-              return (
-                <div key={`row-${rIndex}`} className="contents">
-                  {/* ROW NUMBERS */}
+              {/* --- 5. LEFT NUMBERS HEADER (Rows) --- */}
+              {rows.map((num, i) => {
+                const isRowHighlighted = activeFocus?.row === i;
+                return (
                   <div
-                    className={`relative w-8 md:w-10 flex items-center justify-center border-r border-b border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isRowHighlighted ? "bg-pink-900/60 shadow-[inset_0_0_20px_rgba(236,72,153,0.4),0_0_20px_rgba(236,72,153,0.3)] z-40" : ""}`}
+                    key={`row-${i}`}
+                    style={{
+                      gridColumn: '2 / 3',
+                      gridRow: i + 3, // Start at row 3
+                    }}
+                    className={`relative flex items-center justify-center border border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isRowHighlighted ? "bg-pink-900/60 shadow-[inset_0_0_20px_rgba(236,72,153,0.4),0_0_20px_rgba(236,72,153,0.3)] z-40" : ""}`}
                   >
                     {!isScrambled && teamALogo && (
                       <img
@@ -245,46 +184,48 @@ export default function Grid({
                       <span
                         className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isRowHighlighted ? "text-pink-300 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" : "text-pink-700"}`}
                       >
-                        {rowNum}
+                        {num}
                       </span>
                     ) : (
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
                     )}
                   </div>
+                );
+              })}
 
-                  {/* SQUARES (Using your original multi-user logic) */}
-                  {cols.map((_, cIndex) => {
-                    const cellKey = `${rIndex}-${cIndex}`;
-                    const owners = getOwners(rIndex, cIndex);
-                    const isMulti = owners.length > 1;
-                    const cellIndex = rIndex * cols.length + cIndex;
-                    const isPending = pendingIndices.includes(cellIndex);
-                    const isRestoring = restoringIndices.includes(cellIndex); // Task 3: Check if restoring
-                    const isExactSelected =
-                      selectedCell &&
-                      selectedCell.row === rIndex &&
-                      selectedCell.col === cIndex;
-                    const isWinner =
-                      winningCell &&
-                      winningCell.row === rIndex &&
-                      winningCell.col === cIndex;
-                    const isInHighlightedRow =
-                      activeFocus && activeFocus.row === rIndex;
-                    const isInHighlightedCol =
-                      activeFocus && activeFocus.col === cIndex;
-                    const isInCrosshair =
-                      isInHighlightedRow || isInHighlightedCol;
+              {/* --- 6. GAME SQUARES (10x10 Grid) --- */}
+              {rows.map((rowNum, rIndex) => {
+                return cols.map((_, cIndex) => {
+                  const cellKey = `${rIndex}-${cIndex}`;
+                  const owners = getOwners(rIndex, cIndex);
+                  const isMulti = owners.length > 1;
+                  const cellIndex = rIndex * cols.length + cIndex;
+                  const isPending = pendingIndices.includes(cellIndex);
+                  const isRestoring = restoringIndices.includes(cellIndex);
+                  const isExactSelected =
+                    selectedCell &&
+                    selectedCell.row === rIndex &&
+                    selectedCell.col === cIndex;
+                  const isWinner =
+                    winningCell &&
+                    winningCell.row === rIndex &&
+                    winningCell.col === cIndex;
+                  const isInHighlightedRow =
+                    activeFocus && activeFocus.row === rIndex;
+                  const isInHighlightedCol =
+                    activeFocus && activeFocus.col === cIndex;
+                  const isInCrosshair =
+                    isInHighlightedRow || isInHighlightedCol;
 
-                    // --- NEW STYLE LOGIC ---
-                    const firstOwnerIsMe =
-                      owners.length > 0 &&
-                      owners[0].uid === currentUserId;
+                  // --- NEW STYLE LOGIC ---
+                  const firstOwnerIsMe =
+                    owners.length > 0 &&
+                    owners[0].uid === currentUserId;
 
-                    let containerClass =
-                      "relative w-full aspect-square cursor-pointer transition-all duration-300 overflow-hidden rounded-sm border border-white/10";
-                    let textClass =
-                      "text-[8px] md:text-[10px] font-bold whitespace-normal break-words leading-tight text-center px-0.5 z-10 select-none";
-
+                  let containerClass =
+                    "relative w-full h-full cursor-pointer transition-all duration-300 overflow-hidden rounded-sm border border-white/10";
+                  let textClass =
+                    "text-[8px] md:text-[10px] font-bold whitespace-normal break-words leading-tight text-center px-0.5 z-10 select-none";
                     // 1. Winner
                     if (isWinner) {
                       containerClass =
@@ -336,12 +277,16 @@ export default function Grid({
                       }
                     }
 
-                    return (
-                      <div
-                        key={cellKey}
-                        onClick={() => onSquareClick(rIndex, cIndex)}
-                        className={containerClass}
-                      >
+                  return (
+                    <div
+                      key={cellKey}
+                      onClick={() => onSquareClick(rIndex, cIndex)}
+                      style={{
+                        gridColumn: cIndex + 3, // Start at column 3
+                        gridRow: rIndex + 3,     // Start at row 3
+                      }}
+                      className={containerClass}
+                    >
                         {/* Grid Sync: Scan line animation for restoring squares */}
                         {isRestoring && (
                           <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -442,14 +387,8 @@ export default function Grid({
                         )}
                       </div>
                     );
-                  })}
-                </div>
-              );
-            })}
-            </div>
-          </div>
-        </div>
-      </div>
+                });
+              })}
     </div>
   );
 }
