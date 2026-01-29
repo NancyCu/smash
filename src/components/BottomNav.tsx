@@ -180,6 +180,7 @@ export default function BottomNav() {
 
         {/* 3. LIVE (The Big Center FAB - Beacon Mode) */}
         <button 
+        id="tour-live-btn" // <--- ADD THIS ID HERE
             onClick={handleLiveClick} 
             className="relative -top-7 group flex flex-col items-center flex-1 h-full justify-start z-10" 
             aria-label="Live Game"

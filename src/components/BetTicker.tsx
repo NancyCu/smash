@@ -56,7 +56,9 @@ export default function BetTicker({ games = [] }: BetTickerProps) {
   if (sortedGames.length === 0) return null;
 
   return (
-    <div className="w-full flex flex-col gap-2 mb-2 transition-all duration-300 ease-in-out">
+    <div 
+    id="tour-bet-ticker" // <--- ADD THIS ID HERE
+    className="w-full flex flex-col gap-2 mb-2 transition-all duration-300 ease-in-out">
       {/* Header Row: Title + Toggle */}
       <div className="flex items-center justify-between px-1">
         <h3 className="text-[#22d3ee] text-xs font-bold tracking-widest uppercase opacity-80 flex items-center gap-2">
