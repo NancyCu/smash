@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Lock, Trophy } from "lucide-react";
+import { getNeonColor } from "../utils/colorHash";
 
 interface GridProps {
   rows: number[];
@@ -68,7 +69,7 @@ export default function Grid({
                 </span>
             </div>
 
-            <div className="grid grid-cols-[auto_repeat(10,1fr)] border-b border-r border-white/10 h-full w-full bg-transparent rounded-2xl overflow-visible">
+            <div className="grid grid-cols-[auto_repeat(10,1fr)] gap-px border-b border-r border-white/10 h-full w-full bg-transparent rounded-2xl overflow-visible">
             {/* HEADER ROW (COLUMNS) */}
             <div className="contents">
               {/* CORNER */}
@@ -195,11 +196,10 @@ export default function Grid({
 
                     // --- NEW STYLE LOGIC ---
                     const isMe =
-                      currentUserId &&
+                      !!currentUserId &&
                       owners.some((o) => o.uid === currentUserId);
                     const firstOwnerIsMe =
                       owners.length > 0 &&
-                      currentUserId &&
                       owners[0].uid === currentUserId;
 
                     let containerClass =
@@ -225,17 +225,15 @@ export default function Grid({
                       if (isMulti) {
                         // Base for multi, content handled inside
                         containerClass += " bg-white/20 backdrop-blur-sm";
-                      } else if (firstOwnerIsMe) {
-                        // "Owned" Square (Me) - Brighter
-                        containerClass +=
-                          " bg-gradient-to-br from-[#22d3ee]/40 to-[#22d3ee]/20 border-[#22d3ee]/40 shadow-[0_0_15px_rgba(34,211,238,0.2),inset_0_0_5px_rgba(34,211,238,0.3)] ring-1 ring-[#22d3ee]/30 backdrop-blur-sm";
-                        textClass +=
-                          " text-cyan-50 drop-shadow-[0_0_2px_rgba(34,211,238,0.8)]";
                       } else {
-                        // "Opponent" Square - More visible
-                        containerClass +=
-                          " bg-[#db2777]/30 border-[#db2777]/30 backdrop-blur-sm shadow-[inset_0_0_5px_rgba(219,39,119,0.2)]";
-                        textClass += " text-pink-200/90";
+                        // Dynamic Neon Color for Single Owner
+                        const neonClass = getNeonColor(owners[0].name, firstOwnerIsMe);
+                        containerClass += ` ${neonClass} backdrop-blur-sm`;
+                        if (!firstOwnerIsMe) {
+                           textClass += " text-white/90";
+                        } else {
+                           textClass += " text-cyan-50 drop-shadow-[0_0_2px_rgba(34,211,238,0.8)]";
+                        }
                       }
                     }
                     // 4. Pending

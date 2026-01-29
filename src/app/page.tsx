@@ -23,6 +23,13 @@ function HomeContent() {
     }
   }, [initialGameCode]);
 
+  // Auto-redirect after login if context exists (e.g. came from "Sign In to Claim")
+  useEffect(() => {
+    if (user && initialGameCode) {
+      router.push(`/game/${initialGameCode}`);
+    }
+  }, [user, initialGameCode, router]);
+
   // Auth State
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');

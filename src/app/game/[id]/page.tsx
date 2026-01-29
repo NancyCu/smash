@@ -483,7 +483,14 @@ export default function GamePage() {
     setPendingSquares((prev) => [...prev, index]);
   };
 
-  const handleAuth = async () => { if (user) await logOut(); else router.push("/?action=login"); };
+  const handleAuth = async () => { 
+    if (user) {
+      await logOut(); 
+    } else {
+      // Pass the current game ID as a 'redirect' param so the login page knows where to send us back
+      router.push(`/?action=login&redirect=${id}`); 
+    }
+  };
   const handleConfirmCart = async () => {
     if (!user) { await handleAuth(); return; }
     if (pendingSquares.length === 0) return;
