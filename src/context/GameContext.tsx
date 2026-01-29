@@ -348,7 +348,7 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
             return {
               ...claim,
               paid: newPaidStatus,
-              paidAt: newPaidStatus ? serverTimestamp() : null
+              paidAt: newPaidStatus ? new Date().toISOString() : null
             };
           }
           return claim;
