@@ -13,6 +13,7 @@ function PaymentsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [localPaidStatus, setLocalPaidStatus] = useState<Record<string, boolean>>({});
 
   // --- HYDRATION ---
   useEffect(() => {
@@ -53,11 +54,14 @@ function PaymentsPageContent() {
 
           // Helper to standardize the data
           const addToList = (sq: SquareData) => {
+              const key = `${index}-${sq.userId}`;
+              // Use local override if available, otherwise use game data
+              const paid = localPaidStatus[key] !== undefined ? localPaidStatus[key] : !!sq.paid;
               list.push({
                   gridIndex: index,
                   userId: sq.userId,
                   name: sq.displayName,
-                  paid: !!sq.paid, // Ensure boolean
+                  paid: paid, // Use overridden value if available
                   row: Math.floor(index / 10),
                   col: index % 10
               });
@@ -76,16 +80,39 @@ function PaymentsPageContent() {
           if (a.paid === b.paid) return a.name.localeCompare(b.name);
           return a.paid ? 1 : -1;
       });
-  }, [game]);
+  }, [game, localPaidStatus]);
 
   const handleTogglePaid = async (gridIndex: number, userId: string) => {
     const toggleKey = `${gridIndex}-${userId}`;
     setTogglingId(toggleKey);
+    
+    // Immediately update local state for instant visual feedback
+    const currentPaid = localPaidStatus[toggleKey] !== undefined 
+      ? localPaidStatus[toggleKey] 
+      : game?.squares[String(gridIndex)]
+        ? Array.isArray(game.squares[String(gridIndex)])
+          ? (game.squares[String(gridIndex)] as SquareData[]).find(s => s.userId === userId)?.paid ?? false
+          : (game.squares[String(gridIndex)] as SquareData).userId === userId 
+            ? (game.squares[String(gridIndex)] as SquareData).paid ?? false
+            : false
+        : false;
+    
+    setLocalPaidStatus(prev => ({
+      ...prev,
+      [toggleKey]: !currentPaid
+    }));
+    
     try {
       await togglePaid(gridIndex, userId);
     } catch (error) {
       console.error('Error toggling paid status:', error);
       alert('Failed to update payment status. Please try again.');
+      // Revert local state on error
+      setLocalPaidStatus(prev => {
+        const newState = { ...prev };
+        delete newState[toggleKey];
+        return newState;
+      });
     } finally {
       setTogglingId(null);
     }
@@ -148,45 +175,43 @@ function PaymentsPageContent() {
                    </h2>
                </div>
 
-               <div className="overflow-x-auto">
-                   <div className="overflow-y-auto max-h-[600px] p-2 md:p-4 space-y-2">
+               <div className="overflow-y-auto max-h-[600px]">
+                   <div className="p-2 md:p-4 space-y-2">
                        {claims.length === 0 ? (
                            <div className="p-8 text-center text-slate-500 text-sm">No squares claimed yet.</div>
                        ) : (
                            claims.map((c, i) => (
-                               <div key={`${c.gridIndex}-${c.userId}-${i}`} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 md:p-4 rounded-xl bg-black/20 border border-white/5 hover:bg-white/5 transition-colors">
-                                   <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                               <div key={`${c.gridIndex}-${c.userId}-${i}`} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-3 p-3 md:p-4 rounded-xl bg-black/20 border border-white/5 hover:bg-white/5 transition-colors">
+                                   <div className="flex items-center gap-3 min-w-0 flex-1">
                                        <div className={`w-12 h-12 md:w-10 md:h-10 rounded-lg flex items-center justify-center font-black text-xs border flex-shrink-0 ${c.paid ? "bg-green-500/20 border-green-500/30 text-green-400" : "bg-red-500/20 border-red-500/30 text-red-400"}`}>
                                            ${game.price}
                                        </div>
-                                       <div className="min-w-0">
+                                       <div className="min-w-0 flex-1">
                                            <div className="font-bold text-white text-sm md:text-base truncate">{c.name}</div>
                                            <div className="text-xs text-slate-500 font-mono">Row {c.row} • Col {c.col}</div>
-                                           <div className="text-xs text-slate-500 font-mono mt-1 md:hidden">${c.paid ? "PAID" : String(game.price)}</div>
                                        </div>
                                    </div>
 
-                                   <div className="flex items-center gap-2 w-full md:w-auto md:ml-auto justify-between md:justify-end">
-                                       <div className="md:hidden text-right">
-                                           <div className={`inline-block px-2 py-1 rounded text-xs font-bold uppercase ${c.paid ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"}`}>
-                                               {c.paid ? "✓ PAID" : "✗ UNPAID"}
-                                           </div>
+                                   <div className="flex items-center gap-2 justify-between md:justify-end w-full md:w-auto md:flex-shrink-0">
+                                       <div className={`inline-block md:hidden px-2 py-1 rounded text-xs font-bold uppercase flex-1 text-center ${c.paid ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"}`}>
+                                           {c.paid ? "✓ PAID" : "UNPAID"}
                                        </div>
                                        <button 
+                                           type="button"
                                            onClick={() => handleTogglePaid(c.gridIndex, c.userId)}
                                            disabled={togglingId === `${c.gridIndex}-${c.userId}`}
-                                           className={`flex items-center justify-center gap-2 px-3 md:px-4 py-2 md:py-1.5 rounded-lg text-xs md:text-xs font-bold uppercase transition-all disabled:opacity-50 whitespace-nowrap flex-shrink-0 ${
+                                           className={`py-2 px-3 md:px-4 md:py-1.5 rounded-lg text-xs font-bold uppercase font-semibold transition-all whitespace-nowrap flex-shrink-0 flex items-center justify-center gap-1.5 ${
                                                c.paid 
-                                               ? "bg-green-500 text-black hover:bg-green-400 shadow-[0_0_10px_rgba(34,197,94,0.4)]" 
-                                               : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white"
+                                               ? "bg-green-500 text-black hover:bg-green-400 shadow-[0_0_10px_rgba(34,197,94,0.4)] disabled:opacity-50" 
+                                               : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white disabled:opacity-50"
                                            }`}
                                        >
                                            {togglingId === `${c.gridIndex}-${c.userId}` ? (
-                                               <> <Loader2 className="w-3 h-3 animate-spin" /> </> 
+                                               <Loader2 className="w-3 h-3 animate-spin" /> 
                                            ) : c.paid ? (
-                                               <> <Check className="w-3 h-3" /> Paid </>
+                                               <> <Check className="w-4 h-4" /> Paid </>
                                            ) : (
-                                               <> <X className="w-3 h-3" /> Mark Paid </>
+                                               <> <X className="w-4 h-4" /> Mark Paid </>
                                            )}
                                        </button>
                                    </div>

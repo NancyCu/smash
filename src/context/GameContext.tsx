@@ -408,7 +408,7 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
             return {
               ...claim,
               paid: isPaid,
-              paidAt: isPaid ? serverTimestamp() : null
+              paidAt: isPaid ? new Date().toISOString() : null
             };
           }
           return claim;
@@ -419,7 +419,7 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
         updates[`squares.${i}`] = {
           ...square,
           paid: isPaid,
-          paidAt: isPaid ? serverTimestamp() : null
+          paidAt: isPaid ? new Date().toISOString() : null
         };
       }
     }
