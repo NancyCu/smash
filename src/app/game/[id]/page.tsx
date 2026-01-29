@@ -556,7 +556,7 @@ export default function GamePage() {
   const handleUnclaim = async () => { if (selectedCell) await unclaimSquare(selectedCell.row * 10 + selectedCell.col); };
   const handleDelete = async () => { if (confirm("Are you sure you want to delete this game?")) { await deleteGame(); router.push("/"); } };
    
-  // 4. Loading Screen
+  // 4. Loading Screen & Error Handling
   if (!game || !game?.teamA) {
     if (loading) {
       return (
@@ -568,9 +568,28 @@ export default function GamePage() {
         </div>
       );
     }
+    
+    // Clear invalid activeGameId from localStorage
+    if (typeof window !== 'undefined') {
+      const storedId = localStorage.getItem("activeGameId");
+      if (storedId === id) {
+        console.warn(`Clearing invalid activeGameId: ${id}`);
+        localStorage.removeItem("activeGameId");
+      }
+    }
+    
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0B0C15] text-white font-teko text-2xl tracking-widest">
-        GAME NOT FOUND (OR DATA INCOMPLETE)
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#0B0C15] text-white px-4">
+        <div className="text-center">
+          <h1 className="font-teko text-3xl tracking-widest mb-2 text-white/80">GAME NOT FOUND</h1>
+          <p className="text-sm text-white/50 mb-6">This game doesn't exist or data is incomplete.</p>
+        </div>
+        <button 
+          onClick={() => router.push('/')} 
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold text-sm uppercase tracking-wider transition-all"
+        >
+          Return Home
+        </button>
       </div>
     );
   }
