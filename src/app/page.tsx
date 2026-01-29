@@ -3,7 +3,7 @@
 import React, { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { LogIn, LogOut, Plus, ArrowRight, Loader2, Mail, Lock } from 'lucide-react';
+import { Plus, ArrowRight, Loader2, Mail, Lock } from 'lucide-react';
 
 function HomeContent() {
   const router = useRouter();
