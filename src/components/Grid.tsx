@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Lock, Trophy } from "lucide-react";
+import { Lock } from "lucide-react";
 import { getNeonColor } from "../utils/colorHash";
 
 interface GridProps {
