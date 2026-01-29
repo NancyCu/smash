@@ -317,6 +317,54 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
     });
   };
 
+  const togglePaid = async (gridIndex: number, targetUserId?: string) => {
+    if (!gameId || !game || !targetUserId) return;
+    
+    const ref = doc(db, "games", gameId);
+    const square = game.squares[gridIndex];
+    
+    if (!square) return;
+    
+    const updates: Record<string, unknown> = {};
+    let currentPaidStatus = false;
+    
+    // Handle both single and array claims
+    if (Array.isArray(square)) {
+      const updatedSquares = square.map(claim => {
+        if (claim.userId === targetUserId) {
+          // Toggle the paid status
+          const newPaidStatus = !claim.paid;
+          currentPaidStatus = newPaidStatus;
+          return {
+            ...claim,
+            paid: newPaidStatus,
+            paidAt: newPaidStatus ? serverTimestamp() : null
+          };
+        }
+        return claim;
+      });
+      updates[`squares.${gridIndex}`] = updatedSquares;
+    } else if (square.userId === targetUserId) {
+      // Single claim - toggle paid status
+      currentPaidStatus = !square.paid;
+      updates[`squares.${gridIndex}`] = {
+        ...square,
+        paid: currentPaidStatus,
+        paidAt: currentPaidStatus ? serverTimestamp() : null
+      };
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      await updateDoc(ref, updates);
+      console.log(`✅ Payment toggled for square ${gridIndex}, user ${targetUserId}: ${currentPaidStatus ? 'PAID' : 'UNPAID'}`);
+      
+      // Send notification when payment is confirmed
+      if (currentPaidStatus) {
+        await sendPaymentConfirmation(targetUserId, gameId, game.price || 0, game.name);
+      }
+    }
+  };
+
   const togglePaymentStatus = async (targetUserId: string, isPaid: boolean) => {
     if (!gameId || !game) return;
     
@@ -324,7 +372,7 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
     const ref = doc(db, "games", gameId);
     
     // Find all squares owned by the target user
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
     let squareCount = 0;
     
     for (let i = 0; i < 100; i++) {
@@ -376,7 +424,7 @@ return (
       setGameId, 
       claimSquare, 
       unclaimSquare, 
-      togglePaid: async () => {}, 
+      togglePaid,
       createGame, 
       updateScores, 
       updateQuarterScores,
