@@ -195,9 +195,6 @@ export default function Grid({
                       isInHighlightedRow || isInHighlightedCol;
 
                     // --- NEW STYLE LOGIC ---
-                    const isMe =
-                      !!currentUserId &&
-                      owners.some((o) => o.uid === currentUserId);
                     const firstOwnerIsMe =
                       owners.length > 0 &&
                       owners[0].uid === currentUserId;
