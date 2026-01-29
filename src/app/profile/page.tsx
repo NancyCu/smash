@@ -46,6 +46,18 @@ export default function ProfilePage() {
     });
   }, [games]);
 
+  // Calculate total winnings from all games (MOVED UP FOR HOOK RULES)
+  const userId = user?.uid;
+  const totalWinnings = useMemo(() => {
+    if (!userId) return 0;
+    return games.reduce((total, game) => {
+      const userWinnings = (game.payoutHistory || []).reduce((gameTotal: number, payout: any) => {
+        return payout.winnerUserId === userId ? gameTotal + payout.amount : gameTotal;
+      }, 0);
+      return total + userWinnings;
+    }, 0);
+  }, [games, userId]);
+
 const handleEnterGame = async (gameId: string) => {
   if (!user) return;
   
@@ -73,16 +85,6 @@ const handleEnterGame = async (gameId: string) => {
 
   // Calculate owned games vs joined games
   const ownedGames = games.filter(g => g.host === user.uid);
-
-  // Calculate total winnings from all games
-  const totalWinnings = useMemo(() => {
-    return games.reduce((total, game) => {
-      const userWinnings = (game.payoutHistory || []).reduce((gameTotal: number, payout: any) => {
-        return payout.winnerUserId === user.uid ? gameTotal + payout.amount : gameTotal;
-      }, 0);
-      return total + userWinnings;
-    }, 0);
-  }, [games, user.uid]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-24">

@@ -205,14 +205,14 @@ export default function Grid({
                     let containerClass =
                       "relative w-full aspect-square cursor-pointer transition-all duration-300 overflow-hidden rounded-sm border border-white/10";
                     let textClass =
-                      "text-[8px] md:text-[10px] font-bold truncate max-w-[90%] px-0.5 z-10 select-none";
+                      "text-[8px] md:text-[10px] font-bold whitespace-normal break-words leading-tight text-center px-0.5 z-10 select-none";
 
                     // 1. Winner
                     if (isWinner) {
                       containerClass =
                         "relative w-full aspect-square cursor-pointer overflow-hidden rounded-sm bg-[#22d3ee] shadow-[0_0_20px_#22d3ee,inset_0_0_10px_white] border-white ring-2 ring-[#22d3ee]/50 z-50 animate-pulse";
                       textClass =
-                        "text-[8px] md:text-[10px] font-bold truncate max-w-[90%] px-0.5 z-10 text-black";
+                        "text-[8px] md:text-[10px] font-bold whitespace-normal break-words leading-tight text-center px-0.5 z-10 text-black";
                     }
                     // 2. Selected
                     else if (isExactSelected) {
@@ -318,10 +318,10 @@ export default function Grid({
                           )
                         ) : (
                           // SINGLE OWNER / EMPTY LAYOUT
-                          <div className="flex items-center justify-center w-full h-full">
+                          <div className="flex items-center justify-center w-full h-full p-0.5">
                             {owners.length === 1 ? (
                               <span className={textClass}>
-                                {owners[0].name.slice(0, 6)}
+                                {owners[0].name}
                               </span>
                             ) : isPending ? (
                               <span className={textClass}>PICK</span>

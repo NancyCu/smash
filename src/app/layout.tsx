@@ -43,7 +43,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <GameProvider>
-              <div className="h-dvh w-full relative flex flex-col pb-24">
+              <div className="min-h-dvh w-full relative flex flex-col pb-24">
                 {children}
                 <Suspense fallback={null}>
                   <BottomNav />

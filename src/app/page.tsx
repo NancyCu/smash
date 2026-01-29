@@ -79,10 +79,10 @@ function HomeContent() {
           <img 
             src="/image_9.png" 
             alt="Souper Bowl LX Logo" 
-            className="w-full max-w-[320px] mx-auto mb-6 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.3)]"
+            className="w-40 md:w-full md:max-w-[320px] mx-auto mb-2 md:mb-6 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.3)]"
           />
-          <div className="text-center mt-6 mb-8 relative z-10">
-            <h1 className="font-russo text-5xl md:text-7xl tracking-tighter uppercase italic leading-[0.95] overflow-visible pb-1">
+          <div className="text-center mt-2 md:mt-6 mb-4 md:mb-8 relative z-10">
+            <h1 className="font-russo text-4xl md:text-7xl tracking-tighter uppercase italic leading-[0.95] overflow-visible pb-1">
               <span className="text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.9)]">
                 Souper Bowl
               </span>
@@ -91,7 +91,7 @@ function HomeContent() {
                 SQUARES
               </span>
             </h1>
-            <p className="text-[#22d3ee] text-sm md:text-base font-bold mt-3 tracking-[0.2em] uppercase opacity-90">
+            <p className="text-[#22d3ee] text-[10px] md:text-base font-bold mt-2 md:mt-3 tracking-[0.2em] uppercase opacity-90 max-w-[280px] md:max-w-none mx-auto">
               &ldquo;Because with us, a Nguyen is always a Win&rdquo;
             </p>
           </div>
@@ -99,10 +99,10 @@ function HomeContent() {
       </div>
 
       {/* MAIN CARD */}
-      <div className="w-full bg-[#151725] border border-white/10 p-6 rounded-3xl shadow-2xl flex flex-col gap-6">
+      <div className="w-full bg-[#151725] border border-white/10 p-4 md:p-6 rounded-3xl shadow-2xl flex flex-col gap-4 md:gap-6">
          
          {/* JOIN SECTION */}
-         <form onSubmit={handleJoin} className="flex flex-col gap-3">
+         <form onSubmit={handleJoin} className="flex flex-col gap-2 md:gap-3">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Join Existing Game</label>
             <div className="flex gap-2">
               <input 
@@ -167,7 +167,7 @@ function HomeContent() {
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#0B0C15] flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <main className="min-h-screen bg-[#0B0C15] flex flex-col items-center justify-start md:justify-center p-4 pt-10 md:pt-4 relative overflow-x-hidden overflow-y-auto">
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
       <Suspense fallback={<div className="text-white animate-pulse">Loading...</div>}>
