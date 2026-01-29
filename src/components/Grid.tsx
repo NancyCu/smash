@@ -66,136 +66,204 @@ export default function Grid({
       }}
     >
       {/* --- 1. HORIZONTAL TEAM NAME (Top) --- */}
-      <div style={{
-        gridColumn: '3 / -1', // Span across all game columns
-        gridRow: '1 / 2',     // Top label row
-      }} className="flex items-center justify-center text-cyan-400 font-bold tracking-[0.12em] text-sm md:text-base uppercase relative z-50 pointer-events-none">
-        {teamB}
-      </div>
+      {isScrambled && (
+        <div style={{
+          gridColumn: '3 / -1', // Span across all game columns
+          gridRow: '1 / 2',     // Top label row
+        }} className="flex items-center justify-center text-cyan-400 font-bold tracking-[0.12em] text-sm md:text-base uppercase relative z-50 pointer-events-none">
+          {teamB}
+        </div>
+      )}
 
       {/* --- 2. VERTICAL TEAM NAME (Left) --- */}
-      <div style={{
-        gridColumn: '1 / 2',  // Left label column
-        gridRow: '3 / -1',    // Span down all game rows
-        writingMode: 'vertical-rl',
-        transform: 'rotate(180deg)',
-      }} className="flex items-center justify-center text-pink-500 font-bold tracking-[0.12em] text-sm md:text-base uppercase relative z-50 pointer-events-none">
-        {teamA}
-      </div>
+      {isScrambled && (
+        <div style={{
+          gridColumn: '1 / 2',  // Left label column
+          gridRow: '3 / -1',    // Span down all game rows
+          writingMode: 'vertical-rl',
+          transform: 'rotate(180deg)',
+        }} className="flex items-center justify-center text-pink-500 font-bold tracking-[0.12em] text-sm md:text-base uppercase relative z-50 pointer-events-none">
+          {teamA}
+        </div>
+      )}
 
       {/* --- 3. TOP-LEFT CORNER --- */}
       <div style={{
         gridColumn: '2 / 3',
         gridRow: '2 / 3',
       }} className="bg-[#0B0C15] border border-white/5 flex items-center justify-center p-1 relative z-20">
-                {isScrambled ? (
-                  teamALogo && teamBLogo ? (
-                    <div className="relative w-full h-full opacity-80">
-                      <img
-                        src={teamALogo}
-                        className="absolute top-0 left-0 w-[45%] h-[45%] object-contain"
-                        alt=""
-                      />
-                      <img
-                        src={teamBLogo}
-                        className="absolute bottom-0 right-0 w-[45%] h-[45%] object-contain"
-                        alt=""
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[6px] font-bold text-white/30">
-                          VS
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[8px] text-slate-500 font-bold">
-                      VS
-                    </div>
-                  )
-                ) : (
-                  <Lock className="w-4 h-4 text-slate-600" />
-                )}
+        {isScrambled ? (
+          teamALogo && teamBLogo ? (
+            <div className="relative w-full h-full opacity-80">
+              <img
+                src={teamALogo}
+                className="absolute top-0 left-0 w-[45%] h-[45%] object-contain"
+                alt=""
+              />
+              <img
+                src={teamBLogo}
+                className="absolute bottom-0 right-0 w-[45%] h-[45%] object-contain"
+                alt=""
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-[6px] font-bold text-white/30">
+                  VS
+                </span>
               </div>
+            </div>
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[8px] text-slate-500 font-bold">
+              VS
+            </div>
+          )
+        ) : (
+          <Lock className="w-4 h-4 text-slate-600" />
+        )}
+      </div>
 
-              {/* --- 4. TOP NUMBERS HEADER (Columns) --- */}
-              {cols.map((num, i) => {
-                const isColHighlighted = activeFocus?.col === i;
-                return (
-                  <div
-                    key={`col-${i}`}
-                    style={{
-                      gridColumn: i + 3, // Start at column 3
-                      gridRow: '2 / 3',
-                    }}
-                    className={`relative p-1 flex items-center justify-center border border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isColHighlighted ? "bg-cyan-900/60 shadow-[inset_0_0_20px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.3)] z-40" : ""}`}
-                  >
-                    {!isScrambled && teamBLogo && (
-                      <img
-                        src={teamBLogo}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-contain opacity-[0.08] grayscale pointer-events-none"
-                      />
-                    )}
-                    {isColHighlighted && (
-                      <>
-                        <div className="absolute inset-0 border-b-4 border-cyan-400 animate-pulse"></div>
-                        <div className="absolute inset-0 bg-gradient-to-b from-cyan-400/20 to-transparent"></div>
-                      </>
-                    )}
-                    {isScrambled ? (
-                      <span
-                        className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isColHighlighted ? "text-cyan-300 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" : "text-cyan-600"}`}
-                      >
-                        {num}
-                      </span>
-                    ) : (
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
-                    )}
-                  </div>
-                );
-              })}
+      {/* --- 4. TOP NUMBERS HEADER (Columns) --- */}
+      {cols.map((num, i) => {
+        const isColHighlighted = activeFocus?.col === i;
+        return (
+          <div
+            key={`col-${i}`}
+            style={{
+              gridColumn: i + 3, // Start at column 3
+              gridRow: '2 / 3',
+            }}
+            className={`relative p-1 flex items-center justify-center border border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isColHighlighted ? "bg-cyan-900/60 shadow-[inset_0_0_20px_rgba(34,211,238,0.4),0_0_20px_rgba(34,211,238,0.3)] z-40" : ""}`}
+          >
+            {/* Team B Logo Background - Always visible */}
+            {teamBLogo && (
+              <img
+                src={teamBLogo}
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain opacity-20 grayscale pointer-events-none"
+              />
+            )}
+            {isColHighlighted && (
+              <>
+                <div className="absolute inset-0 border-b-4 border-cyan-400 animate-pulse"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-cyan-400/20 to-transparent"></div>
+              </>
+            )}
+            {isScrambled ? (
+              <span
+                className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isColHighlighted ? "text-cyan-300 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" : "text-cyan-600"}`}
+              >
+                {num}
+              </span>
+            ) : (
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+            )}
+          </div>
+        );
+      })}
+      {/* --- 5. LEFT NUMBERS HEADER (Rows) --- */}
+      {rows.map((num, i) => {
+        const isRowHighlighted = activeFocus?.row === i;
+        return (
+          <div
+            key={`row-${i}`}
+            style={{
+              gridColumn: '2 / 3',
+              gridRow: i + 3, // Start at row 3
+            }}
+            className={`relative flex items-center justify-center border border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isRowHighlighted ? "bg-pink-900/60 shadow-[inset_0_0_20px_rgba(236,72,153,0.4),0_0_20px_rgba(236,72,153,0.3)] z-40" : ""}`}
+          >
+            {/* Team A Logo Background - Always visible */}
+            {teamALogo && (
+              <img
+                src={teamALogo}
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain opacity-20 grayscale pointer-events-none"
+              />
+            )}
+            {isRowHighlighted && (
+              <>
+                <div className="absolute inset-0 border-r-4 border-pink-400 animate-pulse"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-pink-400/20 to-transparent"></div>
+              </>
+            )}
+            {isScrambled ? (
+              <span
+                className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isRowHighlighted ? "text-pink-300 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" : "text-pink-700"}`}
+              >
+                {num}
+              </span>
+            ) : (
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+            )}
+          </div>
+        );
+      })}
 
-              {/* --- 5. LEFT NUMBERS HEADER (Rows) --- */}
-              {rows.map((num, i) => {
-                const isRowHighlighted = activeFocus?.row === i;
-                return (
-                  <div
-                    key={`row-${i}`}
-                    style={{
-                      gridColumn: '2 / 3',
-                      gridRow: i + 3, // Start at row 3
-                    }}
-                    className={`relative flex items-center justify-center border border-white/5 bg-[#151725] overflow-hidden transition-all duration-300 ${isRowHighlighted ? "bg-pink-900/60 shadow-[inset_0_0_20px_rgba(236,72,153,0.4),0_0_20px_rgba(236,72,153,0.3)] z-40" : ""}`}
-                  >
-                    {!isScrambled && teamALogo && (
-                      <img
-                        src={teamALogo}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-contain opacity-[0.08] grayscale pointer-events-none"
-                      />
-                    )}
-                    {isRowHighlighted && (
-                      <>
-                        <div className="absolute inset-0 border-r-4 border-pink-400 animate-pulse"></div>
-                        <div className="absolute inset-0 bg-gradient-to-r from-pink-400/20 to-transparent"></div>
-                      </>
-                    )}
-                    {isScrambled ? (
-                      <span
-                        className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isRowHighlighted ? "text-pink-300 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" : "text-pink-700"}`}
-                      >
-                        {num}
-                      </span>
-                    ) : (
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
-                    )}
-                  </div>
-                );
-              })}
+      {/* --- PRE-SCRAMBLE OVERLAYS (Only visible when !isScrambled) --- */}
+      {!isScrambled && (
+        <>
+          {/* Top Row Overlay: Team B Name with Logos */}
+          <div
+            style={{
+              gridColumn: '3 / -1',
+              gridRow: '2 / 3',
+            }}
+            className="flex items-center justify-center gap-3 bg-cyan-900/40 backdrop-blur-sm border-2 border-cyan-500/50 rounded-sm relative z-50 pointer-events-none"
+          >
+            {teamBLogo && (
+              <img
+                src={teamBLogo}
+                alt=""
+                className="w-8 h-8 md:w-12 md:h-12 object-contain drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]"
+              />
+            )}
+            <span className="text-cyan-300 font-bold tracking-[0.15em] text-lg md:text-3xl uppercase drop-shadow-[0_0_12px_rgba(34,211,238,1)]">
+              {teamB}
+            </span>
+            {teamBLogo && (
+              <img
+                src={teamBLogo}
+                alt=""
+                className="w-8 h-8 md:w-12 md:h-12 object-contain drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]"
+              />
+            )}
+          </div>
 
-              {/* --- 6. GAME SQUARES (10x10 Grid) --- */}
-              {rows.map((rowNum, rIndex) => {
-                return cols.map((_, cIndex) => {
+          {/* Left Column Overlay: Team A Name with Logos */}
+          <div
+            style={{
+              gridColumn: '2 / 3',
+              gridRow: '3 / -1',
+              writingMode: 'vertical-rl',
+              transform: 'rotate(180deg)',
+            }}
+            className="flex items-center justify-center gap-3 bg-pink-900/40 backdrop-blur-sm border-2 border-pink-500/50 rounded-sm relative z-50 pointer-events-none"
+          >
+            {teamALogo && (
+              <img
+                src={teamALogo}
+                alt=""
+                className="w-8 h-8 md:w-12 md:h-12 object-contain drop-shadow-[0_0_12px_rgba(236,72,153,0.8)]"
+                style={{ transform: 'rotate(180deg)' }}
+              />
+            )}
+            <span className="text-pink-300 font-bold tracking-[0.15em] text-lg md:text-3xl uppercase drop-shadow-[0_0_12px_rgba(236,72,153,1)]">
+              {teamA}
+            </span>
+            {teamALogo && (
+              <img
+                src={teamALogo}
+                alt=""
+                className="w-8 h-8 md:w-12 md:h-12 object-contain drop-shadow-[0_0_12px_rgba(236,72,153,0.8)]"
+                style={{ transform: 'rotate(180deg)' }}
+              />
+            )}
+          </div>
+        </>
+      )}
+
+      {/* --- 6. GAME SQUARES (10x10 Grid) --- */}
+      {rows.map((rowNum, rIndex) => {
+        return cols.map((_, cIndex) => {
                   const cellKey = `${rIndex}-${cIndex}`;
                   const owners = getOwners(rIndex, cIndex);
                   const isMulti = owners.length > 1;

@@ -253,6 +253,8 @@ export default function GamePage() {
   // --- LOGO HELPER ---
   const getTeamLogo = (teamName: string | undefined) => {
     const safeName = teamName || "Generic";
+    
+    // 1. Try to get logo from matchedGame (for live ESPN games)
     if (matchedGame?.competitors) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const comp = matchedGame.competitors.find(
@@ -263,7 +265,63 @@ export default function GamePage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (comp && (comp as any).team?.logo) return (comp as any).team.logo;
     }
-    // Return empty string instead of broken ESPN URL - let the component handle missing logos gracefully
+    
+    // 2. Try to get logo from stored game data (from when game was created)
+    if (game) {
+      if (teamName === game.teamA && game.teamALogo) return game.teamALogo;
+      if (teamName === game.teamB && game.teamBLogo) return game.teamBLogo;
+    }
+    
+    // 3. Fallback to hardcoded ESPN CDN URLs (most common teams)
+    const teamMappings: Record<string, string> = {
+      // NFL
+      'chiefs': 'https://a.espncdn.com/i/teamlogos/nfl/500/kc.png',
+      'eagles': 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png',
+      'bills': 'https://a.espncdn.com/i/teamlogos/nfl/500/buf.png',
+      '49ers': 'https://a.espncdn.com/i/teamlogos/nfl/500/sf.png',
+      'cowboys': 'https://a.espncdn.com/i/teamlogos/nfl/500/dal.png',
+      'ravens': 'https://a.espncdn.com/i/teamlogos/nfl/500/bal.png',
+      'lions': 'https://a.espncdn.com/i/teamlogos/nfl/500/det.png',
+      'packers': 'https://a.espncdn.com/i/teamlogos/nfl/500/gb.png',
+      // NBA
+      'lakers': 'https://a.espncdn.com/i/teamlogos/nba/500/lal.png',
+      'celtics': 'https://a.espncdn.com/i/teamlogos/nba/500/bos.png',
+      'cavaliers': 'https://a.espncdn.com/i/teamlogos/nba/500/cle.png',
+      'warriors': 'https://a.espncdn.com/i/teamlogos/nba/500/gs.png',
+      'nuggets': 'https://a.espncdn.com/i/teamlogos/nba/500/den.png',
+      'heat': 'https://a.espncdn.com/i/teamlogos/nba/500/mia.png',
+      'knicks': 'https://a.espncdn.com/i/teamlogos/nba/500/ny.png',
+      'bulls': 'https://a.espncdn.com/i/teamlogos/nba/500/chi.png',
+      'mavericks': 'https://a.espncdn.com/i/teamlogos/nba/500/dal.png',
+      'timberwolves': 'https://a.espncdn.com/i/teamlogos/nba/500/min.png',
+      'thunder': 'https://a.espncdn.com/i/teamlogos/nba/500/okc.png',
+      'rockets': 'https://a.espncdn.com/i/teamlogos/nba/500/hou.png',
+      'grizzlies': 'https://a.espncdn.com/i/teamlogos/nba/500/mem.png',
+      'clippers': 'https://a.espncdn.com/i/teamlogos/nba/500/lac.png',
+      'suns': 'https://a.espncdn.com/i/teamlogos/nba/500/phx.png',
+      'spurs': 'https://a.espncdn.com/i/teamlogos/nba/500/sa.png',
+      'nets': 'https://a.espncdn.com/i/teamlogos/nba/500/bkn.png',
+      'raptors': 'https://a.espncdn.com/i/teamlogos/nba/500/tor.png',
+      'jazz': 'https://a.espncdn.com/i/teamlogos/nba/500/utah.png',
+      'kings': 'https://a.espncdn.com/i/teamlogos/nba/500/sac.png',
+      'pelicans': 'https://a.espncdn.com/i/teamlogos/nba/500/no.png',
+      'hawks': 'https://a.espncdn.com/i/teamlogos/nba/500/atl.png',
+      'magic': 'https://a.espncdn.com/i/teamlogos/nba/500/orl.png',
+      'pacers': 'https://a.espncdn.com/i/teamlogos/nba/500/ind.png',
+      'bucks': 'https://a.espncdn.com/i/teamlogos/nba/500/mil.png',
+      'pistons': 'https://a.espncdn.com/i/teamlogos/nba/500/det.png',
+      'hornets': 'https://a.espncdn.com/i/teamlogos/nba/500/cha.png',
+      'wizards': 'https://a.espncdn.com/i/teamlogos/nba/500/wsh.png',
+      '76ers': 'https://a.espncdn.com/i/teamlogos/nba/500/phi.png',
+      'trail blazers': 'https://a.espncdn.com/i/teamlogos/nba/500/por.png',
+      'blazers': 'https://a.espncdn.com/i/teamlogos/nba/500/por.png',
+    };
+    
+    const normalized = safeName.toLowerCase().trim();
+    for (const [key, url] of Object.entries(teamMappings)) {
+      if (normalized.includes(key)) return url;
+    }
+    
     return "";
   };
 
