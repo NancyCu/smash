@@ -138,7 +138,7 @@ export default function Grid({
               <img
                 src={teamBLogo}
                 alt=""
-                className="absolute inset-0 w-full h-full object-contain opacity-20 grayscale pointer-events-none"
+                className="absolute inset-0 w-full h-full object-contain opacity-5 grayscale pointer-events-none"
               />
             )}
             {isColHighlighted && (
@@ -149,7 +149,7 @@ export default function Grid({
             )}
             {isScrambled ? (
               <span
-                className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isColHighlighted ? "text-cyan-300 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" : "text-cyan-600"}`}
+                className={`font-mono font-bold text-2xl md:text-4xl transition-all relative z-10 ${isColHighlighted ? "text-cyan-300 scale-125 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" : "text-cyan-600"}`}
               >
                 {num}
               </span>
@@ -176,7 +176,7 @@ export default function Grid({
               <img
                 src={teamALogo}
                 alt=""
-                className="absolute inset-0 w-full h-full object-contain opacity-20 grayscale pointer-events-none"
+                className="absolute inset-0 w-full h-full object-contain opacity-5 grayscale pointer-events-none"
               />
             )}
             {isRowHighlighted && (
@@ -187,7 +187,7 @@ export default function Grid({
             )}
             {isScrambled ? (
               <span
-                className={`font-mono font-bold text-sm md:text-lg transition-all relative z-10 ${isRowHighlighted ? "text-pink-300 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" : "text-pink-700"}`}
+                className={`font-mono font-bold text-2xl md:text-4xl transition-all relative z-10 ${isRowHighlighted ? "text-pink-300 scale-125 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" : "text-pink-700"}`}
               >
                 {num}
               </span>
