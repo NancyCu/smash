@@ -439,7 +439,7 @@ export default function GamePage() {
   // --- GRID DATA ---
   const formattedSquares = useMemo(() => {
     if (!game?.squares) return {};
-    const result: Record<string, { uid: string; name: string; claimedAt: number }[]> = {};
+    const result: Record<string, { uid: string; name: string; claimedAt: number; paid?: boolean }[]> = {};
     Object.entries(game.squares).forEach(([key, value]) => {
       const index = parseInt(key);
       if (isNaN(index)) return;
@@ -448,7 +448,7 @@ export default function GamePage() {
       const users = Array.isArray(value) ? value : [value];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       users.forEach((sq: any) => {
-        if (sq) result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0 });
+        if (sq) result[gridKey].push({ uid: sq.userId, name: sq.displayName, claimedAt: 0, paid: sq.paid });
       });
     });
     return result;
