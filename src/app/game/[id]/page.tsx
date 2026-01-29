@@ -10,9 +10,9 @@ import GameInfo from "@/components/GameInfo";
 import GameBar from "@/components/GameBar";
 import LiveGameClock from "@/components/LiveGameClock";
 import PaymentModal from "@/components/PaymentModal";
+import ClaimModal from "@/components/ClaimModal";
 import Onboarding from "@/components/Onboarding"; // <--- ADDED IMPORT
 import {
-  ShoppingCart,
   LogIn,
   LogOut,
   Loader2,
@@ -24,7 +24,7 @@ import { useEspnScores } from "@/hooks/useEspnScores";
 import { getSportConfig, getDisplayPeriods, getPeriodLabel, type PeriodKey, type SportType } from "@/lib/sport-config";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { savePendingSelections, loadPendingSelections, clearPendingSelections, findConflicts } from "@/utils/selectionSuitcase";
+
 
 export default function GamePage() {
   const router = useRouter();
@@ -93,11 +93,11 @@ export default function GamePage() {
   const [activePeriod, setActivePeriod] = useState<PeriodKey>('p1');
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [isManualView, setIsManualView] = useState(false);
-  const [pendingSquares, setPendingSquares] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [restorationToast, setRestorationToast] = useState<{ show: boolean; message: string; type: 'success' | 'warning' | 'error' }>({ show: false, message: '', type: 'success' });
   const [restoringSquares, setRestoringSquares] = useState<number[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showClaimModal, setShowClaimModal] = useState(false);
 
   // Get sport configuration
   const sportType: SportType = game?.sport || 'default';
@@ -125,58 +125,7 @@ export default function GamePage() {
       return (game?.currentPeriod as PeriodKey) || 'p1';
   }, [matchedGame, game, sportType]);
 
-  // --- 2a. TASK 2: RECOVERY LOGIC ---
-  useEffect(() => {
-    if (!user || !game || !id || loading) return;
-    
-    const gameId = id as string;
-    const savedSelections = loadPendingSelections(gameId);
-    
-    if (savedSelections && savedSelections.length > 0) {
-      const { available, conflicts } = findConflicts(savedSelections, game.squares);
-      
-      if (available.length > 0) {
-        available.forEach((squareIndex, i) => {
-          setTimeout(() => {
-            setRestoringSquares(prev => [...prev, squareIndex]);
-            setTimeout(() => {
-              setPendingSquares(prev => [...prev, squareIndex]);
-            }, 100);
-          }, i * 80);
-        });
-        setTimeout(() => {
-          setRestoringSquares([]);
-        }, available.length * 80 + 1200);
-      }
-      
-      if (conflicts.length > 0) {
-        if (available.length > 0) {
-          setRestorationToast({
-            show: true,
-            message: `⚠️ ${conflicts.length} squares taken! ${available.length} restored.`,
-            type: 'warning'
-          });
-        } else {
-          setRestorationToast({
-            show: true,
-            message: `❌ All ${conflicts.length} squares were claimed while you were signing in!`,
-            type: 'error'
-          });
-        }
-      } else {
-        setRestorationToast({
-          show: true,
-          message: `✅ Restored ${available.length} squares - ready to claim!`,
-          type: 'success'
-        });
-      }
-      
-      clearPendingSelections(gameId);
-      setTimeout(() => {
-        setRestorationToast({ show: false, message: '', type: 'success' });
-      }, 5000);
-    }
-  }, [user, game, id, loading]);
+
 
   // --- 2. SNAP BACK TIMER ---
   useEffect(() => {
@@ -512,15 +461,17 @@ export default function GamePage() {
     const index = row * 10 + col;
     setSelectedCell({ row, col });
     setIsManualView(true);
-    if (game?.isScrambled && !isAdmin) return;
-    if (pendingSquares.includes(index)) {
-      setPendingSquares((prev) => prev.filter((i) => i !== index));
+    
+    // Prevent claiming if game is locked (scrambled) and user is not admin
+    if (game?.isScrambled && !isAdmin) {
+      alert("Game is locked! No new claims allowed.");
       return;
     }
 
     const rawData = game?.squares?.[index];
     const usersInSquare = Array.isArray(rawData) ? rawData : rawData ? [rawData] : [];
     
+    // Check if user already owns this square
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const alreadyInSquare = user && usersInSquare.some((u: any) => (u.uid && u.uid === user.uid) || (u.userId && u.userId === user.uid));
     if (alreadyInSquare) {
@@ -528,8 +479,21 @@ export default function GamePage() {
       return;
     }
 
+    // Check if square is already taken by someone else
+    if (usersInSquare.length > 0) {
+      alert("This square is already taken!");
+      return;
+    }
+
+    // If user is not signed in, redirect to login
+    if (!user) {
+      router.push(`/?action=login&redirect=${id}`);
+      return;
+    }
+
+    // Check 10-square limit
     let ownedCount = 0;
-    if (user && game?.squares) {
+    if (game?.squares) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Object.values(game.squares).forEach((sqValue: any) => {
         const sqUsers = Array.isArray(sqValue) ? sqValue : [sqValue];
@@ -540,40 +504,40 @@ export default function GamePage() {
       });
     }
 
-    if (ownedCount + pendingSquares.length >= 10) {
+    if (ownedCount >= 10) {
       alert("Limit reached: You can only choose up to 10 squares.");
       return;
     }
-    setPendingSquares((prev) => [...prev, index]);
+    
+    // Open the claim modal for valid empty square
+    setShowClaimModal(true);
   };
 
   const handleAuth = async () => { 
     if (user) {
       await logOut(); 
     } else {
-      if (pendingSquares.length > 0 && id) {
-        savePendingSelections(id as string, pendingSquares);
-      }
       router.push(`/?action=login&redirect=${id}`); 
     }
   };
-  const handleConfirmCart = async () => {
-    if (!user) { await handleAuth(); return; }
-    if (pendingSquares.length === 0) return;
+  
+  const handleClaimConfirm = async (displayName: string, markPaid: boolean) => {
+    if (!selectedCell || !game || !user) return;
+    
     setIsSubmitting(true);
     try {
-      for (const index of pendingSquares) await claimSquare(index);
-      setPendingSquares([]); setSelectedCell(null);
-    } catch (err) { alert("Error claiming squares"); } finally { setIsSubmitting(false); }
+      const index = selectedCell.row * 10 + selectedCell.col;
+      await claimSquare(index, displayName, markPaid);
+      setShowClaimModal(false);
+      setSelectedCell(null);
+    } catch (err) {
+      alert("Failed to claim square. Please try again.");
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-  const handleClearCart = () => setPendingSquares([]);
-  const handleClaim = async () => {
-    if (!selectedCell || !game) return;
-    if (!user) { await handleAuth(); return; }
-    if (game.isScrambled && !isAdmin) { alert("Game is locked!"); return; }
-    setIsSubmitting(true);
-    try { await claimSquare(selectedCell.row * 10 + selectedCell.col); } catch (err) { alert("Failed to claim."); } finally { setIsSubmitting(false); }
-  };
+  
   const handleUnclaim = async () => { if (selectedCell) await unclaimSquare(selectedCell.row * 10 + selectedCell.col); };
   const handleDelete = async () => { if (confirm("Are you sure you want to delete this game?")) { await deleteGame(); router.push("/"); } };
    
@@ -615,7 +579,6 @@ export default function GamePage() {
     );
   }
 
-  const cartTotal = pendingSquares.length * game.price;
 
   return (
     <main className="flex flex-col lg:flex-row h-dvh w-full overflow-hidden bg-[#0B0C15]">
@@ -760,55 +723,19 @@ export default function GamePage() {
           {/* GRID */}
           <div className="w-full shrink-0 aspect-square max-w-[500px] lg:max-w-[calc(100vh-260px)] lg:mx-auto z-10 flex flex-col justify-center my-1 lg:my-2">
             <div className="w-full h-full bg-[#0B0C15]/60 backdrop-blur-md rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.05)] border border-white/10 overflow-hidden ring-1 ring-white/5">
-              <Grid rows={currentAxis.col} cols={currentAxis.row} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamB || "Away"} teamB={game.teamA || "Home"} teamALogo={getTeamLogo(game.teamB)} teamBLogo={getTeamLogo(game.teamA)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} restoringIndices={restoringSquares} currentUserId={user?.uid} />
+              <Grid rows={currentAxis.col} cols={currentAxis.row} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamB || "Away"} teamB={game.teamA || "Home"} teamALogo={getTeamLogo(game.teamB)} teamBLogo={getTeamLogo(game.teamA)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={[]} restoringIndices={restoringSquares} currentUserId={user?.uid} />
             </div>
           </div>
 
-          {/* CART / DETAILS BOX */}
-          {pendingSquares.length > 0 ? (
-            <div className="w-full bg-[#0B0C15]/60 backdrop-blur-xl border border-indigo-400/30 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/40"><ShoppingCart className="w-5 h-5 text-white" /></div>
-                  <div className="flex flex-col"><span className="text-xs text-indigo-100 font-bold uppercase tracking-widest">Selected Squares</span><span className="text-xl font-black text-white">{pendingSquares.length} <span className="text-sm font-medium text-white/70">Total: ${cartTotal}</span></span></div>
-                </div>
-                <button onClick={handleClearCart} className="text-xs text-white/70 hover:text-white underline shadow-sm">Clear</button>
-              </div>
-              <button 
-                onClick={handleConfirmCart} 
-                disabled={isSubmitting} 
-                className={`relative w-full py-4 rounded-2xl font-black text-sm uppercase tracking-tighter transition-all overflow-hidden group
-                  ${!user && !isSubmitting 
-                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.5)]" 
-                    : "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/30 hover:scale-[1.02]"
-                  } disabled:opacity-50`}
-              >
-                {!user && !isSubmitting && (
-                  <span className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none" />
-                )}
-
-                <div className="relative z-10 flex items-center justify-center gap-2">
-                  {isSubmitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : user ? (
-                    <>Confirm & Claim (${cartTotal})</>
-                  ) : (
-                    <>
-                      SIGN IN TO CLAIM
-                      <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                    </>
-                  )}
-                </div>
-              </button>
-            </div>
-          ) : (
+          {/* DETAILS BOX */}
+          {
             // --- DETAILS PANEL ---
             (() => {
                 const targetCell = selectedCell || winningCoordinates;
                 const isWinnerView = !selectedCell && winningCoordinates; 
                 const isTargetWinning = winningCoordinates && targetCell && winningCoordinates.row === targetCell.row && winningCoordinates.col === targetCell.col;
-                return (
-                    <div className={`w-full bg-[#0B0C15]/60 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
+              return (
+                  <div className={`w-full bg-[#0B0C15]/60 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
                       <div className="flex items-start justify-between">
                         <div className="flex flex-col flex-1">
                           {/* OWNERS AT TOP - THE HERO */}
@@ -852,10 +779,10 @@ export default function GamePage() {
                          ) : null;
                       })()}
                       {!targetCell && <div className="text-center py-4 text-white/50 text-xs font-medium">Tap empty squares to build your cart.</div>}
-                    </div>
-                )
-            })()
-          )}
+                  </div>
+              );
+          })()
+          }
 
           <div className="lg:hidden w-full pb-20">
             {/* MOBILE GAME INFO */}
@@ -933,6 +860,24 @@ export default function GamePage() {
           sportType={sportType}
         />
       </div>
+
+      {/* Claim Modal */}
+      {selectedCell && (
+        <ClaimModal
+          isOpen={showClaimModal}
+          onClose={() => {
+            setShowClaimModal(false);
+            setSelectedCell(null);
+          }}
+          onConfirm={handleClaimConfirm}
+          row={selectedCell.row}
+          col={selectedCell.col}
+          price={game?.price || 10}
+          defaultName={user?.displayName || ""}
+          isAdmin={isAdmin}
+          isSubmitting={isSubmitting}
+        />
+      )}
 
       {/* Payment Modal */}
       {game && (() => {

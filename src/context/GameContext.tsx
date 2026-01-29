@@ -85,7 +85,7 @@ interface GameContextType {
   error: string | null;
   isAdmin: boolean;
   setGameId: (id: string) => void;
-  claimSquare: (index: number) => Promise<void>;
+  claimSquare: (index: number, displayName?: string, markPaid?: boolean) => Promise<void>;
   joinGame: (gameId: string, password?: string, userId?: string) => Promise<void>;
   unclaimSquare: (index: number) => Promise<void>;
   togglePaid: (index: number, targetUserId?: string) => Promise<void>;
@@ -134,14 +134,14 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsub();
   }, [gameId]);
 
-  const claimSquare = async (index: number) => {
+  const claimSquare = async (index: number, displayName?: string, markPaid?: boolean) => {
     if (!gameId || !user) return;
     const ref = doc(db, "games", gameId);
     const newClaim: SquareData = {
       userId: user.uid,
-      displayName: user.displayName || "Player",
+      displayName: displayName || user.displayName || "Player",
       claimedAt: new Date().toISOString(),
-      paid: false
+      paid: markPaid || false
     };
 
     const updates: any = {
