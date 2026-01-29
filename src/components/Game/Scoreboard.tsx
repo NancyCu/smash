@@ -19,9 +19,9 @@ const QStat = ({ label, h, a }: { label: string; h: number; a: number }) => (
       {label}
     </span>
     <div className="text-xs font-bold text-white font-mono leading-none drop-shadow-md">
-      <span className="text-cyan-200">{a}</span>
-      <span className="mx-0.5 text-white/40">:</span>
       <span className="text-pink-200">{h}</span>
+      <span className="mx-0.5 text-white/40">:</span>
+      <span className="text-cyan-200">{a}</span>
     </div>
   </div>
 );
@@ -38,21 +38,21 @@ export default function Scoreboard({ scores, teamA, teamB }: ScoreboardProps) {
          {/* Glow effects */}
          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400/50 via-white/50 to-pink-400/50"></div>
          
-         {/* Team Names */}
-         <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-black text-white/80 shadow-[0_1px_2px_rgba(0,0,0,0.3)]">
-            <span className="text-cyan-100 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">{teamB}</span>
-            <span className="text-white/40 font-thin">VS</span>
-            <span className="text-pink-100 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]">{teamA}</span>
-         </div>
+        {/* Team Names */}
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-black text-white/80 shadow-[0_1px_2px_rgba(0,0,0,0.3)]">
+          <span className="text-pink-100 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]">{teamA}</span>
+          <span className="text-white/40 font-thin">VS</span>
+          <span className="text-cyan-100 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">{teamB}</span>
+        </div>
 
          {/* BIG SCORES */}
         <div className="flex items-center gap-5 mt-0">
-          <span className="text-3xl font-black text-cyan-200 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] leading-none stroke-cyan-500">
-              {currentAway}
-            </span>
-            <div className="h-8 w-px bg-white/20 rotate-12"></div>
           <span className="text-3xl font-black text-pink-200 drop-shadow-[0_0_15px_rgba(236,72,153,0.8)] leading-none">
               {currentHome}
+            </span>
+            <div className="h-8 w-px bg-white/20 rotate-12"></div>
+          <span className="text-3xl font-black text-cyan-200 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] leading-none stroke-cyan-500">
+              {currentAway}
             </span>
          </div>
       </div>
