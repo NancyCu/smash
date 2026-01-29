@@ -43,6 +43,12 @@ export interface GameData { // Changed 'type' to 'export interface'
   totalPot?: number; // Added this optional field to fix the $0 pot bug
   squares: Record<string, SquareData | SquareData[]>;
   scores: { teamA: number; teamB: number };
+  quarterScores?: {
+    p1?: { teamA: number; teamB: number };
+    p2?: { teamA: number; teamB: number };
+    p3?: { teamA: number; teamB: number };
+    final?: { teamA: number; teamB: number };
+  };
   isScrambled: boolean;
   payouts: any;
   createdAt: any;

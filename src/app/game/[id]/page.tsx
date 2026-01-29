@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 import { getSportConfig, getDisplayPeriods, getPeriodLabel, type PeriodKey, type SportType } from "@/lib/sport-config";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function GamePage() {
   const router = useRouter();
@@ -264,7 +266,7 @@ export default function GamePage() {
 
   // --- AUTO-SYNC ENGINE ---
   useEffect(() => {
-    if (!game || !currentScores) return;
+    if (!game || !currentScores || !id) return;
     const liveHome = currentScores.teamA;
     const liveAway = currentScores.teamB;
     const storedHome = game.scores?.teamA || 0;
@@ -273,10 +275,24 @@ export default function GamePage() {
     if (liveHome !== storedHome || liveAway !== storedAway) {
        if (game.espnGameId && matchedGame) {
           console.log(`🔄 Syncing ESPN Scores (${liveHome}-${liveAway}) to Database...`);
-          updateScores(liveHome, liveAway);
+          
+          // Also sync quarter-by-quarter scores
+          const quarterScores = {
+            p1: { teamA: currentScores.p1.home, teamB: currentScores.p1.away },
+            p2: { teamA: currentScores.p2.home, teamB: currentScores.p2.away },
+            p3: { teamA: currentScores.p3.home, teamB: currentScores.p3.away },
+            final: { teamA: currentScores.final.home, teamB: currentScores.final.away }
+          };
+          
+          // Update both final scores and quarter scores
+          updateScores(liveHome, liveAway).then(() => {
+            if (id) {
+              updateDoc(doc(db, "games", id as string), { quarterScores });
+            }
+          });
        }
     }
-  }, [currentScores, game?.scores, matchedGame, updateScores, game?.espnGameId]);
+  }, [currentScores, game?.scores, matchedGame, updateScores, game?.espnGameId, id]);
 
   // --- WINNING CELL (SPORT-AWARE) ---
   const winningCoordinates = useMemo(() => {

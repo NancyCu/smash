@@ -337,9 +337,63 @@ function HallOfFame() {
         </div>
       ) : (
         <div className="space-y-0">
-          {games.map((game) => (
-            <GameHistoryCard key={game.id} game={game} />
-          ))}
+          {games.map((game) => {
+            // Calculate quarter results with actual scores from game data
+            const totalPot = game.totalPot || game.pot || (Object.keys(game.squares || {}).length * game.price);
+            const basePayouts = {
+              q1: totalPot * 0.1,
+              q2: totalPot * 0.2,
+              q3: totalPot * 0.2,
+              final: totalPot * 0.5
+            };
+
+            // Use stored quarter scores if available, otherwise fall back to 0
+            const q1Scores = game.quarterScores?.p1 || { teamA: 0, teamB: 0 };
+            const q2Scores = game.quarterScores?.p2 || { teamA: 0, teamB: 0 };
+            const q3Scores = game.quarterScores?.p3 || { teamA: 0, teamB: 0 };
+            const finalScores = game.quarterScores?.final || game.scores || { teamA: 0, teamB: 0 };
+
+            const quarterResults = [
+              { 
+                key: "q1", 
+                label: "Q1", 
+                scoreA: q1Scores.teamA, 
+                scoreB: q1Scores.teamB, 
+                winners: null, 
+                payout: basePayouts.q1, 
+                isRollover: false 
+              },
+              { 
+                key: "q2", 
+                label: "HALF", 
+                scoreA: q2Scores.teamA, 
+                scoreB: q2Scores.teamB, 
+                winners: null, 
+                payout: basePayouts.q2, 
+                isRollover: false 
+              },
+              { 
+                key: "q3", 
+                label: "Q3", 
+                scoreA: q3Scores.teamA, 
+                scoreB: q3Scores.teamB, 
+                winners: null, 
+                payout: basePayouts.q3, 
+                isRollover: false 
+              },
+              { 
+                key: "final", 
+                label: "FINAL", 
+                scoreA: finalScores.teamA, 
+                scoreB: finalScores.teamB, 
+                winners: null, 
+                payout: basePayouts.final, 
+                isRollover: false 
+              },
+            ];
+
+            return <GameHistoryCard key={game.id} game={game} quarterResults={quarterResults} />;
+          })}
         </div>
       )}
     </div>
