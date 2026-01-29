@@ -14,6 +14,8 @@ interface QuarterResult {
   winners: SquareData[] | null;
   payout: number;
   isRollover: boolean;
+  baseAmount?: number;
+  rolloverAmount?: number;
 }
 
 interface GameHistoryCardProps {
@@ -171,20 +173,33 @@ export default function GameHistoryCard({ game, quarterResults }: GameHistoryCar
 
           {/* Quarterly Breakdown Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-          {quarters.map((q) => (
+          {quarters.map((q, qIndex) => {
+            const hasRollover = q.rolloverAmount && q.rolloverAmount > 0;
+            const isRecipient = q.winners && q.winners.length > 0 && hasRollover;
+            
+            return (
             <div
               key={q.key}
-              className={`bg-white/5 rounded-lg p-3 flex flex-col items-center justify-center transition-colors ${
+              className={`bg-white/5 rounded-lg p-3 flex flex-col items-center justify-center transition-colors relative ${
                 q.key === "final" 
                   ? "border-2 border-yellow-500/40 bg-yellow-500/10 shadow-[0_0_15px_rgba(234,179,8,0.4)]" 
                   : q.isRollover 
-                    ? "border border-amber-500/20" 
+                    ? "border border-amber-500/20 bg-amber-500/5" 
                     : "border border-white/5"
               }`}
             >
+              {/* Connector Arrow - Shows flow to next quarter */}
+              {q.isRollover && qIndex < quarters.length - 1 && (
+                <div className="absolute -right-[14px] top-1/2 -translate-y-1/2 z-10">
+                  <div className="w-3 h-3 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]">
+                    →
+                  </div>
+                </div>
+              )}
+              
               {/* Period Label */}
               <span className={`text-[10px] uppercase tracking-widest mb-1 font-bold ${
-                q.key === "final" ? "text-yellow-400" : "text-white/40"
+                q.key === "final" ? "text-yellow-400" : q.isRollover ? "text-amber-500/60" : "text-white/40"
               }`}>
                 {q.label}
               </span>
@@ -194,21 +209,31 @@ export default function GameHistoryCard({ game, quarterResults }: GameHistoryCar
                 {q.scoreA} - {q.scoreB}
               </span>
               
-              {/* Winner or Rollover */}
-              {q.winners && q.winners.length > 0 ? (
-                <div className="flex items-center gap-1">
-                  <Trophy className="w-3 h-3 text-yellow-400" />
-                  <span className="text-[#22d3ee] font-bold text-xs drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] truncate max-w-[80px]">
-                    {q.winners[0]?.displayName || "Winner"}
-                  </span>
-                </div>
-              ) : q.isRollover ? (
+              {/* Winner, Rollover, or Recipient */}
+              {q.isRollover ? (
                 <div className="flex flex-col items-center">
                   <span className="text-amber-500 font-bold text-[10px] animate-pulse uppercase">
                     Rollover
                   </span>
                   <span className="text-amber-400/70 text-[9px] font-mono">
                     +${q.payout.toFixed(0)}
+                  </span>
+                </div>
+              ) : isRecipient ? (
+                <div className="flex flex-col items-center w-full">
+                  <Trophy className="w-3 h-3 text-yellow-400 mb-1" />
+                  <span className="text-[#22d3ee] font-bold text-xs truncate max-w-[80px] mb-1">
+                    {q.winners?.[0]?.displayName || "Winner"}
+                  </span>
+                  <div className="text-[8px] text-green-400 font-bold">
+                    +${q.rolloverAmount} BONUS
+                  </div>
+                </div>
+              ) : q.winners && q.winners.length > 0 ? (
+                <div className="flex items-center gap-1">
+                  <Trophy className="w-3 h-3 text-yellow-400" />
+                  <span className="text-[#22d3ee] font-bold text-xs drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] truncate max-w-[80px]">
+                    {q.winners[0]?.displayName || "Winner"}
                   </span>
                 </div>
               ) : (
@@ -218,7 +243,8 @@ export default function GameHistoryCard({ game, quarterResults }: GameHistoryCar
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
 
           {/* Footer with View Arrow */}

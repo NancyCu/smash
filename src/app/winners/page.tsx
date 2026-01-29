@@ -124,7 +124,9 @@ function SingleGameWinners({ gameId }: { gameId: string }) {
     stages.forEach((stage) => {
       const result = getWinnerForQuarter(stage.key as any);
       const hasWinner = result && result.winners !== null;
-      let displayAmount = basePayouts[stage.key as keyof typeof basePayouts] + currentRollover;
+      const baseAmount = basePayouts[stage.key as keyof typeof basePayouts];
+      const rolloverAmount = currentRollover;
+      let displayAmount = baseAmount + currentRollover;
       let rolloverActive = false;
 
       if (stage.done && !hasWinner) {
@@ -136,6 +138,7 @@ function SingleGameWinners({ gameId }: { gameId: string }) {
         rowDigit: result?.rowDigit ?? null, colDigit: result?.colDigit ?? null,
         winners: result?.winners ?? null, key: stage.key, label: stage.label,
         finalPayout: displayAmount, isRollover: rolloverActive, hasWinner: hasWinner, isFinished: stage.done,
+        baseAmount: baseAmount, rolloverAmount: rolloverAmount,
       });
     });
     return results;
@@ -162,24 +165,40 @@ function SingleGameWinners({ gameId }: { gameId: string }) {
           const isRollover = res.isRollover;
 
           return (
-            <div key={res.key} className={`relative overflow-hidden rounded-2xl transition-all ${isFinal ? "border-2 border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-black shadow-[0_0_15px_rgba(234,179,8,0.4)]" : isRollover ? "border border-red-900/30 bg-[#1a1212]" : "border border-white/10 bg-[#151725]"} p-6 shadow-xl`}>
+            <div key={res.key} className={`relative overflow-hidden rounded-2xl transition-all ${isFinal ? "border-2 border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-black shadow-[0_0_15px_rgba(234,179,8,0.4)]" : isRollover ? "border border-amber-500/30 bg-amber-500/5" : "border border-white/10 bg-[#151725]"} p-6 shadow-xl`}>
               {isFinal && <div className="absolute -right-4 -top-4 w-24 h-24 bg-yellow-500/20 blur-xl rounded-full" />}
               <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
                 <div className="flex flex-col items-center md:items-start min-w-[150px]">
-                  <span className={`text-xs font-bold uppercase tracking-widest mb-1 ${isFinal ? "text-yellow-400" : isRollover ? "text-red-400" : "text-slate-500"}`}>{res.label}</span>
+                  <span className={`text-xs font-bold uppercase tracking-widest mb-1 ${isFinal ? "text-yellow-400" : isRollover ? "text-amber-500/60" : "text-slate-500"}`}>{res.label}</span>
                   <div className="flex items-center gap-3 text-2xl font-black text-white">
                     <span>{res.scoreA || 0}</span><span className="text-slate-600 text-sm">-</span><span>{res.scoreB || 0}</span>
                   </div>
                   <div className="text-[10px] text-slate-500 font-mono mt-1">Digits: {res.rowDigit} - {res.colDigit}</div>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className={`p-3 rounded-full mb-2 ${isFinal ? "bg-yellow-500 text-black shadow-lg" : isRollover ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"}`}>
+                  <div className={`p-3 rounded-full mb-2 ${isFinal ? "bg-yellow-500 text-black shadow-lg" : isRollover ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"}`}>
                     {isFinal ? <Crown className="w-6 h-6" /> : isRollover ? <Ban className="w-5 h-5" /> : <Trophy className="w-5 h-5" />}
                   </div>
-                  <div className="flex flex-col items-center">
-                    <span className={`text-xl font-black ${isFinal ? "text-yellow-400" : isRollover ? "text-slate-500 line-through decoration-red-500" : "text-white"}`}>${res.finalPayout}</span>
-                    {isRollover && <span className="text-[9px] text-red-400 font-bold uppercase tracking-wider mt-1 flex items-center gap-1"><ArrowDown className="w-3 h-3" /> Rolled Over</span>}
-                  </div>
+                  {isRollover ? (
+                    <div className="flex flex-col items-center">
+                      <span className="text-xl font-black text-white/30 line-through">${res.baseAmount + res.rolloverAmount}</span>
+                      <span className="text-[9px] text-amber-500/60 font-bold uppercase tracking-wider mt-1 flex items-center gap-1"><ArrowDown className="w-3 h-3" /> Rolled Over</span>
+                    </div>
+                  ) : res.hasWinner && res.rolloverAmount > 0 ? (
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] text-white/50 font-mono">Base: ${res.baseAmount}</span>
+                      <span className="text-xs text-green-400 font-black drop-shadow-[0_0_6px_rgba(74,222,128,0.8)]">
+                        + ${res.rolloverAmount} ROLLOVER
+                      </span>
+                      <div className="w-full h-[1px] bg-white/20 my-1" />
+                      <span className="text-2xl font-black text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.5)]">
+                        ${res.finalPayout}
+                      </span>
+                      <span className="text-[9px] text-white/40 uppercase font-bold tracking-wide">Total</span>
+                    </div>
+                  ) : (
+                    <span className={`text-xl font-black ${isFinal ? "text-yellow-400" : "text-white"}`}>${res.finalPayout}</span>
+                  )}
                 </div>
                 <div className="flex-1 flex flex-col items-center md:items-end">
                   {res.hasWinner ? (

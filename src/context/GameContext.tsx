@@ -9,6 +9,18 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthContext";
 import { detectSportType, getSportConfig, type SportType, type PeriodKey } from "@/lib/sport-config";
 
+// Task 3: Storage Cleanup Utility
+export const cleanupActiveGameStorage = (gameId: string) => {
+  if (typeof window !== 'undefined') {
+    const storedActiveId = localStorage.getItem('activeGameId');
+    if (storedActiveId === gameId) {
+      console.log('[GameContext] Cleaning up game from localStorage:', gameId);
+      localStorage.removeItem('activeGameId');
+      window.dispatchEvent(new Event('activeGameIdChanged'));
+    }
+  }
+};
+
 // --- TYPE DEFINITIONS ---
 export type SquareData = {
   userId: string;
@@ -243,10 +255,13 @@ const updateScores = async (home: any, away?: any) => {
   }
 };
   const deleteGame = async () => {
-  if (gameId) {
-    await deleteDoc(doc(db, "games", gameId));
-  }
-};
+    if (gameId) {
+      await deleteDoc(doc(db, "games", gameId));
+      
+      // Task 3: Storage Cleanup - Remove from localStorage if it was the active game
+      cleanupActiveGameStorage(gameId);
+    }
+  };
   const scrambleGrid = async () => {
       if (!gameId || !game) return;
       

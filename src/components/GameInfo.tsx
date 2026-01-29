@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2, Copy } from "lucide-react";
+import { Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2, Copy, MoveRight, ArrowDownRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getDisplayPeriods, getPeriodLabel, type SportType } from "@/lib/sport-config";
@@ -99,7 +99,7 @@ export default function GameInfo({
       }
   };
 
-  // --- DYNAMIC PAYOUT RENDERER ---
+  // --- DYNAMIC PAYOUT RENDERER WITH ROLLOVER FLOW ---
   const renderPayouts = () => {
       const periods = getDisplayPeriods(sportType);
       
@@ -113,9 +113,11 @@ export default function GameInfo({
       const gridClass = periods.length === 3 ? "grid-cols-3" : "grid-cols-4";
 
       return (
-        <div className={`grid ${gridClass} gap-2 mt-2`}>
+        <div className={`grid ${gridClass} gap-3 mt-2`}>
             {displayPayouts.map((p, i) => {
                 const winnerObj = winners?.find(w => w.key === p.key);
+                const nextPeriod = displayPayouts[i + 1];
+                const nextWinnerObj = nextPeriod ? winners?.find(w => w.key === nextPeriod.key) : null;
                 
                 // Determine Status
                 // 1. Real Winner: Object exists AND rollover is false
@@ -124,37 +126,76 @@ export default function GameInfo({
                 // 2. Rollover: Object exists with rollover=true OR amount is 0 w/ no winner
                 const isRollover = (winnerObj && winnerObj.rollover) || (p.amount === 0 && !isRealWinner && totalPot > 0);
                 
+                // 3. Recipient: Has rolloverAmount from previous quarters
+                const isRecipient = isRealWinner && winnerObj.rolloverAmount > 0;
+                
+                // 4. Next quarter receives this rollover
+                const hasRolloverToNext = isRollover && nextWinnerObj && nextWinnerObj.rolloverAmount > 0;
+                
                 return (
-                    <div key={i} className={`flex flex-col items-center rounded-lg p-2 border relative overflow-hidden group transition-all ${
+                    <div key={i} className={`flex flex-col items-center rounded-lg p-2 border relative group transition-all ${
                         isRealWinner 
                         ? "bg-green-500/20 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.3)] backdrop-blur-sm" 
                         : isRollover 
-                            ? "bg-red-500/20 border-red-500/30 backdrop-blur-sm" 
+                            ? "bg-amber-500/10 border-amber-500/30 backdrop-blur-sm" 
                             : "bg-white/5 border-white/10 backdrop-blur-sm"
                     }`}>
+                        {/* Connector Line - Shows flow to next quarter */}
+                        {hasRolloverToNext && i < displayPayouts.length - 1 && (
+                            <div className="absolute -right-[14px] top-1/2 -translate-y-1/2 z-10">
+                                <MoveRight className="w-4 h-4 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] animate-pulse" />
+                            </div>
+                        )}
+                        
                         {/* Winner Dot */}
                         {isRealWinner && <div className="absolute top-0 right-0 p-1"><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_5px_#4ade80]"/></div>}
                         
-                        <span className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isRealWinner ? "text-green-300" : "text-white/50"}`}>{p.label}</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${
+                            isRealWinner ? "text-green-300" : 
+                            isRollover ? "text-amber-500/60" : 
+                            "text-white/50"
+                        }`}>{p.label}</span>
                         
-                        {/* Amount - Strikethrough if Rollover */}
-                        <span className={`text-sm font-black transition-colors ${isRollover ? "text-red-300 line-through decoration-white/30" : "text-white"}`}>
-                            {isRealWinner ? `$${winnerObj.amount}` : `$${p.amount}`}
-                        </span>
-
-                        {/* Rollover Breakdown - Only show if > 0 */}
-                        {isRealWinner && winnerObj.rolloverAmount > 0 && (
-                            <span className="text-[7px] text-yellow-300 font-bold mt-0.5 shadow-black/50 drop-shadow-sm">
-                                +${winnerObj.rolloverAmount} Bonus
-                            </span>
+                        {/* ROLLOVER QUARTER (The Giver) */}
+                        {isRollover && (
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-sm font-black text-white/30 line-through">${p.amount}</span>
+                                    <ArrowDownRight className="w-3 h-3 text-amber-400 animate-bounce" />
+                                </div>
+                                <span className="text-[7px] text-amber-500/60 font-bold uppercase tracking-wider">Rollover</span>
+                            </div>
+                        )}
+                        
+                        {/* RECIPIENT QUARTER (The Receiver) */}
+                        {isRecipient && (
+                            <div className="flex flex-col items-center gap-0.5 w-full">
+                                <span className="text-[9px] text-white/50 font-mono">Base: ${winnerObj.baseAmount}</span>
+                                <span className="text-[10px] text-green-400 font-black drop-shadow-[0_0_6px_rgba(74,222,128,0.8)]">
+                                    + ${winnerObj.rolloverAmount} ROLLOVER
+                                </span>
+                                <div className="w-full h-[1px] bg-white/20 my-0.5" />
+                                <span className="text-lg font-black text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.5)]">
+                                    ${winnerObj.amount}
+                                </span>
+                                <span className="text-[8px] text-white/40 uppercase font-bold tracking-wide">Total</span>
+                            </div>
+                        )}
+                        
+                        {/* REGULAR WINNER (No Rollover) */}
+                        {isRealWinner && !isRecipient && (
+                            <span className="text-sm font-black text-white">${winnerObj.amount}</span>
+                        )}
+                        
+                        {/* PENDING QUARTER (Not finished yet) */}
+                        {!isRealWinner && !isRollover && (
+                            <span className="text-sm font-black text-white">${p.amount}</span>
                         )}
 
                         {/* Footer Text */}
-                        {isRealWinner ? (
+                        {isRealWinner && (
                             <span className="text-[9px] text-green-200 font-bold text-center leading-tight max-w-full break-words mt-1">{winnerObj.winner}</span>
-                        ) : isRollover ? (
-                            <span className="text-[7px] text-red-300 font-bold uppercase mt-1 tracking-wider">Rollover</span>
-                        ) : null}
+                        )}
                     </div>
                 );
             })}
