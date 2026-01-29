@@ -144,26 +144,30 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     if (Array.isArray(currentSquare)) {
       const newArray = currentSquare.filter(c => c.userId !== user.uid);
       
-      // Check if user has any other squares in the game
-      const hasOtherSquares = Object.entries(game.squares).some(([squareIndex, squareData]) => {
-        // Skip the current square we're unclaiming
-        if (parseInt(squareIndex) === index) return false;
-        
-        // Check if this square contains the user
-        if (Array.isArray(squareData)) {
-          return squareData.some(claim => claim.userId === user.uid);
-        }
-        return false;
-      });
-      
       if (newArray.length === 0) {
+        // Check if user has any other squares in the game
+        const hasOtherSquares = Object.entries(game.squares).some(([squareIndex, squareData]) => {
+          // Skip the current square we're unclaiming
+          if (parseInt(squareIndex) === index) return false;
+          
+          // Check if this square contains the user
+          if (Array.isArray(squareData)) {
+            return squareData.some(claim => claim.userId === user.uid);
+          } else if (squareData && typeof squareData === 'object') {
+            // Handle single SquareData object
+            return squareData.userId === user.uid;
+          }
+          return false;
+        });
+        
         const updates: any = { 
           [`squares.${index}`]: deleteField()
         };
         
-        // Only remove from playerIds if user has no other squares
+        // Only remove from playerIds and participants if user has no other squares
         if (!hasOtherSquares) {
           updates.playerIds = arrayRemove(user.uid);
+          updates.participants = arrayRemove(user.uid);
         }
         
         await updateDoc(ref, updates);
