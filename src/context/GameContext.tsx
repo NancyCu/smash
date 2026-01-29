@@ -290,7 +290,19 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
     try {
       // Handle both array (stacking) and single object cases
       if (Array.isArray(currentSquare)) {
+        // For stacked claims, targetUserId is required
+        if (!targetUserId) {
+          console.error("togglePaid: targetUserId is required for stacked claims at index", index);
+          return;
+        }
+        
         // Find the specific claim to toggle
+        const claimIndex = currentSquare.findIndex(claim => claim.userId === targetUserId);
+        if (claimIndex === -1) {
+          console.error("togglePaid: User not found in stacked claims at index", index);
+          return;
+        }
+        
         const updatedArray = currentSquare.map(claim => {
           if (claim.userId === targetUserId) {
             return { ...claim, paid: !claim.paid };
@@ -308,7 +320,7 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
         });
       }
     } catch (e) {
-      console.error("Toggle paid failed", e);
+      console.error(`togglePaid failed for square ${index}, userId: ${targetUserId}:`, e);
     }
   };
 
