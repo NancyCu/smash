@@ -307,7 +307,9 @@ export default function GameInfo({
                 </div>
 
                 {/* SCORE KEEPER */}
-                <div className="bg-white/5 p-3 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
+                <div 
+                id="tour-scoreboard" // <--- ADD THIS ID
+                className="bg-white/5 p-3 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
                     <div className="flex justify-between items-center mb-2">
                         <div className="flex items-center gap-2">
                             <Edit2 className="w-4 h-4 text-cyan-400" />
