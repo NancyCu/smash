@@ -204,13 +204,18 @@ function WinnersContent() {
       }
 
       results.push({
-        ...result,
+        quarter: stage.key,
+        scoreA: result?.scoreA ?? 0,
+        scoreB: result?.scoreB ?? 0,
+        rowDigit: result?.rowDigit ?? null,
+        colDigit: result?.colDigit ?? null,
+        winners: result?.winners ?? null,
         key: stage.key,
         label: stage.label,
         finalPayout: displayAmount,
         isRollover: rolloverActive,
         hasWinner: hasWinner,
-        isFinished: stage.done
+        isFinished: stage.done,
       });
     });
 
