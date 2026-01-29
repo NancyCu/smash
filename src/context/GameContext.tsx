@@ -154,6 +154,30 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const togglePaid = async (index: number, targetUserId?: string) => {
+    if (!gameId || !game) return;
+    const ref = doc(db, "games", gameId);
+    const squareData = game.squares[index];
+
+    if (!squareData) return;
+
+    if (Array.isArray(squareData)) {
+      // Handle array of claims (stacking mode)
+      const updatedSquares = squareData.map(claim => {
+        // If targetUserId is provided, only toggle that specific user's claim
+        // Otherwise toggle the first claim (shouldn't happen in practice)
+        if (!targetUserId || claim.userId === targetUserId) {
+          return { ...claim, paid: !claim.paid };
+        }
+        return claim;
+      });
+      await updateDoc(ref, { [`squares.${index}`]: updatedSquares });
+    } else {
+      // Handle single claim (legacy mode)
+      await updateDoc(ref, { [`squares.${index}.paid`]: !squareData.paid });
+    }
+  };
+
   const getUserGames = async (userId: string): Promise<GameData[]> => {
     // Query both for hosted games AND participated games
     const qHost = query(collection(db, "games"), where("host", "==", userId));
@@ -288,7 +312,7 @@ return (
       setGameId, 
       claimSquare, 
       unclaimSquare, 
-      togglePaid: async () => {}, 
+      togglePaid, 
       createGame, 
       updateScores, 
       scrambleGrid, 
