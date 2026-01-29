@@ -92,8 +92,7 @@ export default function Grid({
       ) : null}
 
       {/* MAIN CONTENT */}
-      {/* Added pt-8 for top headroom and pl-8 for left elbow room when scrambled */}
-      <div className={`flex flex-1 min-h-0 relative overflow-visible ${isScrambled ? 'pt-8 pl-8' : ''}`}>
+      <div className="flex flex-1 min-h-0 relative overflow-visible">
         
         {/* === 2. LEFT SIDEBAR (TEAM A - PINK) === */}
         {!isScrambled ? (
@@ -139,18 +138,18 @@ export default function Grid({
         <div className="w-full h-full overflow-visible">
           <div className="relative h-full w-full overflow-visible">
             
-            {/* Team B name overlay - positioned ABOVE the grid with negative top */}
+            {/* Team B (Horizontal) - positioned HALF IN, HALF OUT of top grid edge */}
             {isScrambled && (
               <>
-                <div className="pointer-events-none absolute -top-6 left-8 md:left-10 right-0 flex items-center justify-center z-50 mb-2">
-                  <span className="text-cyan-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] text-sm md:text-base truncate max-w-[80%] whitespace-nowrap">
+                <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-50">
+                  <span className="text-cyan-400 font-black uppercase tracking-[0.6em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]">
                     {teamB}
                   </span>
                 </div>
                 
-                {/* Team A name overlay - positioned LEFT of the grid with negative left */}
-                <div className="pointer-events-none absolute top-8 md:top-10 -left-6 md:-left-8 bottom-0 flex items-center justify-center z-50 mr-2">
-                  <span className="text-pink-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(236,72,153,0.5)] text-sm md:text-base whitespace-nowrap [writing-mode:vertical-rl]">
+                {/* Team A (Vertical) - positioned LEFT of grid, rotated -90deg, vertically centered */}
+                <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full flex items-center justify-center z-50 pr-1">
+                  <span className="text-pink-500 font-black uppercase tracking-[0.6em] text-2xl md:text-3xl whitespace-nowrap drop-shadow-[0_0_10px_rgba(236,72,153,0.6)] origin-center rotate-[-90deg]">
                     {teamA}
                   </span>
                 </div>
