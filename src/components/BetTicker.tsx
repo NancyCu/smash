@@ -57,7 +57,6 @@ export default function BetTicker({ games = [] }: BetTickerProps) {
 
   return (
     <div 
-    id="tour-bet-ticker" // <--- ADD THIS ID HERE
     className="w-full flex flex-col gap-2 mb-2 transition-all duration-300 ease-in-out">
       {/* Header Row: Title + Toggle */}
       <div className="flex items-center justify-between px-1">
@@ -74,7 +73,9 @@ export default function BetTicker({ games = [] }: BetTickerProps) {
       </div>
 
       {/* Scrollable Container */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
+      <div 
+          id="tour-bet-ticker" // <--- ADD THIS ID HERE
+      className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
         {sortedGames.map((game) => {
           const isParticipating = isUserParticipating(game);
           const isLive = isGameLive(game);
