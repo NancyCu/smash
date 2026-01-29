@@ -90,10 +90,10 @@ function WinnersContent() {
   // --- 2. WINNER FINDER HELPER ---
   const getWinnerForQuarter = (q: "q1" | "q2" | "q3" | "final") => {
     const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-    const axis =
-      game?.isScrambled && game.axis
-        ? game.axis[q]
-        : { row: defaultAxis, col: defaultAxis };
+    // Safely derive axis; fall back to defaults if missing
+    const axisConfig = (game?.isScrambled && game?.axis?.[q]) || { row: defaultAxis, col: defaultAxis };
+    const axisRow = Array.isArray(axisConfig.row) ? axisConfig.row : defaultAxis;
+    const axisCol = Array.isArray(axisConfig.col) ? axisConfig.col : defaultAxis;
 
     let scoreA = 0,
       scoreB = 0;
@@ -116,13 +116,13 @@ function WinnersContent() {
     const lastDigitA = scoreA % 10;
     const lastDigitB = scoreB % 10;
 
-    const rowIdx = axis.row.indexOf(lastDigitA);
-    const colIdx = axis.col.indexOf(lastDigitB);
+  const rowIdx = axisRow.indexOf(lastDigitA);
+  const colIdx = axisCol.indexOf(lastDigitB);
 
     if (rowIdx === -1 || colIdx === -1) return null;
 
     const cellIndex = rowIdx * 10 + colIdx;
-    const cellData = game?.squares[cellIndex];
+  const cellData = game?.squares ? game.squares[cellIndex] : undefined;
 
     let winners: SquareData[] = [];
     if (Array.isArray(cellData)) {

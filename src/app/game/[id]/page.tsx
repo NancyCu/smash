@@ -581,33 +581,33 @@ export default function GamePage() {
         {/* GAME BAR */}
         <GameBar />
 
-        <div className="flex-1 w-full min-h-0 overflow-y-auto no-scrollbar pb-32 flex flex-col items-center max-w-4xl mx-auto px-2 py-1 lg:p-2 gap-1">
+        <div className="flex-1 w-full min-h-0 overflow-y-auto no-scrollbar pb-32 flex flex-col items-center px-2 py-1 lg:px-6 lg:py-4 gap-1 lg:gap-2">
           {/* SCOREBOARD */}
-          <div className="w-full relative group z-20 shrink-0">
+          <div className="w-full max-w-[500px] lg:max-w-[calc(100vh-260px)] lg:mx-auto relative group z-20 shrink-0">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/30 via-indigo-500/20 to-cyan-500/30 rounded-2xl blur-lg opacity-60 group-hover:opacity-80 transition duration-1000"></div>
-            <div className="relative w-full bg-[#0B0C15]/60 backdrop-blur-xl border border-white/10 rounded-xl px-2 pt-1 pb-0.5 flex flex-col items-center shadow-xl">
+            <div className="relative w-full bg-[#0B0C15]/60 backdrop-blur-xl border border-white/10 rounded-xl px-2 lg:px-6 pt-1 lg:pt-3 pb-0.5 lg:pb-2 flex flex-col items-center shadow-xl">
               <div className="flex w-full justify-between items-start relative">
-                {/* TEAM A */}
+                {/* AWAY TEAM (Left - matches grid vertical/rows - pink) */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
-                  <div className="flex items-center gap-1 mb-0.5 justify-center w-full">
-                    {getTeamLogo(game.teamA) && <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
-                    <span className="text-pink-200 font-teko text-[10px] md:text-lg tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] drop-shadow-sm">
-                      {game.teamA}
+                  <div className="flex items-center gap-1 lg:gap-2 mb-0.5 justify-center w-full">
+                    {getTeamLogo(game.teamB) && <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
+                    <span className="text-pink-200 font-teko text-[10px] md:text-lg lg:text-2xl tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] lg:max-w-[180px] drop-shadow-sm">
+                      {game.teamB}
                     </span>
                   </div>
-                  <span className="text-4xl md:text-7xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-0.5">
-                    {/* Sport-aware score display */}
+                  <span className="text-4xl md:text-7xl lg:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-0.5">
+                    {/* Sport-aware score display - Away team */}
                     {!game.espnGameId 
-                        ? currentScores.teamA 
+                        ? currentScores.teamB 
                         : (activePeriod === "final" 
-                            ? currentScores.final.home 
+                            ? currentScores.final.away 
                             : sportType === 'soccer'
-                              ? currentScores.teamA  // Soccer: Always show total score during live play
+                              ? currentScores.teamB  // Soccer: Always show total score during live play
                               : (activePeriod === "p1" 
-                                  ? currentScores.p1.home 
+                                  ? currentScores.p1.away 
                                   : activePeriod === "p2" 
-                                    ? currentScores.p1.home + currentScores.p2.home 
-                                    : currentScores.p1.home + currentScores.p2.home + currentScores.p3.home))
+                                    ? currentScores.p1.away + currentScores.p2.away 
+                                    : currentScores.p1.away + currentScores.p2.away + currentScores.p3.away))
                     }
                   </span>
                 </div>
@@ -633,34 +633,41 @@ export default function GamePage() {
                      <span className="text-[9px] text-slate-300 font-bold uppercase tracking-widest drop-shadow-sm">Manual Mode</span>
                   )}
                 </div>
-                {/* TEAM B */}
+                {/* HOME TEAM (Right - matches grid horizontal/cols - cyan) */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
-                  <div className="flex items-center gap-1 mb-0.5 justify-center w-full">
-                    <span className="text-cyan-200 font-teko text-[10px] md:text-lg tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] drop-shadow-sm">
-                      {game.teamB}
+                  <div className="flex items-center gap-1 lg:gap-2 mb-0.5 justify-center w-full">
+                    <span className="text-cyan-200 font-teko text-[10px] md:text-lg lg:text-2xl tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] lg:max-w-[180px] drop-shadow-sm">
+                      {game.teamA}
                     </span>
-                    {getTeamLogo(game.teamB) && <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
+                    {getTeamLogo(game.teamA) && <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
                   </div>
-                  <span className="text-4xl md:text-7xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-0.5">
+                  <span className="text-4xl md:text-7xl lg:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-0.5">
+                    {/* Sport-aware score display - Home team */}
                     {!game.espnGameId 
-                        ? currentScores.teamB 
+                        ? currentScores.teamA 
                         : (activePeriod === "final" 
-                            ? currentScores.final.away 
+                            ? currentScores.final.home 
                             : sportType === 'soccer'
-                              ? currentScores.teamB  // Soccer: Always show total score during live play
+                              ? currentScores.teamA  // Soccer: Always show total score during live play
                               : (activePeriod === "p1" 
-                                  ? currentScores.p1.away 
+                                  ? currentScores.p1.home 
                                   : activePeriod === "p2" 
-                                    ? currentScores.p1.away + currentScores.p2.away 
-                                    : currentScores.p1.away + currentScores.p2.away + currentScores.p3.away))}
+                                    ? currentScores.p1.home + currentScores.p2.home 
+                                    : currentScores.p1.home + currentScores.p2.home + currentScores.p3.home))}
                   </span>
                 </div>
+              </div>
+              {/* Host indicator */}
+              <div className="w-full flex justify-center mt-1">
+                <span className="text-[9px] text-white/40 font-medium tracking-wide">
+                  Hosted by <span className="text-indigo-300/70">{game.host}</span>
+                </span>
               </div>
             </div>
           </div>
 
           {/* GRID */}
-          <div className="w-full shrink-0 aspect-square max-w-[500px] z-10 flex flex-col justify-center my-1">
+          <div className="w-full shrink-0 aspect-square max-w-[500px] lg:max-w-[calc(100vh-260px)] lg:mx-auto z-10 flex flex-col justify-center my-1 lg:my-2">
             <div className="w-full h-full bg-[#0B0C15]/60 backdrop-blur-md rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.05)] border border-white/10 overflow-hidden ring-1 ring-white/5">
               <Grid rows={currentAxis.col} cols={currentAxis.row} squares={formattedSquares} onSquareClick={handleSquareClick} teamA={game.teamB || "Away"} teamB={game.teamA || "Home"} teamALogo={getTeamLogo(game.teamB)} teamBLogo={getTeamLogo(game.teamA)} isScrambled={game.isScrambled} selectedCell={selectedCell} winningCell={winningCoordinates} pendingIndices={pendingSquares} currentUserId={user?.uid} />
             </div>
