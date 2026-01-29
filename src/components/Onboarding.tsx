@@ -5,45 +5,48 @@ import "driver.js/dist/driver.css";
 
 export default function Onboarding({ isLoading }: { isLoading: boolean }) {
   useEffect(() => {
-    // 1. Don't run if loading or already seen
+    // 1. Wait for loading to finish
     if (isLoading) return;
-    const hasSeen = localStorage.getItem('squares_onboarding_v1');
+    
+    // 2. Check if already seen
+    const hasSeen = localStorage.getItem('squares_onboarding_v2'); // bumped version to v2
     if (hasSeen) return;
 
-    // 2. Double check elements exist before driving
-    const topTeam = document.getElementById('tour-team-top');
-    const scrambleBtn = document.getElementById('tour-scramble-btn');
-    
-    if (!topTeam || !scrambleBtn) return;
-
-    // 3. Configure the Tour
+    // 3. Define the Tour
     const driverObj = driver({
       showProgress: true,
       animate: true,
-      popoverClass: 'driverjs-electric-theme', // Custom Theme Class
+      popoverClass: 'driverjs-electric-theme',
       onDestroyed: () => {
-        localStorage.setItem('squares_onboarding_v1', 'true');
+        localStorage.setItem('squares_onboarding_v2', 'true');
       },
       steps: [
         {
           element: '#tour-team-top',
           popover: { 
-            title: 'Team Top (Column Numbers)', 
-            description: 'The last digit of this team\'s score matches the column numbers here.' 
+            title: 'How to Win', 
+            description: 'Look at the score at the end of each quarter. Take the <strong>last digit</strong> of each team\'s score.' 
           }
         },
         {
-          element: '#tour-team-left',
+          element: '#tour-grid-area',
           popover: { 
-            title: 'Team Side (Row Numbers)', 
-            description: 'The last digit of this team\'s score matches the row numbers here.' 
+            title: 'Match the Grid', 
+            description: 'If the score is <strong>Chiefs 17 - 49ers 14</strong>, find Column 7 and Row 4. That square wins the quarter!' 
           }
         },
         {
-          element: '#tour-scramble-btn',
+          element: '#tour-grid-area',
           popover: { 
-            title: 'Lock & Load', 
-            description: 'When the grid is full, click Scramble to assign random numbers and lock the game.' 
+            title: 'Claim Your Spot', 
+            description: 'Tap any empty square to open the Claim Menu. Enter your name and hit <strong>Confirm</strong> to lock it in.' 
+          }
+        },
+        {
+          element: '#tour-pay-btn', // <--- WE NEED TO ADD THIS ID
+          popover: { 
+            title: 'Pay the Host', 
+            description: 'Don\'t be a freeloader. Click here to Venmo/Zelle the host and mark your squares as paid.' 
           }
         }
       ]

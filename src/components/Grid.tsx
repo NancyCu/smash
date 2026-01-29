@@ -57,6 +57,7 @@ export default function Grid({
   return (
     // CSS Grid Container with explicit rows and columns
     <div 
+    id="tour-grid-area" // <--- ADD THIS
       className="h-full w-full bg-[#0f111a] select-none"
       style={{
         display: 'grid',
