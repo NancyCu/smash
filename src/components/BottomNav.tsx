@@ -38,7 +38,9 @@ export default function BottomNav() {
     }
   };
 
-  const isLiveActive = pathname.startsWith('/game/');
+  // NEW LOGIC: Button lights up when activeGameId exists (beacon mode)
+  const hasActiveGame = activeGameId !== null;
+  const isOnActiveGame = pathname.includes('/game/') && pathname.includes(activeGameId || '');
   const isPlayActive = pathname === '/play' || pathname === '/create' || pathname === '/join';
 
   return (
@@ -57,24 +59,33 @@ export default function BottomNav() {
           <span className="text-[10px] font-bold mt-1 tracking-wider">WINNERS</span>
         </Link>
 
-        {/* 3. LIVE (The Big Center FAB - Only if activeGameId exists) */}
+        {/* 3. LIVE (The Big Center FAB - Beacon Mode) */}
         <button 
             onClick={handleLiveClick} 
             className="relative -top-7 group flex flex-col items-center flex-1 h-full justify-start z-10" 
             aria-label="Live Game"
-            title={activeGameId ? "Live Game" : "Play Hub"}
+            title={hasActiveGame ? "Jump to Active Game" : "No Active Game"}
         >
-          <div className="relative">
+          <div className="relative overflow-visible">
+            {/* Active Ring - Shown when on the exact active game page */}
+            {isOnActiveGame && (
+              <div className="absolute inset-0 -m-1 rounded-full border-2 border-cyan-400 opacity-50 animate-pulse" />
+            )}
+            
             <div className={`
               p-4 rounded-full shadow-2xl transition-all duration-300 group-hover:scale-105 overflow-visible
-              ${isLiveActive 
-                ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_0_30px_rgba(34,211,238,0.8)]" 
+              ${hasActiveGame
+                ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_0_30px_rgba(34,211,238,0.8)] animate-pulse" 
                 : "bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-md border border-white/20 group-hover:from-cyan-500/30 group-hover:to-blue-600/30 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"}
-            `}>
-              <Zap size={32} strokeWidth={2.5} className={`${isLiveActive ? "fill-white text-white" : "text-white"} drop-shadow-lg`} />
+            `} style={{ filter: hasActiveGame ? 'drop-shadow(0 0 20px rgba(34,211,238,0.6))' : 'none' }}>
+              <Zap 
+                size={32} 
+                strokeWidth={2.5} 
+                className={`${hasActiveGame ? "fill-white text-white" : "text-white"} drop-shadow-lg`} 
+              />
             </div>
           </div>
-          <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold tracking-wider whitespace-nowrap ${isLiveActive ? "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" : "text-white/40 group-hover:text-white/70"}`}>
+          <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold tracking-wider whitespace-nowrap ${hasActiveGame ? "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" : "text-white/40 group-hover:text-white/70"}`}>
             LIVE
           </span>
         </button>
