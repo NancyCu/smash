@@ -6,7 +6,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useGame } from '@/context/GameContext';
 import type { SquareData } from '@/context/GameContext';
 import { ArrowLeft, Check, X, DollarSign, ShieldCheck } from 'lucide-react';
-import Image from 'next/image';
 
 function PaymentsPageContent() {
   const { game, togglePaid, setGameId } = useGame();
