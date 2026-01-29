@@ -84,26 +84,35 @@ function PaymentsPageContent() {
 
   const handleTogglePaid = async (gridIndex: number, userId: string) => {
     const toggleKey = `${gridIndex}-${userId}`;
+    
+    // Prevent double-clicks
+    if (togglingId === toggleKey) return;
+    
     setTogglingId(toggleKey);
     
-    // Immediately update local state for instant visual feedback
-    const currentPaid = localPaidStatus[toggleKey] !== undefined 
-      ? localPaidStatus[toggleKey] 
-      : game?.squares[String(gridIndex)]
-        ? Array.isArray(game.squares[String(gridIndex)])
-          ? (game.squares[String(gridIndex)] as SquareData[]).find(s => s.userId === userId)?.paid ?? false
-          : (game.squares[String(gridIndex)] as SquareData).userId === userId 
-            ? (game.squares[String(gridIndex)] as SquareData).paid ?? false
-            : false
-        : false;
-    
-    setLocalPaidStatus(prev => ({
-      ...prev,
-      [toggleKey]: !currentPaid
-    }));
-    
     try {
+      // Get current paid status from claims
+      const claim = claims.find(c => c.gridIndex === gridIndex && c.userId === userId);
+      const currentPaid = claim?.paid ?? false;
+      
+      // Optimistically update local state
+      setLocalPaidStatus(prev => ({
+        ...prev,
+        [toggleKey]: !currentPaid
+      }));
+      
+      // Update Firebase
       await togglePaid(gridIndex, userId);
+      
+      // Clear local override after successful update (let Firebase state take over)
+      setTimeout(() => {
+        setLocalPaidStatus(prev => {
+          const newState = { ...prev };
+          delete newState[toggleKey];
+          return newState;
+        });
+      }, 500);
+      
     } catch (error) {
       console.error('Error toggling paid status:', error);
       alert('Failed to update payment status. Please try again.');
@@ -181,40 +190,39 @@ function PaymentsPageContent() {
                            <div className="p-8 text-center text-slate-500 text-sm">No squares claimed yet.</div>
                        ) : (
                            claims.map((c, i) => (
-                               <div key={`${c.gridIndex}-${c.userId}-${i}`} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-3 p-3 md:p-4 rounded-xl bg-black/20 border border-white/5 hover:bg-white/5 transition-colors">
-                                   <div className="flex items-center gap-3 min-w-0 flex-1">
+                               <div key={`${c.gridIndex}-${c.userId}-${i}`} className="flex flex-col gap-2 p-3 md:p-4 rounded-xl bg-black/20 border border-white/5 hover:bg-white/5 transition-colors">
+                                   {/* Top Row: User Info */}
+                                   <div className="flex items-center gap-3 min-w-0">
                                        <div className={`w-12 h-12 md:w-10 md:h-10 rounded-lg flex items-center justify-center font-black text-xs border flex-shrink-0 ${c.paid ? "bg-green-500/20 border-green-500/30 text-green-400" : "bg-red-500/20 border-red-500/30 text-red-400"}`}>
                                            ${game.price}
                                        </div>
                                        <div className="min-w-0 flex-1">
                                            <div className="font-bold text-white text-sm md:text-base truncate">{c.name}</div>
-                                           <div className="text-xs text-slate-500 font-mono">Row {c.row} • Col {c.col}</div>
+                                           <div className="text-xs text-slate-500 font-mono">
+                                               {c.row},{c.col} • {c.paid ? "✓ PAID" : "UNPAID"}
+                                           </div>
                                        </div>
                                    </div>
 
-                                   <div className="flex items-center gap-2 justify-between md:justify-end w-full md:w-auto md:flex-shrink-0">
-                                       <div className={`inline-block md:hidden px-2 py-1 rounded text-xs font-bold uppercase flex-1 text-center ${c.paid ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"}`}>
-                                           {c.paid ? "✓ PAID" : "UNPAID"}
-                                       </div>
-                                       <button 
-                                           type="button"
-                                           onClick={() => handleTogglePaid(c.gridIndex, c.userId)}
-                                           disabled={togglingId === `${c.gridIndex}-${c.userId}`}
-                                           className={`py-2 px-3 md:px-4 md:py-1.5 rounded-lg text-xs font-bold uppercase font-semibold transition-all whitespace-nowrap flex-shrink-0 flex items-center justify-center gap-1.5 ${
-                                               c.paid 
-                                               ? "bg-green-500 text-black hover:bg-green-400 shadow-[0_0_10px_rgba(34,197,94,0.4)] disabled:opacity-50" 
-                                               : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white disabled:opacity-50"
-                                           }`}
-                                       >
-                                           {togglingId === `${c.gridIndex}-${c.userId}` ? (
-                                               <Loader2 className="w-3 h-3 animate-spin" /> 
-                                           ) : c.paid ? (
-                                               <> <Check className="w-4 h-4" /> Paid </>
-                                           ) : (
-                                               <> <X className="w-4 h-4" /> Mark Paid </>
-                                           )}
-                                       </button>
-                                   </div>
+                                   {/* Bottom Row: Action Button - Full Width on Mobile */}
+                                   <button 
+                                       type="button"
+                                       onClick={() => handleTogglePaid(c.gridIndex, c.userId)}
+                                       disabled={togglingId === `${c.gridIndex}-${c.userId}`}
+                                       className={`w-full md:w-auto md:self-end py-3 md:py-2 px-4 rounded-lg text-sm md:text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 ${
+                                           c.paid 
+                                           ? "bg-green-500 text-black hover:bg-green-400 shadow-[0_0_10px_rgba(34,197,94,0.4)] disabled:opacity-50" 
+                                           : "bg-emerald-600 text-white hover:bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)] disabled:opacity-50"
+                                       }`}
+                                   >
+                                       {togglingId === `${c.gridIndex}-${c.userId}` ? (
+                                           <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</>
+                                       ) : c.paid ? (
+                                           <><Check className="w-4 h-4" /> Paid</>
+                                       ) : (
+                                           <><Check className="w-4 h-4" /> Mark as Paid</>
+                                       )}
+                                   </button>
                                </div>
                            ))
                        )}

@@ -48,30 +48,115 @@ export default function Grid({
   const activeFocus = selectedCell ?? winningCell ?? null;
 
   return (
-    // OUTER CONTAINER
-    <div className="flex flex-col h-full w-full bg-[#0B0C15] select-none rounded-2xl relative overflow-visible">
-      
+    // OUTER CONTAINER - FLEX COLUMN (thin team bars like reference)
+    <div className="flex flex-col h-full w-full bg-[#0f111a] select-none">
+      {/* === 1. TOP HEADER BAR (TEAM B - CYAN) === */}
+      {!isScrambled ? (
+        <div
+          className="relative w-full flex items-center justify-center border-b border-white/5 bg-[#151725] h-8 min-h-[32px] overflow-hidden"
+        >
+          {/* Watermark Logo */}
+          {teamBLogo && (
+            <img
+              src={teamBLogo}
+              className="absolute inset-0 w-full h-full object-cover opacity-[0.05] grayscale"
+              alt=""
+            />
+          )}
+          
+          <div
+            className="flex items-center gap-2 relative z-10 px-2 h-full justify-center"
+          >
+            {teamBLogo && (
+              <img
+                src={teamBLogo}
+                className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
+                alt=""
+              />
+            )}
+            <span
+              className="text-cyan-400 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(34,211,238,0.4)] text-lg md:text-2xl truncate max-w-[80%]"
+            >
+              {teamB}
+            </span>
+            {teamBLogo && (
+              <img
+                src={teamBLogo}
+                className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"
+                alt=""
+              />
+            )}
+          </div>
+        </div>
+      ) : null}
+
       {/* MAIN CONTENT */}
       <div className="flex flex-1 min-h-0 relative overflow-visible">
+        
+        {/* === 2. LEFT SIDEBAR (TEAM A - PINK) === */}
+        {!isScrambled ? (
+          <div
+            className="relative h-full border-r border-white/5 flex items-center justify-center bg-[#151725] w-8 md:w-10 overflow-hidden"
+          >
+            {/* Watermark Logo */}
+            {teamALogo && (
+              <img
+                src={teamALogo}
+                className="absolute inset-0 w-full h-full object-cover opacity-[0.05] grayscale"
+                alt=""
+              />
+            )}
+            
+            <div
+              className="flex flex-col items-center gap-2 relative z-10 py-2 h-full justify-center"
+            >
+              {teamALogo && (
+                <img
+                  src={teamALogo}
+                  className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
+                  alt=""
+                />
+              )}
+              <span
+                className="text-pink-500 font-teko uppercase font-bold tracking-[0.15em] drop-shadow-[0_0_10px_rgba(236,72,153,0.4)] text-lg md:text-2xl whitespace-nowrap [writing-mode:vertical-rl] rotate-180"
+              >
+                {teamA}
+              </span>
+              {teamALogo && (
+                <img
+                  src={teamALogo}
+                  className="w-4 h-4 md:w-6 md:h-6 object-contain drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]"
+                  alt=""
+                />
+              )}
+            </div>
+          </div>
+        ) : null}
         
         {/* --- THE GRID --- */}
         <div className="w-full h-full">
           <div className="relative h-full w-full">
             
-            {/* Team B Header - Horizontal/Top - Overlapping with Column Numbers */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-              <span className="text-[#22d3ee] font-black uppercase tracking-[0.4em] text-xs md:text-sm select-none drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] whitespace-nowrap text-center">
-                {teamB}
-              </span>
-            </div>
+            {/* Team B name overlay across the top header row (inside grid) */}
+            {isScrambled && (
+              <>
+                <div className="pointer-events-none absolute top-0 left-8 md:left-10 right-0 h-8 md:h-10 flex items-center justify-center z-50">
+                  <span className="text-cyan-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] text-sm md:text-base truncate max-w-[80%]">
+                    {teamB}
+                  </span>
+                </div>
+                
+                {/* Team A name overlay down the left header column (inside grid) */}
+                <div className="pointer-events-none absolute top-8 md:top-10 left-0 w-8 md:w-10 bottom-0 flex items-center justify-center z-50">
+                  <span className="text-pink-300/90 font-teko uppercase font-bold tracking-[0.12em] drop-shadow-[0_0_8px_rgba(236,72,153,0.5)] text-sm md:text-base whitespace-nowrap [writing-mode:vertical-rl]">
+                    {teamA}
+                  </span>
+                </div>
+              </>
+            )}
             
-            {/* Team A Header - Vertical/Left - Overlapping with Row Numbers */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 -ml-10 rotate-[-90deg] z-30 pointer-events-none">
-              <span className="text-[#db2777] font-black uppercase tracking-[0.4em] text-xs md:text-sm select-none whitespace-nowrap drop-shadow-[0_0_12px_rgba(219,39,119,0.8)] text-center">
-                {teamA}
-              </span>
-            </div>
             <div className="grid grid-cols-[auto_repeat(10,1fr)] gap-px border-b border-r border-white/10 h-full w-full bg-transparent rounded-2xl overflow-visible">
+            
             {/* HEADER ROW (COLUMNS) */}
             <div className="contents">
               {/* CORNER */}
