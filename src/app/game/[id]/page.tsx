@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { useGame } from "@/context/GameContext";
+import { useGame, SquareData } from "@/context/GameContext";
 import { useAuth } from "@/context/AuthContext";
 import Grid from "@/components/Grid";
 import GameInfo from "@/components/GameInfo";
@@ -660,7 +660,15 @@ export default function GamePage() {
               {/* Host indicator */}
               <div className="w-full flex justify-center mt-1">
                 <span className="text-[9px] text-white/40 font-medium tracking-wide">
-                  Hosted by <span className="text-indigo-300/70">{game.host}</span>
+                  Hosted by <span className="text-indigo-300/70">
+                    {game.hostDisplayName || (() => {
+                      // Try to find host name from squares
+                      const hostSquare = Object.values(game.squares || {}).flat().find(
+                        (sq: any) => sq?.userId === game.host
+                      ) as SquareData | undefined;
+                      return hostSquare?.displayName || "Host";
+                    })()}
+                  </span>
                 </span>
               </div>
             </div>

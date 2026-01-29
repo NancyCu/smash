@@ -30,9 +30,14 @@ export type PayoutLog = {
 export interface GameData { // Changed 'type' to 'export interface'
   id: string;
   host: string;
+  hostDisplayName?: string;
   name: string;
   teamA: string;
   teamB: string;
+  teamALogo?: string;
+  teamBLogo?: string;
+  teamAColor?: string;
+  teamBColor?: string;
   price: number;
   pot: number;
   totalPot?: number; // Added this optional field to fix the $0 pot bug
@@ -173,6 +178,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     const docRef = await addDoc(collection(db, "games"), {
       ...data,
       host: user.uid,
+      hostDisplayName: user.displayName || "Host",
       sport: sportType,
       squares: {},
       participants: [user.uid],

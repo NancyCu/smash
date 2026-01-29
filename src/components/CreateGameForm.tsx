@@ -6,6 +6,7 @@ import { useGame } from "@/context/GameContext";
 import { useEspnScores } from "@/hooks/useEspnScores";
 import { Calendar, Trophy, DollarSign, Target, ArrowRight, Loader2, Gamepad, Shield, Link } from "lucide-react";
 import CyberInput from "@/components/ui/CyberInput";
+import TeamCombobox, { type TeamSelection } from "@/components/ui/TeamCombobox";
 
 export default function CreateGameForm() {
   const router = useRouter();
@@ -19,6 +20,10 @@ export default function CreateGameForm() {
     name: "",
     teamA: "",
     teamB: "",
+    teamALogo: "",
+    teamBLogo: "",
+    teamAColor: "",
+    teamBColor: "",
     price: 10,
     espnGameId: "",
     paymentLink: "",
@@ -30,10 +35,19 @@ export default function CreateGameForm() {
   useEffect(() => {
     if (selectedGame) {
       const c = selectedGame.competitors;
+      const homeLogo = c[0].team.logo || '';
+      const awayLogo = c[1].team.logo || '';
+      const homeColor = c[0].team.color ? `#${c[0].team.color}` : '';
+      const awayColor = c[1].team.color ? `#${c[1].team.color}` : '';
+      
       setFormData(prev => ({
         ...prev,
         teamA: c[0].team.name, // Home
         teamB: c[1].team.name, // Away
+        teamALogo: homeLogo,
+        teamBLogo: awayLogo,
+        teamAColor: homeColor,
+        teamBColor: awayColor,
         espnGameId: selectedGame.id,
         name: selectedGame.name
       }));
@@ -66,6 +80,10 @@ export default function CreateGameForm() {
         price: price,
         teamA: formData.teamA,
         teamB: formData.teamB,
+        teamALogo: formData.teamALogo || null,
+        teamBLogo: formData.teamBLogo || null,
+        teamAColor: formData.teamAColor || null,
+        teamBColor: formData.teamBColor || null,
         espnGameId: formData.espnGameId || null,
         paymentLink: formData.paymentLink || null, // Ensure saved
         league: selectedGame?.league || null,
@@ -164,25 +182,43 @@ export default function CreateGameForm() {
                 />
 
                 <div className="grid grid-cols-2 gap-4">
-                    <CyberInput
+                    <TeamCombobox
                         label="VERTICAL TEAM"
                         icon={<Shield className="w-5 h-5 -rotate-90" />}
-                        placeholder="Home Team"
+                        placeholder="Search home team..."
                         value={formData.teamA}
-                        onChange={e => setFormData({...formData, teamA: e.target.value})}
-                        onBlur={() => handleBlur('teamA')}
-                        required
-                        className={isInvalid('teamA') ? "border-red-500 animate-pulse" : ""}
+                        selectedLogo={formData.teamALogo}
+                        onSelect={(team: TeamSelection) => setFormData(prev => ({
+                          ...prev,
+                          teamA: team.name,
+                          teamALogo: team.logo,
+                          teamAColor: team.color
+                        }))}
+                        onClear={() => setFormData(prev => ({
+                          ...prev,
+                          teamA: "",
+                          teamALogo: "",
+                          teamAColor: ""
+                        }))}
                     />
-                    <CyberInput
+                    <TeamCombobox
                         label="HORIZONTAL TEAM"
                         icon={<Shield className="w-5 h-5" />}
-                        placeholder="Away Team"
+                        placeholder="Search away team..."
                         value={formData.teamB}
-                        onChange={e => setFormData({...formData, teamB: e.target.value})}
-                        onBlur={() => handleBlur('teamB')}
-                        required
-                        className={isInvalid('teamB') ? "border-red-500 animate-pulse" : ""}
+                        selectedLogo={formData.teamBLogo}
+                        onSelect={(team: TeamSelection) => setFormData(prev => ({
+                          ...prev,
+                          teamB: team.name,
+                          teamBLogo: team.logo,
+                          teamBColor: team.color
+                        }))}
+                        onClear={() => setFormData(prev => ({
+                          ...prev,
+                          teamB: "",
+                          teamBLogo: "",
+                          teamBColor: ""
+                        }))}
                     />
                 </div>
 
