@@ -540,7 +540,7 @@ function HallOfFame() {
                 winners: getWinnersForScore(q1Scores.teamA, q1Scores.teamB, "q1"), 
                 payout: basePayouts.q1, 
                 isRollover: false,
-                isFinished: (q1Scores.teamA > 0 || q1Scores.teamB > 0) || game.status === 'final'
+                isFinished: game.status === 'final' || (q1Scores.teamA > 0 || q1Scores.teamB > 0)
               },
               { 
                 key: "q2", 
@@ -550,7 +550,7 @@ function HallOfFame() {
                 winners: getWinnersForScore(q1Scores.teamA + q2Scores.teamA, q1Scores.teamB + q2Scores.teamB, "q2"), 
                 payout: basePayouts.q2, 
                 isRollover: false,
-                isFinished: ((q1Scores.teamA > 0 || q1Scores.teamB > 0) && (q2Scores.teamA > 0 || q2Scores.teamB > 0)) || game.status === 'final'
+                isFinished: game.status === 'final' || ((q1Scores.teamA > 0 || q1Scores.teamB > 0) && (q2Scores.teamA > 0 || q2Scores.teamB > 0))
               },
               { 
                 key: "q3", 
@@ -560,7 +560,7 @@ function HallOfFame() {
                 winners: getWinnersForScore(q1Scores.teamA + q2Scores.teamA + q3Scores.teamA, q1Scores.teamB + q2Scores.teamB + q3Scores.teamB, "q3"), 
                 payout: basePayouts.q3, 
                 isRollover: false,
-                isFinished: ((q1Scores.teamA > 0 || q1Scores.teamB > 0) && (q2Scores.teamA > 0 || q2Scores.teamB > 0) && (q3Scores.teamA > 0 || q3Scores.teamB > 0)) || game.status === 'final'
+                isFinished: game.status === 'final' || ((q1Scores.teamA > 0 || q1Scores.teamB > 0) && (q2Scores.teamA > 0 || q2Scores.teamB > 0) && (q3Scores.teamA > 0 || q3Scores.teamB > 0))
               },
               { 
                 key: "final", 
@@ -570,7 +570,7 @@ function HallOfFame() {
                 winners: getWinnersForScore(finalScores.teamA, finalScores.teamB, "final"), 
                 payout: basePayouts.final, 
                 isRollover: false,
-                isFinished: game.status === 'final'
+                isFinished: game.status === 'final' || (finalScores.teamA > 0 || finalScores.teamB > 0)
               },
             ];
 
