@@ -71,8 +71,26 @@ export default function Grid({
         <div style={{
           gridColumn: '3 / -1', // Span across all game columns
           gridRow: '1 / 2',     // Top label row
-        }} className="flex items-center justify-center text-cyan-400 font-bold tracking-[0.12em] text-sm md:text-base uppercase relative z-50 pointer-events-none">
-          {teamB}
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%',
+        }} className="text-cyan-400 font-bold tracking-[0.12em] text-sm md:text-base uppercase relative z-50 pointer-events-none gap-2 md:gap-3">
+          {teamBLogo && (
+            <img
+              src={teamBLogo}
+              alt=""
+              className="h-5 md:h-6 w-auto object-contain drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+            />
+          )}
+          <span>{teamB}</span>
+          {teamBLogo && (
+            <img
+              src={teamBLogo}
+              alt=""
+              className="h-5 md:h-6 w-auto object-contain drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+            />
+          )}
         </div>
       )}
 
@@ -81,10 +99,30 @@ export default function Grid({
         <div style={{
           gridColumn: '1 / 2',  // Left label column
           gridRow: '3 / -1',    // Span down all game rows
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100%',
           writingMode: 'vertical-rl',
           transform: 'rotate(180deg)',
-        }} className="flex items-center justify-center text-pink-500 font-bold tracking-[0.12em] text-sm md:text-base uppercase relative z-50 pointer-events-none">
-          {teamA}
+        }} className="text-pink-500 font-bold tracking-[0.12em] text-sm md:text-base uppercase relative z-50 pointer-events-none gap-2 md:gap-3">
+          {teamALogo && (
+            <img
+              src={teamALogo}
+              alt=""
+              className="h-5 md:h-6 w-auto object-contain drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]"
+              style={{ transform: 'rotate(180deg)' }}
+            />
+          )}
+          <span>{teamA}</span>
+          {teamALogo && (
+            <img
+              src={teamALogo}
+              alt=""
+              className="h-5 md:h-6 w-auto object-contain drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]"
+              style={{ transform: 'rotate(180deg)' }}
+            />
+          )}
         </div>
       )}
 
@@ -209,13 +247,13 @@ export default function Grid({
               gridColumn: '3 / -1',
               gridRow: '2 / 3',
             }}
-            className="flex items-center justify-center gap-3 bg-cyan-900/40 backdrop-blur-sm border-2 border-cyan-500/50 rounded-sm relative z-50 pointer-events-none"
+            className="flex items-center justify-center gap-2 md:gap-3 bg-cyan-900/40 backdrop-blur-sm border-2 border-cyan-500/50 rounded-sm relative z-50 pointer-events-none"
           >
             {teamBLogo && (
               <img
                 src={teamBLogo}
                 alt=""
-                className="w-8 h-8 md:w-12 md:h-12 object-contain drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]"
+                className="h-5 md:h-6 w-auto object-contain drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]"
               />
             )}
             <span className="text-cyan-300 font-bold tracking-[0.15em] text-lg md:text-3xl uppercase drop-shadow-[0_0_12px_rgba(34,211,238,1)] text-center">
@@ -225,7 +263,7 @@ export default function Grid({
               <img
                 src={teamBLogo}
                 alt=""
-                className="w-8 h-8 md:w-12 md:h-12 object-contain drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]"
+                className="h-5 md:h-6 w-auto object-contain drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]"
               />
             )}
           </div>
@@ -239,13 +277,13 @@ export default function Grid({
               writingMode: 'vertical-rl',
               transform: 'rotate(180deg)',
             }}
-            className="flex items-center justify-center gap-3 bg-pink-900/40 backdrop-blur-sm border-2 border-pink-500/50 rounded-sm relative z-50 pointer-events-none"
+            className="flex items-center justify-center gap-2 md:gap-3 bg-pink-900/40 backdrop-blur-sm border-2 border-pink-500/50 rounded-sm relative z-50 pointer-events-none"
           >
             {teamALogo && (
               <img
                 src={teamALogo}
                 alt=""
-                className="w-8 h-8 md:w-12 md:h-12 object-contain drop-shadow-[0_0_12px_rgba(236,72,153,0.8)]"
+                className="h-5 md:h-6 w-auto object-contain drop-shadow-[0_0_12px_rgba(236,72,153,0.8)]"
                 style={{ transform: 'rotate(180deg)' }}
               />
             )}
@@ -256,7 +294,7 @@ export default function Grid({
               <img
                 src={teamALogo}
                 alt=""
-                className="w-8 h-8 md:w-12 md:h-12 object-contain drop-shadow-[0_0_12px_rgba(236,72,153,0.8)]"
+                className="h-5 md:h-6 w-auto object-contain drop-shadow-[0_0_12px_rgba(236,72,153,0.8)]"
                 style={{ transform: 'rotate(180deg)' }}
               />
             )}

@@ -386,6 +386,19 @@ export default function GamePage() {
       ? game.axis?.[activePeriod] || { row: defaultAxis, col: defaultAxis }
       : { row: defaultAxis, col: defaultAxis };
 
+    // GATEKEEPER: Only calculate winning coordinates if this period is finalized
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const status = (matchedGame as any)?.status;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const statusType = (matchedGame as any)?.statusDetail;
+    const p = matchedGame?.period || 1;
+    const isFinal = status === "post" || (statusType && statusType.includes("Final"));
+    
+    // Prevent winner display if active period is not finalized
+    if (!isQuarterFinalized(activePeriod as PeriodKey, p, isFinal)) {
+      return null; // Return null to hide winning square highlight
+    }
+
     let scoreA = 0, scoreB = 0;
 
     if (!game?.espnGameId) {
@@ -419,7 +432,7 @@ export default function GamePage() {
       const colIndex = axis.col.indexOf(scoreB % 10);
       if (rowIndex === -1 || colIndex === -1) return null;
       return { row: colIndex, col: rowIndex };
-  }, [currentScores, activePeriod, game, sportType]);
+  }, [currentScores, activePeriod, game, sportType, matchedGame]);
 
   // Current axis
   const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -455,6 +468,25 @@ export default function GamePage() {
     });
     return payoutMap;
   }, [livePot, sportConfig]);
+
+  // --- QUARTER-FINALIZED HELPER (Gatekeeper) ---
+  // Only allows winner calculation when quarter is officially complete
+  const isQuarterFinalized = (period: PeriodKey, currentPeriod: number, gameFinal: boolean): boolean => {
+    if (gameFinal) return true; // Always finalized in final
+    
+    if (sportType === 'soccer') {
+      if (period === 'p1') return currentPeriod > 1;
+      if (period === 'p2') return currentPeriod > 2 || gameFinal;
+      if (period === 'final') return gameFinal;
+    } else {
+      // Football/Basketball logic
+      if (period === 'p1') return currentPeriod > 1;
+      if (period === 'p2') return currentPeriod > 2;
+      if (period === 'p3') return currentPeriod > 3;
+      if (period === 'final') return gameFinal;
+    }
+    return false;
+  };
 
   // 3. GAME STATS HOOK WITH 50/50 SPLIT ROLLOVER LOGIC (SPORT-AWARE)
   const gameStats = useMemo(() => {
@@ -500,13 +532,19 @@ export default function GamePage() {
     const results: { key: PeriodKey | string; label: string; winner: string; amount: number; rollover: boolean; baseAmount: number; rolloverAmount: number }[] = [];
 
     // Track winners for each period
+    // GATEKEEPER: Only calculate winner if quarter is officially finalized
     const periodWinners: Record<string, any> = {};
     displayPeriods.forEach((period, idx) => {
+      // Check if this specific quarter has been officially finalized
+      const isFinalized = isQuarterFinalized(period as PeriodKey, p, isFinal);
+      
+      // Standard period-complete check (for rollover processing)
       const periodComplete = sportType === 'soccer' 
         ? (period === 'p1' && p > 1) || (period === 'p2' && (p > 2 || isFinal)) || (period === 'final' && isFinal)
         : (idx < p - 1) || (period === 'final' && isFinal);
       
-      periodWinners[period] = periodComplete ? getOwner(period) : null;
+      // Only get owner if quarter is truly finalized
+      periodWinners[period] = isFinalized ? getOwner(period) : null;
     });
 
     // Process p1 (Q1)
@@ -541,6 +579,10 @@ export default function GamePage() {
 
     // Build results array
     displayPeriods.forEach((period, idx) => {
+      // Check if this period is officially finalized
+      const isFinalized = isQuarterFinalized(period as PeriodKey, p, isFinal);
+      
+      // Standard period-complete check (for rollover processing)
       const periodComplete = sportType === 'soccer' 
         ? (period === 'p1' && p > 1) || (period === 'p2' && (p > 2 || isFinal)) || (period === 'final' && isFinal)
         : (idx < p - 1) || (period === 'final' && isFinal);
@@ -552,7 +594,20 @@ export default function GamePage() {
       
       effectivePayouts[period] = currentAmount;
       
-      if (periodComplete && !winner && baseAmount > 0) {
+      // IF QUARTER NOT FINALIZED: Show "Pending" instead of calculating winner
+      if (!isFinalized && baseAmount > 0) {
+        results.push({ 
+          key: period, 
+          label: getPeriodLabel(period, sportType), 
+          winner: 'Pending', 
+          amount: 0,
+          baseAmount,
+          rolloverAmount: 0,
+          rollover: false 
+        });
+      }
+      // IF QUARTER FINALIZED: Check for winner or rollover
+      else if (isFinalized && periodComplete && !winner && baseAmount > 0) {
         results.push({ 
           key: period, 
           label: getPeriodLabel(period, sportType), 
@@ -562,7 +617,7 @@ export default function GamePage() {
           rolloverAmount: 0,
           rollover: true 
         });
-      } else if (periodComplete && winner) {
+      } else if (isFinalized && periodComplete && winner) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const winnerNames = Array.isArray(winner) 
           ? winner.map((w: any) => w.displayName || w.name).join(', ')
@@ -858,7 +913,7 @@ export default function GamePage() {
 
           {/* CART / DETAILS BOX */}
           {pendingSquares.length > 0 ? (
-            <div className="w-full bg-[#0B0C15]/60 backdrop-blur-xl border border-indigo-400/30 rounded-2xl p-4 shadow-xl shrink-0 animate-in slide-in-from-bottom-5">
+            <div className="fixed left-0 right-0 z-40 p-4 bg-[#0B0C15]/60 backdrop-blur-xl border border-indigo-400/30 rounded-2xl shadow-xl animate-in slide-in-from-bottom-5 mx-2" style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/40"><ShoppingCart className="w-5 h-5 text-white" /></div>
@@ -900,7 +955,7 @@ export default function GamePage() {
                 const isWinnerView = !selectedCell && winningCoordinates; 
                 const isTargetWinning = winningCoordinates && targetCell && winningCoordinates.row === targetCell.row && winningCoordinates.col === targetCell.col;
                 return (
-                    <div className={`w-full bg-[#0B0C15]/60 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/10"} rounded-2xl p-3 shadow-xl shrink-0 transition-all`}>
+                    <div className={`fixed left-0 right-0 z-40 p-3 bg-[#0B0C15]/60 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/10"} rounded-2xl shadow-xl transition-all mx-2`} style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
                       <div className="flex items-start justify-between">
                         <div className="flex flex-col flex-1">
                           {/* OWNERS AT TOP - THE HERO */}
