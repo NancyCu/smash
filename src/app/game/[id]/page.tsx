@@ -19,6 +19,8 @@ import {
   X,
   Trophy,
   Trash2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useEspnScores } from "@/hooks/useEspnScores";
 import { getSportConfig, getDisplayPeriods, getPeriodLabel, type PeriodKey, type SportType } from "@/lib/sport-config";
@@ -60,6 +62,7 @@ export default function GamePage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'warning' | 'error' }>({ show: false, message: '', type: 'success' });
+  const [isDetailsPanelCollapsed, setIsDetailsPanelCollapsed] = useState(false);
 
   // 2. Data Fetching Ignition
   useEffect(() => {
@@ -969,53 +972,107 @@ export default function GamePage() {
               return null;
             }
             
+            // Determine if panel should be stationary (during game) or collapsible (before game)
+            const isGameStarted = game.isScrambled;
+            const isStationary = isGameStarted;
+            
+            // Get common content
+            const cellKey = `${targetCell.row}-${targetCell.col}`;
+            const cellData = formattedSquares[cellKey] || [];
+            
+            const panelContent = (
+              <div className="flex items-start justify-between">
+                <div className="flex flex-col flex-1">
+                  {/* OWNERS AT TOP - THE HERO */}
+                  {cellData.length > 0 ? (
+                    <div className="flex flex-row flex-wrap gap-2 items-center mb-2">
+                        {cellData.map((p, i) => (
+                          <div key={i} className="relative flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-md border border-white/10">
+                            <span className="absolute -top-2 -right-2 bg-black/60 rounded-full p-0.5 drop-shadow-md">
+                              <Trophy className="w-3 h-3 text-yellow-300" aria-hidden="true" />
+                            </span>
+                            <span className={`text-xl font-bold ${p.uid === user?.uid ? "text-cyan-200 drop-shadow-sm" : "text-white"}`}>{p.name}</span>
+                            {!isWinnerView && (isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-300 transition-colors text-white/50"><Trash2 className="w-3.5 h-3.5" /></button>}
+                          </div>
+                        ))}
+                    </div>
+                  ) : null}
+                  
+                  <div className="flex items-center gap-2 text-xs text-white/70 font-medium">
+                    {isWinnerView && <><Trophy className="w-3 h-3 text-yellow-300" /><span className="text-yellow-100">Winning Square</span></>}
+                    {selectedCell && <span className="text-white/60">Selected Square</span>}
+                    {targetCell && (
+                      <span className="flex items-center gap-1">
+                        (Row {currentAxis.col[targetCell.row]} • Col {currentAxis.row[targetCell.col]})
+                        {isTargetWinning && <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />}
+                      </span>
+                    )}
+                    {!targetCell && <span className="text-white/50">Select a Square</span>}
+                  </div>
+                </div>
+                {!isStationary && selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/20 text-white/70 ml-2"><X className="w-4 h-4" /></button>}
+                {!isStationary && !selectedCell && (
+                  <button 
+                    onClick={() => setIsDetailsPanelCollapsed(!isDetailsPanelCollapsed)} 
+                    className="p-1 rounded-full hover:bg-white/20 text-white/70 ml-2"
+                    aria-label={isDetailsPanelCollapsed ? "Expand details" : "Collapse details"}
+                  >
+                    {isDetailsPanelCollapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                )}
+              </div>
+            );
+            
+            const emptySquareContent = cellData.length === 0 ? (
+              <div className="p-2 text-center text-xs text-white/40 border border-dashed border-white/20 rounded-lg mt-2">Empty Square</div>
+            ) : null;
+            
+            // Return stationary panel (under grid) when game started
+            if (isStationary) {
+              return (
+                <div className={`w-full p-3 bg-[#0B0C15]/60 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/10"} rounded-2xl shadow-xl mt-2`}>
+                  {panelContent}
+                  {emptySquareContent}
+                </div>
+              );
+            }
+            
+            // Return collapsible fixed panel (at bottom) before game starts
+            if (isDetailsPanelCollapsed) {
+              // Collapsed state - show minimal info
+              return (
+                <div 
+                  className={`fixed left-0 right-0 z-40 bg-[#0B0C15]/60 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/10"} rounded-t-2xl shadow-xl transition-all duration-300 ease-in-out mx-0`}
+                  style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
+                >
+                  <div className="p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-white/70">
+                      {isWinnerView && <><Trophy className="w-3 h-3 text-yellow-300" /><span className="text-yellow-100">Winning Square</span></>}
+                      {selectedCell && <span className="text-white/60">Square Selected</span>}
+                      {targetCell && (
+                        <span>(Row {currentAxis.col[targetCell.row]} • Col {currentAxis.row[targetCell.col]})</span>
+                      )}
+                    </div>
+                    <button 
+                      onClick={() => setIsDetailsPanelCollapsed(false)} 
+                      className="p-1 rounded-full hover:bg-white/20 text-white/70"
+                      aria-label="Expand details"
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            
+            // Expanded fixed panel before game starts
             return (
               <div className={`fixed left-0 right-0 z-40 p-3 bg-[#0B0C15]/60 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/10"} rounded-2xl shadow-xl transition-all duration-300 ease-in-out translate-y-0 opacity-100 mx-2`} style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex flex-col flex-1">
-                          {/* OWNERS AT TOP - THE HERO */}
-                          {targetCell && (() => {
-                             const cellKey = `${targetCell.row}-${targetCell.col}`;
-                             const cellData = formattedSquares[cellKey] || [];
-                             return cellData.length > 0 ? (
-                                <div className="flex flex-row flex-wrap gap-2 items-center mb-2">
-                                    {cellData.map((p, i) => (
-                                      <div key={i} className="relative flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-md border border-white/10">
-                                        <span className="absolute -top-2 -right-2 bg-black/60 rounded-full p-0.5 drop-shadow-md">
-                                          <Trophy className="w-3 h-3 text-yellow-300" aria-hidden="true" />
-                                        </span>
-                                        <span className={`text-xl font-bold ${p.uid === user?.uid ? "text-cyan-200 drop-shadow-sm" : "text-white"}`}>{p.name}</span>
-                                        {!isWinnerView && (isAdmin || p.uid === user?.uid) && <button onClick={handleUnclaim} className="hover:text-red-300 transition-colors text-white/50"><Trash2 className="w-3.5 h-3.5" /></button>}
-                                      </div>
-                                    ))}
-                                </div>
-                             ) : null;
-                          })()}
-                          
-                          <div className="flex items-center gap-2 text-xs text-white/70 font-medium">
-                            {isWinnerView && <><Trophy className="w-3 h-3 text-yellow-300" /><span className="text-yellow-100">Winning Square</span></>}
-                            {selectedCell && <span className="text-white/60">Selected Square</span>}
-                            {targetCell && (
-                              <span className="flex items-center gap-1">
-                                (Row {currentAxis.col[targetCell.row]} • Col {currentAxis.row[targetCell.col]})
-                                {isTargetWinning && <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />}
-                              </span>
-                            )}
-                            {!targetCell && <span className="text-white/50">Select a Square</span>}
-                          </div>
-                        </div>
-                        {selectedCell && <button onClick={() => setSelectedCell(null)} className="p-1 rounded-full hover:bg-white/20 text-white/70 ml-2"><X className="w-4 h-4" /></button>}
-                      </div>
-                      {targetCell && (() => {
-                         const cellKey = `${targetCell.row}-${targetCell.col}`;
-                         const cellData = formattedSquares[cellKey] || [];
-                         return cellData.length === 0 ? (
-                            <div className="p-2 text-center text-xs text-white/40 border border-dashed border-white/20 rounded-lg mt-2">Empty Square</div>
-                         ) : null;
-                      })()}
-                    </div>
-                );
-            })()}
+                {panelContent}
+                {emptySquareContent}
+              </div>
+            );
+          })()}
 
           <div className="lg:hidden w-full pb-20">
             {/* MOBILE GAME INFO */}
