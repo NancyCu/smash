@@ -207,6 +207,10 @@ export default function GamePage() {
 
   // --- 1. CALCULATE LIVE PERIOD ---
   const livePeriod = useMemo(() => {
+      // PRIORITY 1: Manual Game Status
+      if (game?.status === 'final') return 'final' as PeriodKey;
+
+      // PRIORITY 2: ESPN Data
       if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) return 'final' as PeriodKey;
       if (matchedGame?.status === "pre" || matchedGame?.status === "scheduled") return 'p1' as PeriodKey;
       
@@ -415,7 +419,7 @@ export default function GamePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const statusType = (matchedGame as any)?.statusDetail;
     const p = matchedGame?.period || 1;
-    const isFinal = status === "post" || (statusType && statusType.includes("Final"));
+    const isFinal = status === "post" || (statusType && statusType.includes("Final")) || game?.status === 'final';
     
     // Prevent winner display if active period is not finalized
     if (!isQuarterFinalized(activePeriod as PeriodKey, p, isFinal)) {
@@ -528,7 +532,7 @@ export default function GamePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const statusType = (matchedGame as any)?.statusDetail;
     const p = matchedGame?.period || 1;
-    const isFinal = status === "post" || (statusType && statusType.includes("Final"));
+    const isFinal = status === "post" || (statusType && statusType.includes("Final")) || game?.status === 'final';
 
     // Initialize current pots with base amounts
     const currentPots = { ...basePayouts };
