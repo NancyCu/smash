@@ -59,6 +59,7 @@ export default function GamePage() {
   const [restoringSquares, setRestoringSquares] = useState<number[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'warning' | 'error' }>({ show: false, message: '', type: 'success' });
 
   // 2. Data Fetching Ignition
   useEffect(() => {
@@ -665,7 +666,8 @@ export default function GamePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const alreadyInSquare = user && usersInSquare.some((u: any) => (u.uid && u.uid === user.uid) || (u.userId && u.userId === user.uid));
     if (alreadyInSquare) {
-      alert("You already have a spot in this square!");
+      setToast({ show: true, message: 'You already have a spot in this square!', type: 'warning' });
+      setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
       return;
     }
 
@@ -682,7 +684,8 @@ export default function GamePage() {
     }
 
     if (ownedCount + pendingSquares.length >= 10) {
-      alert("Limit reached: You can only choose up to 10 squares.");
+      setToast({ show: true, message: 'Limit reached: You can only choose up to 10 squares.', type: 'warning' });
+      setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
       return;
     }
     
@@ -913,7 +916,14 @@ export default function GamePage() {
 
           {/* CART / DETAILS BOX */}
           {pendingSquares.length > 0 ? (
-            <div className="fixed left-0 right-0 z-40 p-4 bg-[#0B0C15]/60 backdrop-blur-xl border border-indigo-400/30 rounded-2xl shadow-xl animate-in slide-in-from-bottom-5 mx-2" style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
+            <div className="fixed left-0 right-0 z-40 p-4 bg-[#0B0C15]/60 backdrop-blur-xl border border-indigo-400/30 rounded-2xl shadow-xl transition-all duration-300 ease-in-out translate-y-0 opacity-100 mx-2" style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
+              {pendingSquares.length >= 10 && (
+                <div className="mb-3 px-3 py-2 bg-yellow-500/20 border border-yellow-400/40 rounded-lg">
+                  <p className="text-xs text-yellow-200 font-semibold text-center">
+                    Max limit reached. Ready to checkout!
+                  </p>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/40"><ShoppingCart className="w-5 h-5 text-white" /></div>
@@ -948,14 +958,19 @@ export default function GamePage() {
                 </div>
               </button>
             </div>
-          ) : (
+          ) : (() => {
             // --- DETAILS PANEL ---
-            (() => {
-                const targetCell = selectedCell || winningCoordinates;
-                const isWinnerView = !selectedCell && winningCoordinates; 
-                const isTargetWinning = winningCoordinates && targetCell && winningCoordinates.row === targetCell.row && winningCoordinates.col === targetCell.col;
-                return (
-                    <div className={`fixed left-0 right-0 z-40 p-3 bg-[#0B0C15]/60 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/10"} rounded-2xl shadow-xl transition-all mx-2`} style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
+            const targetCell = selectedCell || winningCoordinates;
+            const isWinnerView = !selectedCell && winningCoordinates; 
+            const isTargetWinning = winningCoordinates && targetCell && winningCoordinates.row === targetCell.row && winningCoordinates.col === targetCell.col;
+            
+            // Hide completely if no cell is selected or winning
+            if (!targetCell) {
+              return null;
+            }
+            
+            return (
+              <div className={`fixed left-0 right-0 z-40 p-3 bg-[#0B0C15]/60 backdrop-blur-xl border ${isTargetWinning ? "border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.3)] bg-yellow-900/10" : "border-white/10"} rounded-2xl shadow-xl transition-all duration-300 ease-in-out translate-y-0 opacity-100 mx-2`} style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
                       <div className="flex items-start justify-between">
                         <div className="flex flex-col flex-1">
                           {/* OWNERS AT TOP - THE HERO */}
@@ -998,11 +1013,9 @@ export default function GamePage() {
                             <div className="p-2 text-center text-xs text-white/40 border border-dashed border-white/20 rounded-lg mt-2">Empty Square</div>
                          ) : null;
                       })()}
-                      {!targetCell && <div className="text-center py-4 text-white/50 text-xs font-medium">Tap empty squares to build your cart.</div>}
                     </div>
                 );
-            })()
-          )}
+            })()}
 
           <div className="lg:hidden w-full pb-20">
             {/* MOBILE GAME INFO */}
@@ -1108,6 +1121,18 @@ export default function GamePage() {
           />
         );
       })()}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-xl shadow-2xl backdrop-blur-xl border-2 animate-in slide-in-from-top-5 fade-in duration-300"
+          style={{
+            backgroundColor: toast.type === 'error' ? 'rgba(220, 38, 38, 0.95)' : toast.type === 'warning' ? 'rgba(234, 179, 8, 0.95)' : 'rgba(34, 197, 94, 0.95)',
+            borderColor: toast.type === 'error' ? 'rgba(248, 113, 113, 0.5)' : toast.type === 'warning' ? 'rgba(250, 204, 21, 0.5)' : 'rgba(74, 222, 128, 0.5)',
+          }}
+        >
+          <p className="text-white font-bold text-sm text-center drop-shadow-md">{toast.message}</p>
+        </div>
+      )}
     </main>
   );
 }

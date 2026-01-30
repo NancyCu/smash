@@ -164,7 +164,7 @@ export default function GameInfo({
                         {isRollover && (
                             <div className="flex flex-col items-center gap-1">
                                 <div className="flex items-center gap-1.5">
-                                    <span className="text-sm font-black text-white/30 line-through">${p.amount}</span>
+                                    <span className="text-sm font-black text-white/30 line-through">${winnerObj?.baseAmount || p.amount}</span>
                                     <ArrowDownRight className="w-3 h-3 text-amber-400 animate-bounce" />
                                 </div>
                                 <span className="text-[7px] text-amber-500/60 font-bold uppercase tracking-wider">
@@ -176,31 +176,36 @@ export default function GameInfo({
                         {/* RECIPIENT QUARTER (The Receiver) */}
                         {isRecipient && (
                             <div className="flex flex-col items-center gap-0.5 w-full">
-                                <span className="text-[9px] text-white/50 font-mono">Base: ${winnerObj.baseAmount}</span>
-                                <span className="text-[10px] text-green-400 font-black drop-shadow-[0_0_6px_rgba(74,222,128,0.8)]">
-                                    + ${winnerObj.rolloverAmount} ROLLOVER
-                                </span>
-                                <div className="w-full h-[1px] bg-white/20 my-0.5" />
-                                <span className="text-lg font-black text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.5)]">
+                                <span className="text-xs text-white/40 line-through font-mono">${winnerObj.baseAmount}</span>
+                                <span className="text-lg font-black text-green-400 drop-shadow-[0_0_12px_rgba(74,222,128,0.8)]">
                                     ${winnerObj.amount}
                                 </span>
-                                <span className="text-[8px] text-white/40 uppercase font-bold tracking-wide">Total</span>
+                                <span className="text-[9px] text-green-300/70 font-bold">
+                                    (+${winnerObj.rolloverAmount} Rollover)
+                                </span>
                             </div>
                         )}
                         
                         {/* REGULAR WINNER (No Rollover) */}
                         {isRealWinner && !isRecipient && (
-                            <span className="text-sm font-black text-white">${winnerObj.amount}</span>
+                            <span className="text-lg font-black text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">${winnerObj.amount}</span>
                         )}
                         
                         {/* PENDING QUARTER (Not finished yet) */}
                         {!isRealWinner && !isRollover && (
-                            <span className="text-sm font-black text-white">${p.amount}</span>
+                            <div className="flex flex-col items-center gap-1">
+                                <span className="text-lg font-black text-white">${winnerObj?.baseAmount || p.amount}</span>
+                                <span className="text-[9px] text-white/40 uppercase font-bold tracking-wide">Pending</span>
+                            </div>
                         )}
 
                         {/* Footer Text */}
                         {isRealWinner && (
                             <span className="text-[9px] text-green-200 font-bold text-center leading-tight max-w-full break-words mt-1">{winnerObj.winner}</span>
+                        )}
+                        
+                        {isRollover && (
+                            <span className="text-[9px] text-amber-400/60 font-bold text-center leading-tight uppercase tracking-wide mt-1">Rolled</span>
                         )}
                     </div>
                 );
