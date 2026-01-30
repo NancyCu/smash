@@ -212,7 +212,14 @@ export default function GamePage() {
 
       // PRIORITY 2: ESPN Data
       if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) return 'final' as PeriodKey;
-      if (matchedGame?.status === "pre" || matchedGame?.status === "scheduled") return 'p1' as PeriodKey;
+      
+      if (matchedGame?.status === "pre" || matchedGame?.status === "scheduled") {
+        // Fix: If ESPN says "Pre/Scheduled" but we manually advanced the period (e.g. testing), respect the manual period.
+        if (game?.currentPeriod && game.currentPeriod !== 'p1') {
+             return game.currentPeriod as PeriodKey;
+        }
+        return 'p1' as PeriodKey;
+      }
       
       if (matchedGame?.isLive) {
           const p = matchedGame.period;
@@ -433,13 +440,21 @@ export default function GamePage() {
     const status = (matchedGame as any)?.status;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const statusType = (matchedGame as any)?.statusDetail;
-    const p = matchedGame?.period || 1;
+    
+    // Fix: Resolve 'p' (current period index) correctly for both Live (ESPN) and Manual modes
+    let p = matchedGame?.period || 1;
+    if (!matchedGame && game?.currentPeriod) {
+       // Map 'p1'->1, 'p2'->2, etc.
+       const map: Record<string, number> = { 'p1': 1, 'p2': 2, 'p3': 3, 'p4': 4, 'final': 5 };
+       p = map[game.currentPeriod as string] || 1;
+    }
+
     const isFinal = status === "post" || (statusType && statusType.includes("Final")) || game?.status === 'final';
     
-    // Prevent winner display if active period is not finalized
-    if (!isQuarterFinalized(activePeriod as PeriodKey, p, isFinal)) {
-      return null; // Return null to hide winning square highlight
-    }
+    // NOTE: We REMOVED the "isQuarterFinalized" check here. 
+    // The grid should ALWAYS highlight the potential winner based on current scores, 
+    // even if the quarter is still in progress.
+    // Use 'isFinal' just for styling/logic if needed, but don't return null.
 
     let scoreA = 0, scoreB = 0;
 
@@ -537,7 +552,14 @@ export default function GamePage() {
     const status = (matchedGame as any)?.status;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const statusType = (matchedGame as any)?.statusDetail;
-    const p = matchedGame?.period || 1;
+    
+    // Fix: Resolve 'p' correctly for Manual Mode as well
+    let p = matchedGame?.period || 1;
+    if (!matchedGame && game?.currentPeriod) {
+       const map: Record<string, number> = { 'p1': 1, 'p2': 2, 'p3': 3, 'p4': 4, 'final': 5 };
+       p = map[game.currentPeriod as string] || 1;
+    }
+
     const isFinal = status === "post" || (statusType && statusType.includes("Final")) || game?.status === 'final';
 
     // Initialize current pots with base amounts
