@@ -81,34 +81,82 @@ function PaymentsPageContent() {
           return a.paid ? 1 : -1;
       });
   }, [game, localPaidStatus]);
+  
+  // Group claims by user
+  const groupedClaims = useMemo(() => {
+      const groups = new Map<string, {
+          userId: string;
+          name: string;
+          squares: Array<{ gridIndex: number; row: number; col: number; paid: boolean }>;
+          totalAmount: number;
+          allPaid: boolean;
+      }>();
+      
+      claims.forEach(claim => {
+          if (!groups.has(claim.userId)) {
+              groups.set(claim.userId, {
+                  userId: claim.userId,
+                  name: claim.name,
+                  squares: [],
+                  totalAmount: 0,
+                  allPaid: true
+              });
+          }
+          
+          const group = groups.get(claim.userId)!;
+          group.squares.push({
+              gridIndex: claim.gridIndex,
+              row: claim.row,
+              col: claim.col,
+              paid: claim.paid
+          });
+          group.totalAmount += game?.price || 0;
+          if (!claim.paid) group.allPaid = false;
+      });
+      
+      // Sort groups: unpaid first, then by name
+      return Array.from(groups.values()).sort((a, b) => {
+          if (a.allPaid === b.allPaid) return a.name.localeCompare(b.name);
+          return a.allPaid ? 1 : -1;
+      });
+  }, [claims, game?.price]);
 
-  const handleTogglePaid = async (gridIndex: number, userId: string) => {
-    const toggleKey = `${gridIndex}-${userId}`;
-    
+  const handleTogglePaid = async (userId: string, squares: Array<{ gridIndex: number; paid: boolean }>) => {
     // Prevent double-clicks
-    if (togglingId === toggleKey) return;
+    if (togglingId === userId) return;
     
-    setTogglingId(toggleKey);
+    setTogglingId(userId);
     
     try {
-      // Get current paid status from claims
-      const claim = claims.find(c => c.gridIndex === gridIndex && c.userId === userId);
-      const currentPaid = claim?.paid ?? false;
+      // Determine target state: if all paid, unpay all. If any unpaid, pay all.
+      const allPaid = squares.every(sq => sq.paid);
+      const targetState = !allPaid;
       
-      // Optimistically update local state
+      // Optimistically update local state for all squares
+      const newLocalState: Record<string, boolean> = {};
+      squares.forEach(sq => {
+        const toggleKey = `${sq.gridIndex}-${userId}`;
+        newLocalState[toggleKey] = targetState;
+      });
+      
       setLocalPaidStatus(prev => ({
         ...prev,
-        [toggleKey]: !currentPaid
+        ...newLocalState
       }));
       
-      // Update Firebase
-      await togglePaid(gridIndex, userId);
+      // Update Firebase for all squares
+      await Promise.all(
+        squares.map(sq => togglePaid(sq.gridIndex, userId))
+      );
       
-      // Clear local override after successful update (let Firebase state take over)
+      // Clear local overrides after successful update
       setTimeout(() => {
         setLocalPaidStatus(prev => {
           const newState = { ...prev };
-          delete newState[toggleKey];
+          squares.forEach(sq => {
+            const toggleKey = `${sq.gridIndex}-${userId}`;
+            delete newState[toggleKey];
+          });
           return newState;
         });
       }, 500);
@@ -119,7 +167,10 @@ function PaymentsPageContent() {
       // Revert local state on error
       setLocalPaidStatus(prev => {
         const newState = { ...prev };
-        delete newState[toggleKey];
+        squares.forEach(sq => {
+          const toggleKey = `${sq.gridIndex}-${userId}`;
+          delete newState[toggleKey];
+        });
         return newState;
       });
     } finally {
@@ -131,6 +182,7 @@ function PaymentsPageContent() {
 
   const totalCollected = claims.filter(c => c.paid).length * game.price;
   const totalPot = claims.length * game.price;
+  const totalPlayers = groupedClaims.length;
 
   return (
     <main className="min-h-screen bg-[#0B0C15] p-2 md:p-4 lg:p-8 relative">
@@ -155,7 +207,7 @@ function PaymentsPageContent() {
                    <span>💰</span> Payment Ledger
                </h1>
                <p className="text-slate-400 text-sm">
-                   <span className="text-white font-bold">Total Players: {claims.length}</span> • 
+                   <span className="text-white font-bold">Total Players: {totalPlayers}</span> • 
                    <span className="text-green-400 font-bold ml-1">Total Pot: ${totalPot}</span>
                </p>
            </div>
@@ -180,26 +232,29 @@ function PaymentsPageContent() {
            <div className="bg-[#151725] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
                <div className="p-3 md:p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
                    <h2 className="font-bold text-white text-xs md:text-sm uppercase tracking-widest flex items-center gap-2">
-                       <DollarSign className="w-4 h-4 text-slate-400" /> Transactions ({claims.length})
+                       <DollarSign className="w-4 h-4 text-slate-400" /> Transactions ({totalPlayers})
                    </h2>
                </div>
 
                <div className="overflow-y-auto max-h-[600px]">
                    <div className="p-2 md:p-4 space-y-2">
-                       {claims.length === 0 ? (
+                       {groupedClaims.length === 0 ? (
                            <div className="p-8 text-center text-slate-500 text-sm">No squares claimed yet.</div>
                        ) : (
-                           claims.map((c, i) => (
-                               <div key={`${c.gridIndex}-${c.userId}-${i}`} className="flex flex-col gap-2 p-3 md:p-4 rounded-xl bg-black/20 border border-white/5 hover:bg-white/5 transition-colors">
+                           groupedClaims.map((group, i) => (
+                               <div key={`${group.userId}-${i}`} className="flex flex-col gap-2 p-3 md:p-4 rounded-xl bg-black/20 border border-white/5 hover:bg-white/5 transition-colors">
                                    {/* Top Row: User Info */}
                                    <div className="flex items-center gap-3 min-w-0">
-                                       <div className={`w-12 h-12 md:w-10 md:h-10 rounded-lg flex items-center justify-center font-black text-xs border flex-shrink-0 ${c.paid ? "bg-green-500/20 border-green-500/30 text-green-400" : "bg-red-500/20 border-red-500/30 text-red-400"}`}>
-                                           ${game.price}
+                                       <div className={`w-12 h-12 md:w-14 md:h-14 rounded-lg flex items-center justify-center font-black text-sm border flex-shrink-0 ${group.allPaid ? "bg-green-500/20 border-green-500/30 text-green-400" : "bg-red-500/20 border-red-500/30 text-red-400"}`}>
+                                           ${group.totalAmount}
                                        </div>
                                        <div className="min-w-0 flex-1">
-                                           <div className="font-bold text-white text-sm md:text-base truncate">{c.name}</div>
+                                           <div className="font-bold text-white text-sm md:text-base truncate">{group.name}</div>
                                            <div className="text-xs text-slate-500 font-mono">
-                                               {c.row},{c.col} • {c.paid ? "✓ PAID" : "UNPAID"}
+                                               {group.squares.length} square{group.squares.length !== 1 ? 's' : ''} • {group.allPaid ? "✓ ALL PAID" : `${group.squares.filter(s => s.paid).length}/${group.squares.length} PAID`}
+                                           </div>
+                                           <div className="text-[10px] text-slate-600 mt-0.5">
+                                               {group.squares.map(sq => `(${sq.row},${sq.col})`).join(', ')}
                                            </div>
                                        </div>
                                    </div>
@@ -207,20 +262,20 @@ function PaymentsPageContent() {
                                    {/* Bottom Row: Action Button - Full Width on Mobile */}
                                    <button 
                                        type="button"
-                                       onClick={() => handleTogglePaid(c.gridIndex, c.userId)}
-                                       disabled={togglingId === `${c.gridIndex}-${c.userId}`}
+                                       onClick={() => handleTogglePaid(group.userId, group.squares)}
+                                       disabled={togglingId === group.userId}
                                        className={`w-full md:w-auto md:self-end py-3 md:py-2 px-4 rounded-lg text-sm md:text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 ${
-                                           c.paid 
+                                           group.allPaid 
                                            ? "bg-green-500 text-black hover:bg-green-400 shadow-[0_0_10px_rgba(34,197,94,0.4)] disabled:opacity-50" 
                                            : "bg-emerald-600 text-white hover:bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)] disabled:opacity-50"
                                        }`}
                                    >
-                                       {togglingId === `${c.gridIndex}-${c.userId}` ? (
+                                       {togglingId === group.userId ? (
                                            <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</>
-                                       ) : c.paid ? (
-                                           <><Check className="w-4 h-4" /> Paid</>
+                                       ) : group.allPaid ? (
+                                           <><Check className="w-4 h-4" /> All Paid</>
                                        ) : (
-                                           <><Check className="w-4 h-4" /> Mark as Paid</>
+                                           <><Check className="w-4 h-4" /> Mark All as Paid</>
                                        )}
                                    </button>
                                </div>
