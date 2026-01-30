@@ -129,7 +129,9 @@ export default function BottomNav() {
           console.log('[BottomNav] Cleaning up finished/deleted game from storage:', activeGameId);
           localStorage.removeItem('activeGameId');
           setActiveGameId(null);
-          window.dispatchEvent(new Event('activeGameIdChanged'));
+          setTimeout(() => {
+            window.dispatchEvent(new Event('activeGameIdChanged'));
+          }, 0);
         }
       } catch (error) {
         console.error('[BottomNav] Error checking stored game:', error);

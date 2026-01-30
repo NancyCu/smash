@@ -49,6 +49,17 @@ export default function GamePage() {
     setGamePhase,
   } = useGame();
 
+  // State declarations (must be before useEffect hooks that reference them)
+  const [activePeriod, setActivePeriod] = useState<PeriodKey>('p1');
+  const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
+  const [isManualView, setIsManualView] = useState(false);
+  const [pendingSquares, setPendingSquares] = useState<number[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [restorationToast, setRestorationToast] = useState<{ show: boolean; message: string; type: 'success' | 'warning' | 'error' }>({ show: false, message: '', type: 'success' });
+  const [restoringSquares, setRestoringSquares] = useState<number[]>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
   // 2. Data Fetching Ignition
   useEffect(() => {
     if (id) {
@@ -72,7 +83,10 @@ export default function GamePage() {
       if (game.teamA && game.teamB) {
         console.log(`[GamePage] Setting activeGameId: ${id}`);
         localStorage.setItem("activeGameId", id as string);
-        window.dispatchEvent(new Event('activeGameIdChanged'));
+        // Dispatch event asynchronously to avoid setState during render
+        setTimeout(() => {
+          window.dispatchEvent(new Event('activeGameIdChanged'));
+        }, 0);
       }
     }
   }, [loading, game, id]);
@@ -181,17 +195,6 @@ export default function GamePage() {
     },
     [game, liveGames]
   );
-   
-  // 5. State
-  const [activePeriod, setActivePeriod] = useState<PeriodKey>('p1');
-  const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
-  const [isManualView, setIsManualView] = useState(false);
-  const [pendingSquares, setPendingSquares] = useState<number[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [restorationToast, setRestorationToast] = useState<{ show: boolean; message: string; type: 'success' | 'warning' | 'error' }>({ show: false, message: '', type: 'success' });
-  const [restoringSquares, setRestoringSquares] = useState<number[]>([]);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Get sport configuration
   const sportType: SportType = game?.sport || 'default';
@@ -682,7 +685,9 @@ export default function GamePage() {
       if (storedId === id) {
         console.warn(`Clearing invalid activeGameId: ${id}`);
         localStorage.removeItem("activeGameId");
-        window.dispatchEvent(new Event('activeGameIdChanged'));
+        setTimeout(() => {
+          window.dispatchEvent(new Event('activeGameIdChanged'));
+        }, 0);
       }
     }
     

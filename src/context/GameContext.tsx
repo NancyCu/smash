@@ -17,7 +17,9 @@ export const cleanupActiveGameStorage = (gameId: string) => {
     if (storedActiveId === gameId) {
       console.log('[GameContext] Cleaning up game from localStorage:', gameId);
       localStorage.removeItem('activeGameId');
-      window.dispatchEvent(new Event('activeGameIdChanged'));
+      setTimeout(() => {
+        window.dispatchEvent(new Event('activeGameIdChanged'));
+      }, 0);
     }
   }
 };
