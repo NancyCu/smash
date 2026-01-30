@@ -7,9 +7,11 @@ interface TrophyCaseProps {
   history: PayoutLog[];
   totalPot: number;
   gameStatus?: 'open' | 'active' | 'final'; // Add game status prop
+  currentPeriod?: number; // Current period/quarter of the game
+  isGameCompleted?: boolean; // Whether the entire game is completed
 }
 
-const TrophyCase: React.FC<TrophyCaseProps> = ({ payouts, history, totalPot, gameStatus = 'open' }) => {
+const TrophyCase: React.FC<TrophyCaseProps> = ({ payouts, history, totalPot, gameStatus = 'open', currentPeriod = 0, isGameCompleted = false }) => {
   
   // Helper to map technical keys (q1) to readable labels
   const getLabel = (key: string) => {
@@ -24,6 +26,20 @@ const TrophyCase: React.FC<TrophyCaseProps> = ({ payouts, history, totalPot, gam
 
   // Define the standard order of trophies
   const periods = ['q1', 'q2', 'q3', 'final'];
+  
+  // Helper to check if a period is completed
+  const isPeriodCompleted = (period: string): boolean => {
+    if (isGameCompleted || gameStatus === 'final') return true;
+    
+    const periodMap: Record<string, number> = {
+      'q1': 1,
+      'q2': 2,
+      'q3': 3,
+      'final': 4
+    };
+    
+    return currentPeriod > (periodMap[period] || 0);
+  };
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
@@ -65,13 +81,13 @@ const TrophyCase: React.FC<TrophyCaseProps> = ({ payouts, history, totalPot, gam
                 </div>
             )}
             
-            {!winnerLog && gameStatus !== 'final' && (
+            {!winnerLog && !isPeriodCompleted(period) && (
                 <div className="mt-3 px-3 py-1.5 rounded-full border border-dashed border-white/10 text-[10px] text-slate-600">
                     Pending
                 </div>
             )}
             
-            {!winnerLog && gameStatus === 'final' && (
+            {!winnerLog && isPeriodCompleted(period) && (
                 <div className="mt-3 px-3 py-1.5 rounded-full border border-dashed border-white/10 text-[10px] text-slate-600">
                     No Winner
                 </div>

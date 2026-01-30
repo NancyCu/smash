@@ -16,6 +16,7 @@ interface QuarterResult {
   isRollover: boolean;
   baseAmount?: number;
   rolloverAmount?: number;
+  isFinished?: boolean; // Add this to track if the quarter is completed
 }
 
 interface GameHistoryCardProps {
@@ -242,7 +243,7 @@ export default function GameHistoryCard({ game, quarterResults }: GameHistoryCar
                     </span>
                   ))}
                 </div>
-              ) : game.status === "final" ? (
+              ) : (q.isFinished || game.status === "final") ? (
                 <div className="flex items-center gap-1">
                   <Ghost className="w-3 h-3 text-white/30" />
                   <span className="text-white/30 text-[10px]">No Winner</span>
