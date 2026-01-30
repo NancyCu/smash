@@ -59,10 +59,12 @@ export default function GamePage() {
   
   // 2a. Track when initial load is complete
   useEffect(() => {
-    if (!loading && game && game.teamA && game.teamB) {
+    // Set initialLoadComplete to true once we have a definitive result from loading
+    if (!loading) {
+      // Either we have a valid game (with teamA and teamB) or we don't
       setInitialLoadComplete(true);
     }
-  }, [loading, game]);
+  }, [loading, setInitialLoadComplete]);
   
   // 2b. Store as active game when successfully loaded
   useEffect(() => {
@@ -662,7 +664,7 @@ export default function GamePage() {
   const handleDelete = async () => { if (confirm("Are you sure you want to delete this game?")) { await deleteGame(); router.push("/"); } };
    
   // 4. Loading Screen & Error Handling
-  if (!game || !game?.teamA) {
+  if (!game || !game?.teamA || !game?.teamB) {
     // Show loading state if we're still loading OR haven't completed initial load yet
     if (loading || !initialLoadComplete) {
       return (
