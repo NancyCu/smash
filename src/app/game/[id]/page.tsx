@@ -568,7 +568,6 @@ export default function GamePage() {
     const results: { key: PeriodKey | string; label: string; winner: string; amount: number; rollover: boolean; baseAmount: number; rolloverAmount: number }[] = [];
 
     // Track winners for each period
-    // GATEKEEPER: Only calculate winner if quarter is officially finalized
     const periodWinners: Record<string, any> = {};
     displayPeriods.forEach((period, idx) => {
       // Check if this specific quarter has been officially finalized
@@ -579,13 +578,18 @@ export default function GamePage() {
         ? (period === 'p1' && p > 1) || (period === 'p2' && (p > 2 || isFinal)) || (period === 'final' && isFinal)
         : (idx < p - 1) || (period === 'final' && isFinal);
       
-      // Only get owner if quarter is truly finalized
-      periodWinners[period] = isFinalized ? getOwner(period) : null;
+      // RELAXED RULE: If this is the ACTIVE period being viewed, show the winner!
+      // This ensures the "Payout Schedule" card matches the "Grid" highlights.
+      // (Even if the quarter isn't officially over yet)
+      const shouldCalculate = isFinalized || period === activePeriod;
+
+      periodWinners[period] = shouldCalculate ? getOwner(period) : null;
     });
 
     // Process p1 (Q1)
     const p1Complete = sportType === 'soccer' ? p > 1 : p > 1;
     const p1Winner = periodWinners['p1'];
+    // ONLY rollover if the period is ACTUALLY complete (don't rollover just because we don't see a winner in active view)
     if (p1Complete && !p1Winner && displayPeriods.includes('p1')) {
       const rolloverAmount = currentPots['p1'];
       const splitAmount = rolloverAmount / 2;
@@ -630,30 +634,8 @@ export default function GamePage() {
       
       effectivePayouts[period] = currentAmount;
       
-      // IF QUARTER NOT FINALIZED: Show "Pending" INSTEAD OF 0
-      if (!isFinalized && baseAmount > 0) {
-        results.push({ 
-          key: period, 
-          label: getPeriodLabel(period, sportType), 
-          winner: 'Pending', 
-          amount: currentAmount, // Use currentAmount (which includes rollover) instead of 0
-          baseAmount,
-          rolloverAmount: rolloverAmount,
-          rollover: false 
-        });
-      }
-      // IF QUARTER FINALIZED: Check for winner or rollover
-      else if (isFinalized && periodComplete && !winner && baseAmount > 0) {
-        results.push({ 
-          key: period, 
-          label: getPeriodLabel(period, sportType), 
-          winner: '', 
-          amount: 0,
-          baseAmount,
-          rolloverAmount: 0,
-          rollover: true 
-        });
-      } else if (isFinalized && periodComplete && winner) {
+      // PRIORITY 1: If we have a winner (Finalized OR Active View), Show it!
+      if (winner) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const winnerNames = Array.isArray(winner) 
           ? winner.map((w: any) => w.displayName || w.name).join(', ')
@@ -664,6 +646,30 @@ export default function GamePage() {
           label: getPeriodLabel(period, sportType), 
           winner: winnerNames, 
           amount: currentAmount,
+          baseAmount,
+          rolloverAmount: rolloverAmount,
+          rollover: false 
+        });
+      }
+      // PRIORITY 2: If finalized but NO winner (Rollover), show Empty/Rollover
+      else if (isFinalized && periodComplete && !winner && baseAmount > 0) {
+        results.push({ 
+          key: period, 
+          label: getPeriodLabel(period, sportType), 
+          winner: '', 
+          amount: 0,
+          baseAmount,
+          rolloverAmount: 0,
+          rollover: true 
+        });
+      } 
+      // PRIORITY 3: Pending
+      else if (baseAmount > 0) {
+        results.push({ 
+          key: period, 
+          label: getPeriodLabel(period, sportType), 
+          winner: 'Pending', 
+          amount: currentAmount, 
           baseAmount,
           rolloverAmount: rolloverAmount,
           rollover: false 
