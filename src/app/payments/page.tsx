@@ -128,9 +128,9 @@ function PaymentsPageContent() {
     setTogglingId(userId);
     
     try {
-      // Determine target state: if all paid, unpay all. If any unpaid, pay all.
+      // Determine target state: if ALL paid, unpay all. If ANY unpaid (including partial), pay all.
       const allPaid = squares.every(sq => sq.paid);
-      const targetState = !allPaid;
+      const targetState = !allPaid; // true = mark all paid, false = mark all unpaid
       
       // Optimistically update local state for all squares
       const newLocalState: Record<string, boolean> = {};
@@ -144,9 +144,9 @@ function PaymentsPageContent() {
         ...newLocalState
       }));
       
-      // Update Firebase for all squares
+      // Update Firebase for all squares with explicit target state
       await Promise.all(
-        squares.map(sq => togglePaid(sq.gridIndex, userId))
+        squares.map(sq => togglePaid(sq.gridIndex, userId, targetState))
       );
       
       // Clear local overrides after successful update

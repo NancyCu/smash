@@ -90,7 +90,7 @@ interface GameContextType {
   claimSquare: (index: number, displayName?: string, markPaid?: boolean) => Promise<void>;
   joinGame: (gameId: string, password?: string, userId?: string) => Promise<void>;
   unclaimSquare: (index: number) => Promise<void>;
-  togglePaid: (index: number, targetUserId?: string) => Promise<void>;
+  togglePaid: (index: number, targetUserId?: string, setPaidTo?: boolean) => Promise<void>;
   updateScores: (home: any, away?: any) => Promise<void>;
   updateQuarterScores: (gameId: string, quarterScores: any) => Promise<void>;
   scrambleGrid: () => Promise<void>;
@@ -327,7 +327,7 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
     });
   };
 
-  const togglePaid = async (gridIndex: number, targetUserId?: string) => {
+  const togglePaid = async (gridIndex: number, targetUserId?: string, setPaidTo?: boolean) => {
     if (!gameId || !game || !targetUserId) {
       console.error('❌ togglePaid: Missing gameId, game, or targetUserId');
       return;
@@ -352,8 +352,8 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
         const updatedSquares = square.map(claim => {
           if (claim.userId === targetUserId) {
             foundClaim = true;
-            // Toggle the paid status
-            const newPaidStatus = !claim.paid;
+            // Set to specific value if provided, otherwise toggle
+            const newPaidStatus = setPaidTo !== undefined ? setPaidTo : !claim.paid;
             currentPaidStatus = newPaidStatus;
             return {
               ...claim,
@@ -368,8 +368,8 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
         }
       } else if (square.userId === targetUserId) {
         foundClaim = true;
-        // Single claim - toggle paid status
-        currentPaidStatus = !square.paid;
+        // Set to specific value if provided, otherwise toggle
+        currentPaidStatus = setPaidTo !== undefined ? setPaidTo : !square.paid;
         updates[`squares.${squareKey}`] = {
           ...square,
           paid: currentPaidStatus,
