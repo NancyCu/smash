@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Ticket } from 'lucide-react';
+import { ChevronDown, ChevronUp, Ticket, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { GameData } from '@/context/GameContext';
 
@@ -25,6 +25,7 @@ interface BetTickerProps {
 
 export default function BetTicker({ games = [] }: BetTickerProps) {
   const [isCompact, setIsCompact] = useState(true);
+  const [isVisible, setIsVisible] = useState(true);
   const { user } = useAuth();
   
   // Sort games by start time (earliest first)
@@ -42,6 +43,13 @@ export default function BetTicker({ games = [] }: BetTickerProps) {
     });
   }, [games]);
   
+  // Filter to only show active/open games (not final)
+  const activeGames = useMemo(() => {
+    return sortedGames.filter(game => 
+      game.status === 'open' || game.status === 'active'
+    );
+  }, [sortedGames]);
+  
   // Helper to check if user is participating
   const isUserParticipating = (game: ActiveGame): boolean => {
     if (!user || !game.playerIds) return false;
@@ -53,30 +61,46 @@ export default function BetTicker({ games = [] }: BetTickerProps) {
     return game.isLive === true || game.status === 'active';
   };
   
-  if (sortedGames.length === 0) return null;
+  // Auto-hide if no active games
+  if (activeGames.length === 0) return null;
+  
+  // Don't render if explicitly hidden
+  if (!isVisible) return null;
   
   return (
     <div 
       id="tour-bet-ticker" // <--- ADD THIS ID HERE
     className="w-full flex flex-col gap-2 mb-2 transition-all duration-300 ease-in-out">
-      {/* Header Row: Title + Toggle */}
+      {/* Header Row: Title + Toggle + Dismiss */}
       <div className="flex items-center justify-between px-1">
         <h3 className="text-[#22d3ee] text-xs font-bold tracking-widest uppercase opacity-80 flex items-center gap-2">
           <Ticket className="w-3 h-3" /> Active Games
+          <span className="text-white/40 text-[10px] font-normal">({activeGames.length})</span>
         </h3>
-        <button
-          onClick={() => setIsCompact(!isCompact)}
-          className="text-white/50 hover:text-white hover:bg-white/10 p-1 rounded transition-colors"
-          aria-label={isCompact ? 'Expand ticker' : 'Collapse ticker'}
-          >
-          {isCompact ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setIsCompact(!isCompact)}
+            className="text-white/50 hover:text-white hover:bg-white/10 p-1 rounded transition-colors"
+            aria-label={isCompact ? 'Expand ticker' : 'Collapse ticker'}
+            title={isCompact ? 'Expand view' : 'Compact view'}
+            >
+            {isCompact ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
+          <button
+            onClick={() => setIsVisible(false)}
+            className="text-white/50 hover:text-red-400 hover:bg-white/10 p-1 rounded transition-colors"
+            aria-label="Hide ticker"
+            title="Hide ticker"
+            >
+            <X size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Scrollable Container */}
       <div 
-      className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
-        {sortedGames.map((game) => {
+      className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
+        {activeGames.map((game) => {
           const isParticipating = isUserParticipating(game);
           const isLive = isGameLive(game);
           const showLiveIndicator = isLive && isParticipating;
@@ -95,7 +119,7 @@ export default function BetTicker({ games = [] }: BetTickerProps) {
               }
               ${isCompact 
                 ? 'h-9 px-3 flex items-center gap-3 min-w-fit hover:border-[#22d3ee]/50 rounded-xl' 
-                : 'h-24 w-40 p-3 flex flex-col justify-between hover:bg-white/10 rounded-xl'
+                : 'h-24 w-40 min-w-[160px] p-3 flex flex-col justify-between hover:bg-white/10 rounded-xl'
               }
               `}
               >

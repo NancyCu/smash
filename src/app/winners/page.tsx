@@ -539,7 +539,8 @@ function HallOfFame() {
                 scoreB: q1Scores.teamB, 
                 winners: getWinnersForScore(q1Scores.teamA, q1Scores.teamB, "q1"), 
                 payout: basePayouts.q1, 
-                isRollover: false 
+                isRollover: false,
+                isFinished: (q1Scores.teamA > 0 || q1Scores.teamB > 0) || game.status === 'final'
               },
               { 
                 key: "q2", 
@@ -548,7 +549,8 @@ function HallOfFame() {
                 scoreB: q1Scores.teamB + q2Scores.teamB,  // Cumulative through halftime
                 winners: getWinnersForScore(q1Scores.teamA + q2Scores.teamA, q1Scores.teamB + q2Scores.teamB, "q2"), 
                 payout: basePayouts.q2, 
-                isRollover: false 
+                isRollover: false,
+                isFinished: ((q1Scores.teamA > 0 || q1Scores.teamB > 0) && (q2Scores.teamA > 0 || q2Scores.teamB > 0)) || game.status === 'final'
               },
               { 
                 key: "q3", 
@@ -557,7 +559,8 @@ function HallOfFame() {
                 scoreB: q1Scores.teamB + q2Scores.teamB + q3Scores.teamB,  // Cumulative through Q3
                 winners: getWinnersForScore(q1Scores.teamA + q2Scores.teamA + q3Scores.teamA, q1Scores.teamB + q2Scores.teamB + q3Scores.teamB, "q3"), 
                 payout: basePayouts.q3, 
-                isRollover: false 
+                isRollover: false,
+                isFinished: ((q1Scores.teamA > 0 || q1Scores.teamB > 0) && (q2Scores.teamA > 0 || q2Scores.teamB > 0) && (q3Scores.teamA > 0 || q3Scores.teamB > 0)) || game.status === 'final'
               },
               { 
                 key: "final", 
@@ -566,7 +569,8 @@ function HallOfFame() {
                 scoreB: finalScores.teamB,  // Final cumulative score
                 winners: getWinnersForScore(finalScores.teamA, finalScores.teamB, "final"), 
                 payout: basePayouts.final, 
-                isRollover: false 
+                isRollover: false,
+                isFinished: game.status === 'final'
               },
             ];
 
