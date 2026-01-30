@@ -222,7 +222,7 @@ export default function GameInfo({
                         )}
                         
                         {isRollover && (
-                            <span className="text-[9px] text-amber-400/60 font-bold text-center leading-tight uppercase tracking-wide mt-1">Rolled</span>
+                            <span className="text-[9px] text-amber-400/60 font-bold text-center leading-tight uppercase tracking-wide mt-1">Rollover! ↷</span>
                         )}
                     </div>
                 );

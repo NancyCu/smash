@@ -210,7 +210,23 @@ export default function GamePage() {
       // PRIORITY 1: Manual Game Status
       if (game?.status === 'final') return 'final' as PeriodKey;
 
-      // PRIORITY 2: ESPN Data
+      // PRIORITY 2: Manual Scores Snap-Back
+      if (!game?.espnGameId) {
+          const qScores = game?.quarterScores;
+          // Check for manual final score (either explicit final block or just global scores suggesting completion)
+          // If we have global scores manual entry > 0, we can default to FINAL if no breakdown provided
+          const totalScore = (game?.scores?.teamA || 0) + (game?.scores?.teamB || 0);
+          
+          if (qScores?.final && (qScores.final.teamA + qScores.final.teamB > 0)) return 'final' as PeriodKey;
+          if (qScores?.p3 && (qScores.p3.teamA + qScores.p3.teamB > 0)) return 'p3' as PeriodKey;
+          if (qScores?.p2 && (qScores.p2.teamA + qScores.p2.teamB > 0)) return 'p2' as PeriodKey;
+          if (qScores?.p1 && (qScores.p1.teamA + qScores.p1.teamB > 0)) return 'p1' as PeriodKey;
+          
+          // Fallback: If no quarter breakdown, but total score > 0, assume FINAL (Snap to end)
+          if (totalScore > 0) return 'final' as PeriodKey;
+      }
+
+      // PRIORITY 3: ESPN Data
       if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) return 'final' as PeriodKey;
       
       if (matchedGame?.status === "pre" || matchedGame?.status === "scheduled") {
@@ -480,10 +496,15 @@ export default function GamePage() {
           }
         }
 
-      const rowIndex = axis.row.indexOf(scoreA % 10);
-      const colIndex = axis.col.indexOf(scoreB % 10);
-      if (rowIndex === -1 || colIndex === -1) return null;
-      return { row: colIndex, col: rowIndex };
+      // CORRECTION: 
+      // axis.row maps to the Horizontal/Top Axis (Team A / Home) -> Returns Column Index
+      // axis.col maps to the Vertical/Left Axis (Team B / Away) -> Returns Row Index
+      
+      const colIdx = axis.row.indexOf(scoreA % 10);
+      const rowIdx = axis.col.indexOf(scoreB % 10);
+
+      if (rowIdx === -1 || colIdx === -1) return null;
+      return { row: rowIdx, col: colIdx };
   }, [currentScores, activePeriod, game, sportType, matchedGame]);
 
   // Current axis
@@ -540,10 +561,20 @@ export default function GamePage() {
             else { sA = currentScores.final.home; sB = currentScores.final.away; }
           }
 
-      const r = axis.row.indexOf(sA % 10);
-      const c = axis.col.indexOf(sB % 10);
-      if (r === -1 || c === -1) return null;
-      const cell = game.squares[r * 10 + c];
+      // CORRECTION: 
+      // axis.row maps to the Horizontal/Top Axis (Team A / Home)
+      // axis.col maps to the Vertical/Left Axis (Team B / Away)
+      // We must find the index of Home Score (sA) in axis.row -> This gives the Column Index
+      // We must find the index of Away Score (sB) in axis.col -> This gives the Row Index
+
+      const colIndex = axis.row.indexOf(sA % 10);
+      const rowIndex = axis.col.indexOf(sB % 10);
+
+      if (rowIndex === -1 || colIndex === -1) return null;
+      
+      // Grid uses [RowIndex * 10 + ColIndex]
+      const cell = game.squares[rowIndex * 10 + colIndex];
+      
       if (Array.isArray(cell)) return cell.length > 0 ? cell : null;
       return cell ? [cell] : null;
     };
@@ -553,14 +584,30 @@ export default function GamePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const statusType = (matchedGame as any)?.statusDetail;
     
-    // Fix: Resolve 'p' correctly for Manual Mode as well
+    // Fix: Resolve 'p' correctly for Manual Mode as well (Unified with LivePeriod Logic)
     let p = matchedGame?.period || 1;
-    if (!matchedGame && game?.currentPeriod) {
-       const map: Record<string, number> = { 'p1': 1, 'p2': 2, 'p3': 3, 'p4': 4, 'final': 5 };
-       p = map[game.currentPeriod as string] || 1;
+    
+    if (!matchedGame) {
+       // Only rely on game status or scores if NOT connected to ESPN
+       if (game?.status === 'final') {
+           p = 5; // Force complete
+       } else if (game?.quarterScores) {
+           const qs = game.quarterScores;
+           if (qs.final && (qs.final.teamA + qs.final.teamB > 0)) p = 5;
+           else if (qs.p3 && (qs.p3.teamA + qs.p3.teamB > 0)) p = 4; // Q3 done? Or in it? Assume done for payout calc if entered.
+           else if (qs.p2 && (qs.p2.teamA + qs.p2.teamB > 0)) p = 3;
+           else if (qs.p1 && (qs.p1.teamA + qs.p1.teamB > 0)) p = 2;
+       } else if ((game?.scores?.teamA || 0) + (game?.scores?.teamB || 0) > 0) {
+           // If global scores exist but no quarters, assume Final for payout purposes in Manual
+           p = 5;
+       } else {
+           // Fallback to currentPeriod mapping
+           const map: Record<string, number> = { 'p1': 1, 'p2': 2, 'p3': 3, 'p4': 4, 'final': 5 };
+           p = map[game?.currentPeriod as string] || 1;
+       }
     }
 
-    const isFinal = status === "post" || (statusType && statusType.includes("Final")) || game?.status === 'final';
+    const isFinal = status === "post" || (statusType && statusType.includes("Final")) || game?.status === 'final' || p >= 5;
 
     // Initialize current pots with base amounts
     const currentPots = { ...basePayouts };
