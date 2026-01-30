@@ -242,6 +242,11 @@ export default function GameHistoryCard({ game, quarterResults }: GameHistoryCar
                     </span>
                   ))}
                 </div>
+              ) : game.status === "final" ? (
+                <div className="flex items-center gap-1">
+                  <Ghost className="w-3 h-3 text-white/30" />
+                  <span className="text-white/30 text-[10px]">No Winner</span>
+                </div>
               ) : (
                 <div className="flex items-center gap-1">
                   <Ghost className="w-3 h-3 text-white/30" />

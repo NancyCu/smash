@@ -6,9 +6,10 @@ interface TrophyCaseProps {
   payouts: any; // Using any for flexibility with your config object
   history: PayoutLog[];
   totalPot: number;
+  gameStatus?: 'open' | 'active' | 'final'; // Add game status prop
 }
 
-const TrophyCase: React.FC<TrophyCaseProps> = ({ payouts, history, totalPot }) => {
+const TrophyCase: React.FC<TrophyCaseProps> = ({ payouts, history, totalPot, gameStatus = 'open' }) => {
   
   // Helper to map technical keys (q1) to readable labels
   const getLabel = (key: string) => {
@@ -64,9 +65,15 @@ const TrophyCase: React.FC<TrophyCaseProps> = ({ payouts, history, totalPot }) =
                 </div>
             )}
             
-            {!winnerLog && (
+            {!winnerLog && gameStatus !== 'final' && (
                 <div className="mt-3 px-3 py-1.5 rounded-full border border-dashed border-white/10 text-[10px] text-slate-600">
                     Pending
+                </div>
+            )}
+            
+            {!winnerLog && gameStatus === 'final' && (
+                <div className="mt-3 px-3 py-1.5 rounded-full border border-dashed border-white/10 text-[10px] text-slate-600">
+                    No Winner
                 </div>
             )}
           </div>
