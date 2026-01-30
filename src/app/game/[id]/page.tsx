@@ -24,6 +24,7 @@ import { useEspnScores } from "@/hooks/useEspnScores";
 import { getSportConfig, getDisplayPeriods, getPeriodLabel, type PeriodKey, type SportType } from "@/lib/sport-config";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { savePendingSelections, loadPendingSelections, clearPendingSelections } from "@/utils/selectionSuitcase";
 
 
 export default function GamePage() {
@@ -65,6 +66,88 @@ export default function GamePage() {
       }
     }
   }, [loading, game, id]);
+
+  // 2c. Restore pending selections after authentication
+  useEffect(() => {
+    if (!loading && game && user && id) {
+      const gameId = id as string;
+      const savedSelections = loadPendingSelections(gameId);
+      
+      if (savedSelections && savedSelections.length > 0) {
+        console.log(`[GamePage] Restoring ${savedSelections.length} pending selections`);
+        
+        // Check which squares are still available
+        const available: number[] = [];
+        const conflicts: number[] = [];
+        
+        savedSelections.forEach(index => {
+          const rawData = game.squares?.[index];
+          const usersInSquare = Array.isArray(rawData) ? rawData : rawData ? [rawData] : [];
+          const alreadyOwned = usersInSquare.some((u: any) => 
+            (u.uid && u.uid === user.uid) || (u.userId && u.userId === user.uid)
+          );
+          const isTaken = usersInSquare.length > 0;
+          
+          if (alreadyOwned || isTaken) {
+            conflicts.push(index);
+          } else {
+            available.push(index);
+          }
+        });
+        
+        if (available.length > 0) {
+          // Restore available squares with animation
+          setRestoringSquares(available);
+          setPendingSquares(available);
+          
+          // Sequential animation effect
+          available.forEach((idx, i) => {
+            setTimeout(() => {
+              setRestoringSquares(prev => prev.filter(x => x !== idx));
+            }, 300 + (i * 100));
+          });
+          
+          setTimeout(() => {
+            setRestoringSquares([]);
+            setRestorationToast({
+              show: true,
+              message: `${available.length} square${available.length > 1 ? 's' : ''} restored! Ready to claim.`,
+              type: 'success'
+            });
+            setTimeout(() => setRestorationToast({ show: false, message: '', type: 'success' }), 4000);
+          }, 300 + (available.length * 100));
+        }
+        
+        if (conflicts.length > 0) {
+          console.log(`[GamePage] ${conflicts.length} squares no longer available`);
+          if (available.length === 0) {
+            setRestorationToast({
+              show: true,
+              message: 'Selected squares are no longer available.',
+              type: 'warning'
+            });
+            setTimeout(() => setRestorationToast({ show: false, message: '', type: 'warning' }), 4000);
+          }
+        }
+        
+        // Clear saved selections
+        clearPendingSelections(gameId);
+      }
+    }
+  }, [loading, game, user, id]);
+
+  // 2d. Auto-save pending selections before unload (safety net)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (pendingSquares.length > 0 && id && !user) {
+        savePendingSelections(id as string, pendingSquares);
+        console.log(`[GamePage] Auto-saved ${pendingSquares.length} selections before unload`);
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [pendingSquares, id, user]);
 
   // 3. Safety & Pot Logic
   const squares = game?.squares ?? {};
@@ -541,6 +624,11 @@ export default function GamePage() {
     if (user) {
       await logOut(); 
     } else {
+      // Save pending selections before redirecting to sign in
+      if (pendingSquares.length > 0 && id) {
+        savePendingSelections(id as string, pendingSquares);
+        console.log(`[GamePage] Saved ${pendingSquares.length} pending selections before auth`);
+      }
       router.push(`/?action=login&redirect=${id}`); 
     }
   };
