@@ -125,15 +125,18 @@ export default function GameInfo({
                 
                 // Determine Status
                 // 1. Real Winner: Object exists AND rollover is false
-                const isRealWinner = winnerObj && !winnerObj.rollover;
+                const isRealWinner = winnerObj && !winnerObj.rollover && winnerObj.winner;
                 
                 // 2. Rollover: Object exists with rollover=true OR amount is 0 w/ no winner
-                const isRollover = (winnerObj && winnerObj.rollover) || (p.amount === 0 && !isRealWinner && totalPot > 0);
+                const isRollover = (winnerObj && winnerObj.rollover) || (winnerObj && winnerObj.winner === '' && !winnerObj.rollover);
                 
-                // 3. Recipient: Has rolloverAmount from previous quarters
+                // 3. Recipient Winner: Has rolloverAmount from previous quarters AND has won
                 const isRecipient = isRealWinner && winnerObj.rolloverAmount > 0;
                 
-                // 4. Next quarter receives this rollover
+                // 4. Pending with incoming rollover: Not won yet but has rolloverAmount allocated
+                const isPendingWithRollover = !isRealWinner && !isRollover && winnerObj && winnerObj.rolloverAmount > 0;
+                
+                // 5. Next quarter receives this rollover
                 const hasRolloverToNext = isRollover && nextWinnerObj && nextWinnerObj.rolloverAmount > 0;
                 
                 return (
@@ -191,8 +194,22 @@ export default function GameInfo({
                             <span className="text-lg font-black text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">${winnerObj.amount}</span>
                         )}
                         
-                        {/* PENDING QUARTER (Not finished yet) */}
-                        {!isRealWinner && !isRollover && (
+                        {/* PENDING WITH INCOMING ROLLOVER (Not won yet but has money allocated) */}
+                        {isPendingWithRollover && (
+                            <div className="flex flex-col items-center gap-0.5 w-full">
+                                <span className="text-xs text-white/40 line-through font-mono">${winnerObj.baseAmount}</span>
+                                <span className="text-lg font-black text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">
+                                    ${winnerObj.baseAmount + winnerObj.rolloverAmount}
+                                </span>
+                                <span className="text-[9px] text-amber-300/70 font-bold">
+                                    (+${winnerObj.rolloverAmount} Rollover)
+                                </span>
+                                <span className="text-[9px] text-white/40 uppercase font-bold tracking-wide mt-0.5">Pending</span>
+                            </div>
+                        )}
+                        
+                        {/* PENDING QUARTER (Not finished yet, no rollover) */}
+                        {!isRealWinner && !isRollover && !isPendingWithRollover && (
                             <div className="flex flex-col items-center gap-1">
                                 <span className="text-lg font-black text-white">${winnerObj?.baseAmount || p.amount}</span>
                                 <span className="text-[9px] text-white/40 uppercase font-bold tracking-wide">Pending</span>
