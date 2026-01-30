@@ -379,6 +379,25 @@ export default function GamePage() {
     }
   }, [currentScores, game?.scores, matchedGame, updateScores, game?.espnGameId, id]);
 
+  // --- QUARTER-FINALIZED HELPER (Gatekeeper) ---
+  // Only allows winner calculation when quarter is officially complete
+  const isQuarterFinalized = (period: PeriodKey, currentPeriod: number, gameFinal: boolean): boolean => {
+    if (gameFinal) return true; // Always finalized in final
+    
+    if (sportType === 'soccer') {
+      if (period === 'p1') return currentPeriod > 1;
+      if (period === 'p2') return currentPeriod > 2 || gameFinal;
+      if (period === 'final') return gameFinal;
+    } else {
+      // Football/Basketball logic
+      if (period === 'p1') return currentPeriod > 1;
+      if (period === 'p2') return currentPeriod > 2;
+      if (period === 'p3') return currentPeriod > 3;
+      if (period === 'final') return gameFinal;
+    }
+    return false;
+  };
+
   // --- WINNING CELL (SPORT-AWARE) ---
   const winningCoordinates = useMemo(() => {
     const defaultAxis = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -468,25 +487,6 @@ export default function GamePage() {
     });
     return payoutMap;
   }, [livePot, sportConfig]);
-
-  // --- QUARTER-FINALIZED HELPER (Gatekeeper) ---
-  // Only allows winner calculation when quarter is officially complete
-  const isQuarterFinalized = (period: PeriodKey, currentPeriod: number, gameFinal: boolean): boolean => {
-    if (gameFinal) return true; // Always finalized in final
-    
-    if (sportType === 'soccer') {
-      if (period === 'p1') return currentPeriod > 1;
-      if (period === 'p2') return currentPeriod > 2 || gameFinal;
-      if (period === 'final') return gameFinal;
-    } else {
-      // Football/Basketball logic
-      if (period === 'p1') return currentPeriod > 1;
-      if (period === 'p2') return currentPeriod > 2;
-      if (period === 'p3') return currentPeriod > 3;
-      if (period === 'final') return gameFinal;
-    }
-    return false;
-  };
 
   // 3. GAME STATS HOOK WITH 50/50 SPLIT ROLLOVER LOGIC (SPORT-AWARE)
   const gameStats = useMemo(() => {

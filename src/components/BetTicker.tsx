@@ -26,37 +26,38 @@ interface BetTickerProps {
 export default function BetTicker({ games = [] }: BetTickerProps) {
   const [isCompact, setIsCompact] = useState(true);
   const { user } = useAuth();
-
+  
   // Sort games by start time (earliest first)
   const sortedGames = useMemo(() => {
     if (!games || games.length === 0) return [];
     
     return [...games].sort((a, b) => {
       const timeA = a.startTime ? new Date(a.startTime).getTime() : 
-                    a.createdAt?.toDate?.() ? new Date(a.createdAt.toDate()).getTime() : 
-                    0;
+      a.createdAt?.toDate?.() ? new Date(a.createdAt.toDate()).getTime() : 
+      0;
       const timeB = b.startTime ? new Date(b.startTime).getTime() : 
-                    b.createdAt?.toDate?.() ? new Date(b.createdAt.toDate()).getTime() : 
-                    0;
+      b.createdAt?.toDate?.() ? new Date(b.createdAt.toDate()).getTime() : 
+      0;
       return timeA - timeB;
     });
   }, [games]);
-
+  
   // Helper to check if user is participating
   const isUserParticipating = (game: ActiveGame): boolean => {
     if (!user || !game.playerIds) return false;
     return game.playerIds.includes(user.uid);
   };
-
+  
   // Helper to check if game is live
   const isGameLive = (game: ActiveGame): boolean => {
     return game.isLive === true || game.status === 'active';
   };
-
+  
   if (sortedGames.length === 0) return null;
-
+  
   return (
     <div 
+      id="tour-bet-ticker" // <--- ADD THIS ID HERE
     className="w-full flex flex-col gap-2 mb-2 transition-all duration-300 ease-in-out">
       {/* Header Row: Title + Toggle */}
       <div className="flex items-center justify-between px-1">
@@ -67,14 +68,13 @@ export default function BetTicker({ games = [] }: BetTickerProps) {
           onClick={() => setIsCompact(!isCompact)}
           className="text-white/50 hover:text-white hover:bg-white/10 p-1 rounded transition-colors"
           aria-label={isCompact ? 'Expand ticker' : 'Collapse ticker'}
-        >
+          >
           {isCompact ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
         </button>
       </div>
 
       {/* Scrollable Container */}
       <div 
-          id="tour-bet-ticker" // <--- ADD THIS ID HERE
       className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
         {sortedGames.map((game) => {
           const isParticipating = isUserParticipating(game);
@@ -82,23 +82,23 @@ export default function BetTicker({ games = [] }: BetTickerProps) {
           const showLiveIndicator = isLive && isParticipating;
           const gamePot = game.totalPot || game.pot || 0;
           const gameTitle = game.name || `${game.teamA || 'Team A'} vs ${game.teamB || 'Team B'}`;
-
+          
           return (
             <div
-              key={game.id}
-              className={`
-                relative flex-shrink-0 transition-all duration-300 ease-spring 
-                border backdrop-blur-sm snap-start
-                ${isParticipating 
-                  ? 'border-[#22d3ee]/60 bg-[#22d3ee]/5' 
-                  : 'border-white/10 bg-white/5'
-                }
-                ${isCompact 
-                  ? 'h-9 px-3 flex items-center gap-3 min-w-fit hover:border-[#22d3ee]/50 rounded-xl' 
-                  : 'h-24 w-40 p-3 flex flex-col justify-between hover:bg-white/10 rounded-xl'
-                }
+            key={game.id}
+            className={`
+              relative flex-shrink-0 transition-all duration-300 ease-spring 
+              border backdrop-blur-sm snap-start
+              ${isParticipating 
+                ? 'border-[#22d3ee]/60 bg-[#22d3ee]/5' 
+                : 'border-white/10 bg-white/5'
+              }
+              ${isCompact 
+                ? 'h-9 px-3 flex items-center gap-3 min-w-fit hover:border-[#22d3ee]/50 rounded-xl' 
+                : 'h-24 w-40 p-3 flex flex-col justify-between hover:bg-white/10 rounded-xl'
+              }
               `}
-            >
+              >
               {/* Compact Content (Single Line) */}
               {isCompact ? (
                 <>
