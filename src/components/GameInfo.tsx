@@ -167,7 +167,7 @@ export default function GameInfo({
                         {isRollover && (
                             <div className="flex flex-col items-center gap-1">
                                 <div className="flex items-center gap-1.5">
-                                    <span className="text-sm font-black text-white/30 line-through">${winnerObj?.baseAmount || p.amount}</span>
+                                    <span className="text-sm font-black text-white/30 line-through">${winnerObj && typeof winnerObj.baseAmount === 'number' ? winnerObj.baseAmount : p.amount}</span>
                                     <ArrowDownRight className="w-3 h-3 text-amber-400 animate-bounce" />
                                 </div>
                                 <span className="text-[7px] text-amber-500/60 font-bold uppercase tracking-wider">
@@ -179,7 +179,7 @@ export default function GameInfo({
                         {/* RECIPIENT QUARTER (The Receiver) */}
                         {isRecipient && (
                             <div className="flex flex-col items-center gap-0.5 w-full">
-                                <span className="text-xs text-white/40 line-through font-mono">${winnerObj.baseAmount}</span>
+                                <span className="text-xs text-white/40 line-through font-mono">${winnerObj?.baseAmount}</span>
                                 <span className="text-lg font-black text-green-400 drop-shadow-[0_0_12px_rgba(74,222,128,0.8)]">
                                     ${winnerObj.amount}
                                 </span>
@@ -197,9 +197,9 @@ export default function GameInfo({
                         {/* PENDING WITH INCOMING ROLLOVER (Not won yet but has money allocated) */}
                         {isPendingWithRollover && (
                             <div className="flex flex-col items-center gap-0.5 w-full">
-                                <span className="text-xs text-white/40 line-through font-mono">${winnerObj.baseAmount}</span>
+                                <span className="text-xs text-white/40 line-through font-mono">${winnerObj?.baseAmount}</span>
                                 <span className="text-lg font-black text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">
-                                    ${winnerObj.baseAmount + winnerObj.rolloverAmount}
+                                    ${winnerObj && typeof winnerObj.baseAmount === 'number' && typeof winnerObj.rolloverAmount === 'number' ? winnerObj.baseAmount + winnerObj.rolloverAmount : 0}
                                 </span>
                                 <span className="text-[9px] text-amber-300/70 font-bold">
                                     (+${winnerObj.rolloverAmount} Rollover)
@@ -211,7 +211,7 @@ export default function GameInfo({
                         {/* PENDING QUARTER (Not finished yet, no rollover) */}
                         {!isRealWinner && !isRollover && !isPendingWithRollover && (
                             <div className="flex flex-col items-center gap-1">
-                                <span className="text-lg font-black text-white">${winnerObj?.baseAmount || p.amount}</span>
+                                <span className="text-lg font-black text-white">${winnerObj && typeof winnerObj.baseAmount === 'number' ? winnerObj.baseAmount : p.amount}</span>
                                 <span className="text-[9px] text-white/40 uppercase font-bold tracking-wide">Pending</span>
                             </div>
                         )}
@@ -279,6 +279,18 @@ export default function GameInfo({
                 Pay Host
               </button>
             )}
+
+             {/* Make Payment Button */}
+             {isAdmin && !paymentLink && !zellePhone && (
+              <button
+                id="tour-make-pay-btn" // <--- ADD THIS
+                onClick={() => router.push(`/game/${gameId}/payments`)}
+                className="w-full mt-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 text-white font-black text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                Setup Payments
+              </button>
+             )}
         </div>
 
         {/* Payment Modal */}

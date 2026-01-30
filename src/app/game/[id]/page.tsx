@@ -595,15 +595,15 @@ export default function GamePage() {
       
       effectivePayouts[period] = currentAmount;
       
-      // IF QUARTER NOT FINALIZED: Show "Pending" instead of calculating winner
+      // IF QUARTER NOT FINALIZED: Show "Pending" INSTEAD OF 0
       if (!isFinalized && baseAmount > 0) {
         results.push({ 
           key: period, 
           label: getPeriodLabel(period, sportType), 
           winner: 'Pending', 
-          amount: 0,
+          amount: currentAmount, // Use currentAmount (which includes rollover) instead of 0
           baseAmount,
-          rolloverAmount: 0,
+          rolloverAmount: rolloverAmount,
           rollover: false 
         });
       }
