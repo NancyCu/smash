@@ -1,10 +1,11 @@
 'use client';
 
 import { HelpCircle } from 'lucide-react';
+import { startTour } from '@/utils/tour';
 
 export const HelpButton = () => {
   const handleClick = () => {
-    console.log('Open Help');
+    startTour(true);
   };
 
   return (

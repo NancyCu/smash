@@ -6,8 +6,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getDisplayPeriods, getPeriodLabel, type SportType } from "@/lib/sport-config";
 import PaymentModal from "@/components/PaymentModal";
-import { startTour } from '@/utils/tour';
-import { HelpCircle } from 'lucide-react';
 interface GameInfoProps {
   gameId: string;
   gameName: string;
@@ -229,14 +227,6 @@ export default function GameInfo({
                     {copied ? <Check className="w-3 h-3 text-green-400" /> : <Share2 className="w-3 h-3" />}
                     <span className="text-[10px] uppercase font-bold underline">Share Link</span>
                 </button>
-                <button 
-  onClick={() => startTour(true)} // <--- TRUE forces it to run ignoring localStorage
-  className="hover:text-white transition-colors flex items-center gap-1"
-  title="Replay Tutorial"
->
-  <HelpCircle className="w-3 h-3" />
-  <span className="text-[10px] uppercase font-bold underline">Help</span>
-</button>
             </div>
             <div className="mt-1 text-xs text-white/50">
                 Host: <span className="text-white/90 font-bold">{host === user?.uid ? "You" : "User"}</span>
