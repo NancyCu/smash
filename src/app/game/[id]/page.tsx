@@ -207,6 +207,10 @@ export default function GamePage() {
 
   // --- 1. CALCULATE LIVE PERIOD ---
   const livePeriod = useMemo(() => {
+      // PRIORITY 1: Manual Game Status
+      if (game?.status === 'final') return 'final' as PeriodKey;
+
+      // PRIORITY 2: ESPN Data
       if (matchedGame?.status === "post" || matchedGame?.statusDetail?.includes("Final")) return 'final' as PeriodKey;
       if (matchedGame?.status === "pre" || matchedGame?.status === "scheduled") return 'p1' as PeriodKey;
       
@@ -340,21 +344,36 @@ export default function GamePage() {
       return scores;
     }
     
-    // --- MANUAL FALLBACK ---
-    const manualHome = game.scores?.teamA || 0;
-    const manualAway = game.scores?.teamB || 0;
-    const manualObj = { home: manualHome, away: manualAway };
-
-    return {
-      ...base,
-      p1: manualObj,   
-      p2: manualObj,   
-      p3: manualObj,
-      p4: manualObj,   
-      final: manualObj,
-      teamA: manualHome,
-      teamB: manualAway,
-    };
+      // --- MANUAL FALLBACK ---
+      const manualHome = game.scores?.teamA || 0;
+      const manualAway = game.scores?.teamB || 0;
+      
+      const qScores = game.quarterScores;
+      
+      // If explicit quarter scores exist, use them (Discrete). 
+      // Otherwise, assume the Total Score belongs to P1 (for summation logic compatibility) or spread it if needed.
+      // To ensure the "Summation" logic in gameStats works correctly (p1+p2+p3), 
+      // we should put the ENTIRE current score in p1 if we lack breakdown, 
+      // and 0 in others. This ensures Q1=Total, Q2=Total+0, Q3=Total+0+0.
+      
+      const p1 = qScores?.p1 ? { home: qScores.p1.teamA, away: qScores.p1.teamB } : { home: manualHome, away: manualAway };
+      const p2 = qScores?.p2 ? { home: qScores.p2.teamA, away: qScores.p2.teamB } : { home: 0, away: 0 };
+      const p3 = qScores?.p3 ? { home: qScores.p3.teamA, away: qScores.p3.teamB } : { home: 0, away: 0 };
+      const p4 = { home: 0, away: 0 }; // Overtime/extra not usually manually tracked this way
+      
+      // Final is always the total
+      const final = qScores?.final ? { home: qScores.final.teamA, away: qScores.final.teamB } : { home: manualHome, away: manualAway };
+  
+      return {
+        ...base,
+        p1,   
+        p2,   
+        p3,
+        p4,   
+        final,
+        teamA: manualHome,
+        teamB: manualAway,
+      };
   }, [game, matchedGame]);
 
   // --- AUTO-SYNC ENGINE ---
@@ -415,7 +434,7 @@ export default function GamePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const statusType = (matchedGame as any)?.statusDetail;
     const p = matchedGame?.period || 1;
-    const isFinal = status === "post" || (statusType && statusType.includes("Final"));
+    const isFinal = status === "post" || (statusType && statusType.includes("Final")) || game?.status === 'final';
     
     // Prevent winner display if active period is not finalized
     if (!isQuarterFinalized(activePeriod as PeriodKey, p, isFinal)) {
@@ -424,11 +443,7 @@ export default function GamePage() {
 
     let scoreA = 0, scoreB = 0;
 
-    if (!game?.espnGameId) {
-        scoreA = currentScores.teamA;
-        scoreB = currentScores.teamB;
-    } else {
-        if (sportType === 'soccer') {
+    if (sportType === 'soccer') {
           if (activePeriod === "p1") {
             scoreA = currentScores.teamA; scoreB = currentScores.teamB;
           } else if (activePeriod === 'p2') {
@@ -449,7 +464,6 @@ export default function GamePage() {
             scoreA = currentScores.final.home; scoreB = currentScores.final.away;
           }
         }
-    }
 
       const rowIndex = axis.row.indexOf(scoreA % 10);
       const colIndex = axis.col.indexOf(scoreB % 10);
@@ -500,10 +514,7 @@ export default function GamePage() {
       const axis = (game.isScrambled && game.axis && game.axis[period]) ? game.axis[period] : { row: defaultAxis, col: defaultAxis };
       let sA = 0, sB = 0;
       
-      if (!game.espnGameId) {
-          sA = currentScores.teamA; sB = currentScores.teamB;
-      } else {
-          if (sportType === 'soccer') {
+      if (sportType === 'soccer') {
             if (period === "p1") { sA = currentScores.teamA; sB = currentScores.teamB; }
             else if (period === "p2") { sA = currentScores.teamA; sB = currentScores.teamB; }
             else { sA = currentScores.final.home; sB = currentScores.final.away; }
@@ -513,7 +524,6 @@ export default function GamePage() {
             else if (period === "p3") { sA = currentScores.p1.home + currentScores.p2.home + currentScores.p3.home; sB = currentScores.p1.away + currentScores.p2.away + currentScores.p3.away; } 
             else { sA = currentScores.final.home; sB = currentScores.final.away; }
           }
-      }
 
       const r = axis.row.indexOf(sA % 10);
       const c = axis.col.indexOf(sB % 10);
@@ -528,7 +538,7 @@ export default function GamePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const statusType = (matchedGame as any)?.statusDetail;
     const p = matchedGame?.period || 1;
-    const isFinal = status === "post" || (statusType && statusType.includes("Final"));
+    const isFinal = status === "post" || (statusType && statusType.includes("Final")) || game?.status === 'final';
 
     // Initialize current pots with base amounts
     const currentPots = { ...basePayouts };
