@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, CheckCircle2, Trophy, DollarSign, Shuffle, Hash, Grid3X3 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trophy, DollarSign, Shuffle, Hash, Grid3X3, AlertCircle } from "lucide-react";
 
 export default function RulesPage() {
   return (
@@ -110,6 +110,53 @@ export default function RulesPage() {
                         The winning square is the intersection of <span className="font-bold text-slate-900">Row 7</span> and <span className="font-bold text-slate-900">Column 4</span>.
                     </p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* NEW: 50/50 Split Rollover Explanation */}
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 md:p-8 rounded-3xl shadow-sm border-2 border-amber-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-6 opacity-5">
+              <AlertCircle className="w-32 h-32" />
+            </div>
+            <div className="flex gap-4 relative z-10">
+              <div className="flex-shrink-0 w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white font-black text-xl">💰</div>
+              <div className="space-y-3">
+                <h3 className="text-xl font-bold text-slate-900">50/50 Split Rollover</h3>
+                <p className="text-slate-700 leading-relaxed font-medium">
+                  If a quarter ends with no winner (nobody owns the winning square), the money doesn't disappear—it rolls over using our fair 50/50 split system:
+                </p>
+                
+                <div className="space-y-3 mt-4">
+                  <div className="bg-white rounded-xl p-4 border border-amber-200">
+                    <p className="font-bold text-amber-900 mb-2">Quarter 1 or 2 (No Winner):</p>
+                    <p className="text-sm text-slate-600">
+                      The pot <span className="font-bold text-amber-700">splits 50/50</span> → Half goes to the next quarter, half goes directly to Final.
+                    </p>
+                  </div>
+                  
+                  <div className="bg-white rounded-xl p-4 border border-amber-200">
+                    <p className="font-bold text-amber-900 mb-2">Quarter 3 (No Winner):</p>
+                    <p className="text-sm text-slate-600">
+                      The entire pot <span className="font-bold text-amber-700">rolls 100% to Final</span> (since there's no Quarter 4).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-amber-100 rounded-xl p-4 mt-4 border border-amber-300">
+                  <p className="text-xs font-bold text-amber-900 uppercase tracking-widest mb-2">Example</p>
+                  <div className="text-sm text-slate-700 space-y-1">
+                    <p>Q1 ($19): No winner → $9.50 to Q2, $9.50 to Final</p>
+                    <p>Q2 ($38 + $9.50 = $47.50): No winner → $23.75 to Q3, $23.75 to Final</p>
+                    <p className="font-bold text-emerald-700">Q3 ($38 + $23.75 = $61.75): Winner takes $61.75</p>
+                    <p className="font-bold text-emerald-700">Final ($95 + $9.50 + $23.75 = $128.25): Winner takes $128.25</p>
+                  </div>
+                  <p className="text-xs text-amber-800 mt-2 font-semibold">✓ Total paid out: $190 (100% of pot)</p>
+                </div>
+
+                <p className="text-xs text-slate-500 italic mt-4">
+                  This system ensures Final never gets too small while keeping earlier quarters exciting!
+                </p>
               </div>
             </div>
           </div>

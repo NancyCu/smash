@@ -359,7 +359,7 @@ export default function GamePage() {
     return payoutMap;
   }, [livePot, sportConfig]);
 
-  // 3. GAME STATS HOOK WITH ROLLOVER LOGIC (SPORT-AWARE)
+  // 3. GAME STATS HOOK WITH 50/50 SPLIT ROLLOVER LOGIC (SPORT-AWARE)
   const gameStats = useMemo(() => {
     if (!game) return { payouts: {}, winners: [], currentPotential: 0, effectivePayouts: {} };
 
@@ -397,21 +397,65 @@ export default function GamePage() {
     const p = matchedGame?.period || 1;
     const isFinal = status === "post" || (statusType && statusType.includes("Final"));
 
-    let rolloverCash = 0;
+    // Initialize current pots with base amounts
+    const currentPots = { ...basePayouts };
     const effectivePayouts: Record<string, number> = {};
     const results: { key: PeriodKey | string; label: string; winner: string; amount: number; rollover: boolean; baseAmount: number; rolloverAmount: number }[] = [];
 
+    // Track winners for each period
+    const periodWinners: Record<string, any> = {};
     displayPeriods.forEach((period, idx) => {
       const periodComplete = sportType === 'soccer' 
         ? (period === 'p1' && p > 1) || (period === 'p2' && (p > 2 || isFinal)) || (period === 'final' && isFinal)
         : (idx < p - 1) || (period === 'final' && isFinal);
       
-      const winner = getOwner(period);
+      periodWinners[period] = periodComplete ? getOwner(period) : null;
+    });
+
+    // Process p1 (Q1)
+    const p1Complete = sportType === 'soccer' ? p > 1 : p > 1;
+    const p1Winner = periodWinners['p1'];
+    if (p1Complete && !p1Winner && displayPeriods.includes('p1')) {
+      const rolloverAmount = currentPots['p1'];
+      const splitAmount = rolloverAmount / 2;
+      if (displayPeriods.includes('p2')) currentPots['p2'] += splitAmount;
+      if (displayPeriods.includes('final')) currentPots['final'] += splitAmount;
+      currentPots['p1'] = 0;
+    }
+
+    // Process p2 (Q2/Half)
+    const p2Complete = sportType === 'soccer' ? (p > 2 || isFinal) : (p > 2 || isFinal);
+    const p2Winner = periodWinners['p2'];
+    if (p2Complete && !p2Winner && displayPeriods.includes('p2')) {
+      const rolloverAmount = currentPots['p2'];
+      const splitAmount = rolloverAmount / 2;
+      if (displayPeriods.includes('p3')) currentPots['p3'] += splitAmount;
+      if (displayPeriods.includes('final')) currentPots['final'] += splitAmount;
+      currentPots['p2'] = 0;
+    }
+
+    // Process p3 (Q3) - 100% to Final (no split)
+    const p3Complete = sportType === 'soccer' ? isFinal : (p > 3 || isFinal);
+    const p3Winner = periodWinners['p3'];
+    if (p3Complete && !p3Winner && displayPeriods.includes('p3')) {
+      if (displayPeriods.includes('final')) currentPots['final'] += currentPots['p3'];
+      currentPots['p3'] = 0;
+    }
+
+    // Build results array
+    displayPeriods.forEach((period, idx) => {
+      const periodComplete = sportType === 'soccer' 
+        ? (period === 'p1' && p > 1) || (period === 'p2' && (p > 2 || isFinal)) || (period === 'final' && isFinal)
+        : (idx < p - 1) || (period === 'final' && isFinal);
+      
+      const winner = periodWinners[period];
       const baseAmount = basePayouts[period] || 0;
+      const currentAmount = currentPots[period] || baseAmount;
+      const rolloverAmount = currentAmount - baseAmount;
+      
+      effectivePayouts[period] = currentAmount;
       
       if (periodComplete && !winner && baseAmount > 0) {
-        rolloverCash += baseAmount;
-        effectivePayouts[period] = 0;
         results.push({ 
           key: period, 
           label: getPeriodLabel(period, sportType), 
@@ -421,28 +465,21 @@ export default function GamePage() {
           rolloverAmount: 0,
           rollover: true 
         });
-      }
-      else {
-        const effectiveAmount = baseAmount + rolloverCash;
-        effectivePayouts[period] = effectiveAmount;
+      } else if (periodComplete && winner) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const winnerNames = Array.isArray(winner) 
+          ? winner.map((w: any) => w.displayName || w.name).join(', ')
+          : (winner as any).displayName || (winner as any).name;
         
-        if (periodComplete && winner) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const winnerNames = Array.isArray(winner) 
-            ? winner.map((w: any) => w.displayName || w.name).join(', ')
-            : (winner as any).displayName || (winner as any).name;
-          
-          results.push({ 
-            key: period, 
-            label: getPeriodLabel(period, sportType), 
-            winner: winnerNames, 
-            amount: effectiveAmount,
-            baseAmount,
-            rolloverAmount: rolloverCash,
-            rollover: false 
-          });
-        }
-        rolloverCash = 0;
+        results.push({ 
+          key: period, 
+          label: getPeriodLabel(period, sportType), 
+          winner: winnerNames, 
+          amount: currentAmount,
+          baseAmount,
+          rolloverAmount: rolloverAmount,
+          rollover: false 
+        });
       }
     });
     
@@ -626,11 +663,10 @@ export default function GamePage() {
                 {/* AWAY TEAM (Left - matches grid vertical/rows - pink) */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <div className="flex items-center gap-1 lg:gap-2 mb-0.5 justify-center w-full">
-                    {getTeamLogo(game.teamB) && <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
+                    {getTeamLogo(game.teamB) && <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-12 h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
                     <span className="text-pink-200 font-teko text-[10px] md:text-lg lg:text-2xl tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] lg:max-w-[180px] drop-shadow-sm">
                       {game.teamB}
                     </span>
-                    {getTeamLogo(game.teamB) && <img src={getTeamLogo(game.teamB)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
                   </div>
                   <span className="text-4xl md:text-7xl lg:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(236,72,153,0.6)] mt-0.5">
                     {!game.espnGameId 
@@ -672,11 +708,10 @@ export default function GamePage() {
                 {/* HOME TEAM (Right - matches grid horizontal/cols - cyan) */}
                 <div className="flex flex-col items-center justify-start w-[35%] relative z-0">
                   <div className="flex items-center gap-1 lg:gap-2 mb-0.5 justify-center w-full">
-                    {getTeamLogo(game.teamA) && <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
                     <span className="text-cyan-200 font-teko text-[10px] md:text-lg lg:text-2xl tracking-wide uppercase text-center leading-tight whitespace-nowrap truncate max-w-[70px] md:max-w-[120px] lg:max-w-[180px] drop-shadow-sm">
                       {game.teamA}
                     </span>
-                    {getTeamLogo(game.teamA) && <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
+                    {getTeamLogo(game.teamA) && <img src={getTeamLogo(game.teamA)} alt="Logo" className="w-12 h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 object-contain drop-shadow-md" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />}
                   </div>
                   <span className="text-4xl md:text-7xl lg:text-8xl font-teko text-white leading-none drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] mt-0.5">
                     {!game.espnGameId 

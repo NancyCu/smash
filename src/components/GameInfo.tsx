@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2, Copy, MoveRight, ArrowDownRight, CreditCard } from "lucide-react";
+import { Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2, Copy, MoveRight, ArrowDownRight, CreditCard, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getDisplayPeriods, getPeriodLabel, type SportType } from "@/lib/sport-config";
@@ -167,7 +167,9 @@ export default function GameInfo({
                                     <span className="text-sm font-black text-white/30 line-through">${p.amount}</span>
                                     <ArrowDownRight className="w-3 h-3 text-amber-400 animate-bounce" />
                                 </div>
-                                <span className="text-[7px] text-amber-500/60 font-bold uppercase tracking-wider">Rollover</span>
+                                <span className="text-[7px] text-amber-500/60 font-bold uppercase tracking-wider">
+                                    {p.key === 'p3' ? '→ Final' : '50/50 Split'}
+                                </span>
                             </div>
                         )}
                         
@@ -270,9 +272,26 @@ export default function GameInfo({
 
         {/* PAYOUTS */}
         <div>
-            <h3 className="text-xs font-bold text-white/60 uppercase tracking-widest flex items-center gap-2 mb-2">
-                <Trophy className="w-3 h-3 text-yellow-400 drop-shadow-md" /> Payout Schedule
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-bold text-white/60 uppercase tracking-widest flex items-center gap-2">
+                    <Trophy className="w-3 h-3 text-yellow-400 drop-shadow-md" /> Payout Schedule
+                </h3>
+            </div>
+            
+            {/* ROLLOVER EXPLANATION BANNER */}
+            <div className="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 backdrop-blur-sm">
+                <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                        <p className="text-[10px] font-bold text-amber-200 uppercase tracking-wide mb-1">50/50 Split Rollover</p>
+                        <p className="text-[9px] text-amber-300/80 leading-relaxed">
+                            If Q1 or Q2 has no winner, the pot splits 50/50 between the next quarter and Final. 
+                            Q3 rolls 100% to Final.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
             {renderPayouts()}
         </div>
 

@@ -113,7 +113,9 @@ function SingleGameWinners({ gameId }: { gameId: string }) {
     const pot = game.pot || (Object.keys(game.squares).length * game.price);
     const basePayouts = { q1: pot * 0.10, q2: pot * 0.20, q3: pot * 0.20, final: pot * 0.50 };
 
-    let currentRollover = 0;
+    // Initialize current pots with base amounts
+    const currentPots = { ...basePayouts };
+    
     const results: any[] = [];
     const stages = [
       { key: 'q1', label: "Q1", done: p > 1 || isHalf || isFinal },
@@ -122,24 +124,60 @@ function SingleGameWinners({ gameId }: { gameId: string }) {
       { key: 'final', label: "FINAL", done: isFinal }
     ];
 
+    // Determine winners for all stages first
+    const stageWinners: Record<string, any> = {};
     stages.forEach((stage) => {
       const result = getWinnerForQuarter(stage.key as any);
-      const hasWinner = result && result.winners !== null;
-      const baseAmount = basePayouts[stage.key as keyof typeof basePayouts];
-      const rolloverAmount = currentRollover;
-      let displayAmount = baseAmount + currentRollover;
-      let rolloverActive = false;
+      stageWinners[stage.key] = stage.done && result?.winners ? result : null;
+    });
 
-      if (stage.done && !hasWinner) {
-        if (stage.key !== 'final') { currentRollover = displayAmount; displayAmount = 0; rolloverActive = true; }
-      } else if (stage.done && hasWinner) { currentRollover = 0; }
+    // Process Q1 with 50/50 split
+    if (stages[0].done && !stageWinners['q1']) {
+      const rolloverAmount = currentPots.q1;
+      const splitAmount = rolloverAmount / 2;
+      currentPots.q2 += splitAmount;
+      currentPots.final += splitAmount;
+      currentPots.q1 = 0;
+    }
+
+    // Process Q2 with 50/50 split
+    if (stages[1].done && !stageWinners['q2']) {
+      const rolloverAmount = currentPots.q2;
+      const splitAmount = rolloverAmount / 2;
+      currentPots.q3 += splitAmount;
+      currentPots.final += splitAmount;
+      currentPots.q2 = 0;
+    }
+
+    // Process Q3 - 100% to Final (no split)
+    if (stages[2].done && !stageWinners['q3']) {
+      currentPots.final += currentPots.q3;
+      currentPots.q3 = 0;
+    }
+
+    // Build results array
+    stages.forEach((stage) => {
+      const result = getWinnerForQuarter(stage.key as any);
+      const hasWinner = stageWinners[stage.key] !== null;
+      const baseAmount = basePayouts[stage.key as keyof typeof basePayouts];
+      const currentAmount = currentPots[stage.key as keyof typeof currentPots];
+      const rolloverAmount = currentAmount - baseAmount;
 
       results.push({
-        quarter: stage.key, scoreA: result?.scoreA ?? 0, scoreB: result?.scoreB ?? 0,
-        rowDigit: result?.rowDigit ?? null, colDigit: result?.colDigit ?? null,
-        winners: result?.winners ?? null, key: stage.key, label: stage.label,
-        finalPayout: displayAmount, isRollover: rolloverActive, hasWinner: hasWinner, isFinished: stage.done,
-        baseAmount: baseAmount, rolloverAmount: rolloverAmount,
+        quarter: stage.key, 
+        scoreA: result?.scoreA ?? 0, 
+        scoreB: result?.scoreB ?? 0,
+        rowDigit: result?.rowDigit ?? null, 
+        colDigit: result?.colDigit ?? null,
+        winners: result?.winners ?? null, 
+        key: stage.key, 
+        label: stage.label,
+        finalPayout: currentAmount, 
+        isRollover: stage.done && !hasWinner && stage.key !== 'final', 
+        hasWinner: hasWinner, 
+        isFinished: stage.done,
+        baseAmount: baseAmount, 
+        rolloverAmount: rolloverAmount,
       });
     });
     return results;
