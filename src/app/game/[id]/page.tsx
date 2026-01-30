@@ -428,7 +428,7 @@ export default function GamePage() {
 
     let scoreA = 0, scoreB = 0;
 
-    if (!game?.espnGameId) {
+    if (!game?.espnGameId || !matchedGame) {
         scoreA = currentScores.teamA;
         scoreB = currentScores.teamB;
     } else {
@@ -504,7 +504,7 @@ export default function GamePage() {
       const axis = (game.isScrambled && game.axis && game.axis[period]) ? game.axis[period] : { row: defaultAxis, col: defaultAxis };
       let sA = 0, sB = 0;
       
-      if (!game.espnGameId) {
+      if (!game.espnGameId || !matchedGame) {
           sA = currentScores.teamA; sB = currentScores.teamB;
       } else {
           if (sportType === 'soccer') {
