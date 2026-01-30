@@ -53,8 +53,16 @@ export default function GamePage() {
   useEffect(() => {
     if (id) {
       setGameId(id as string);
+      setInitialLoadComplete(false); // Reset on ID change
     }
   }, [id, setGameId]);
+  
+  // 2a. Track when initial load is complete
+  useEffect(() => {
+    if (!loading && game && game.teamA && game.teamB) {
+      setInitialLoadComplete(true);
+    }
+  }, [loading, game]);
   
   // 2b. Store as active game when successfully loaded
   useEffect(() => {
@@ -181,6 +189,7 @@ export default function GamePage() {
   const [restorationToast, setRestorationToast] = useState<{ show: boolean; message: string; type: 'success' | 'warning' | 'error' }>({ show: false, message: '', type: 'success' });
   const [restoringSquares, setRestoringSquares] = useState<number[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Get sport configuration
   const sportType: SportType = game?.sport || 'default';
@@ -654,7 +663,8 @@ export default function GamePage() {
    
   // 4. Loading Screen & Error Handling
   if (!game || !game?.teamA) {
-    if (loading) {
+    // Show loading state if we're still loading OR haven't completed initial load yet
+    if (loading || !initialLoadComplete) {
       return (
         <div className="flex h-screen items-center justify-center bg-[#0B0C15] text-cyan-400">
           <div className="flex flex-col items-center gap-4">
