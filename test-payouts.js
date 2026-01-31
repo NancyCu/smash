@@ -20,6 +20,7 @@ const getResolvedPayouts = (game, totalPot) => {
     FINAL: 0.50
   };
 
+  
   // Initialize current pots with base amounts
   const basePots = {
     Q1: totalPot * BASE_PERCENTAGES.Q1,
