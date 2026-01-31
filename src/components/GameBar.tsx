@@ -79,7 +79,9 @@ export default function GameBar() {
 
             <div className="flex items-center gap-1.5 max-w-[140px]">
                 <span className={`text-xs font-bold truncate ${isActive ? "text-cyan-100" : ""}`}>
-                {g.teamA} vs {g.teamB}
+                {/* User Request: Prioritize Operation Name/Title over Matchup */}
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {(g as any).operationName || (g as any).title || g.name || `${g.teamA} vs ${g.teamB}`}
                 </span>
                 <span className={`text-[10px] font-medium whitespace-nowrap ${isActive ? "text-cyan-200" : "text-white/40"}`}>
                 • ${g.pot || g.totalPot || 0}

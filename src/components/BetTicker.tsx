@@ -105,7 +105,8 @@ export default function BetTicker({ games = [] }: BetTickerProps) {
           const isLive = isGameLive(game);
           const showLiveIndicator = isLive && isParticipating;
           const gamePot = game.totalPot || game.pot || 0;
-          const gameTitle = game.name || `${game.teamA || 'Team A'} vs ${game.teamB || 'Team B'}`;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const gameTitle = (game as any).operationName || (game as any).title || game.name || `${game.teamA || 'Team A'} vs ${game.teamB || 'Team B'}`;
           
           return (
             <div
