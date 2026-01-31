@@ -82,7 +82,7 @@ export default function GameBar() {
                 {g.teamA} vs {g.teamB}
                 </span>
                 <span className={`text-[10px] font-medium whitespace-nowrap ${isActive ? "text-cyan-200" : "text-white/40"}`}>
-                • ${g.pot || g.totalPot || 0}
+                • ${g.totalPot || g.pot || (Object.keys(g.squares || {}).length * (g.price || 0))}
                 </span>
             </div>
             

@@ -110,7 +110,9 @@ export default function WarpMenu({ liveGames, onClose }: WarpMenuProps) {
                       {/* Pot */}
                       <div className="text-center mt-2 pt-2 border-t border-white/10">
                         <span className="text-[10px] text-white/40 uppercase tracking-wider">Pot: </span>
-                        <span className="text-xs font-black text-yellow-400">${game.totalPot || game.pot || 0}</span>
+                        <span className="text-xs font-black text-yellow-400">
+                          ${game.totalPot || game.pot || (Object.keys(game.squares || {}).length * (game.price || 0))}
+                        </span>
                       </div>
                     </div>
                   </button>
