@@ -63,7 +63,7 @@ export default function GameInfo({
   const handleShare = async () => {
     const shareData = {
       title: 'Join my Super Bowl Squares!',
-      text: 'Bet on the game with me.',
+      text: "Let's get some money",
       url: window.location.href
     };
     if (navigator.share) {
@@ -288,7 +288,7 @@ export default function GameInfo({
                 className="w-full mt-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 text-white font-black text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4" />
-                Setup Payments
+                MAKE PAYMENT
               </button>
              )}
         </div>

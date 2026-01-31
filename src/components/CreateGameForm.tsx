@@ -244,25 +244,6 @@ export default function CreateGameForm() {
                     onChange={e => setFormData({...formData, paymentLink: e.target.value})}
                 />
 
-                <CyberInput
-                    label="ZELLE PHONE"
-                    icon={<Phone className="w-5 h-5" />}
-                    placeholder="(123) 456-7890 (Optional)"
-                    value={formData.zellePhone}
-                    onChange={e => {
-                      // Format phone number as user types
-                      const cleaned = e.target.value.replace(/\D/g, '');
-                      let formatted = cleaned;
-                      if (cleaned.length >= 6) {
-                        formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
-                      } else if (cleaned.length >= 3) {
-                        formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
-                      }
-                      setFormData({...formData, zellePhone: formatted});
-                    }}
-                    maxLength={14}
-                />
-
                 <button 
                     type="submit" 
                     disabled={loading}
