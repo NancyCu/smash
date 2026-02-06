@@ -735,7 +735,7 @@ export default function GamePage() {
   const livePayouts = gameStats.effectivePayouts;
 
   // --- HANDLERS ---
-  const handleSquareClick = (row: number, col: number) => {
+  const handleSquareClick = async (row: number, col: number) => {
     const index = row * 10 + col;
     setSelectedCell({ row, col });
     setIsManualView(true);
@@ -751,10 +751,35 @@ export default function GamePage() {
     const rawData = game?.squares?.[index];
     const usersInSquare = Array.isArray(rawData) ? rawData : rawData ? [rawData] : [];
     
+    // Check if current user is one of the owners
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const alreadyInSquare = user && usersInSquare.some((u: any) => (u.uid && u.uid === user.uid) || (u.userId && u.userId === user.uid));
-    if (alreadyInSquare) {
-      setToast({ show: true, message: 'You already have a spot in this square!', type: 'warning' });
+    const currentUserOwnership = user && usersInSquare.find((u: any) => (u.uid && u.uid === user.uid) || (u.userId && u.userId === user.uid));
+    const isOwner = !!currentUserOwnership;
+    const isTaken = usersInSquare.length > 0;
+
+    // --- NEW: Allow Deselection (Unclaim) by clicking ---
+    if (isOwner) {
+        if (game?.isScrambled) {
+            setToast({ show: true, message: 'Game is locked! Cannot remove squares.', type: 'warning' });
+            setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+            return;
+        }
+
+        // Optimistically update UI could go here, but unclaimSquare is fast enough usually
+        try {
+            await unclaimSquare(index);
+            setSelectedCell(null); // Clear selection after removing
+            setToast({ show: true, message: 'Square removed!', type: 'success' });
+            setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 2000);
+        } catch (error) {
+            setToast({ show: true, message: 'Failed to remove square.', type: 'error' });
+            setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+        }
+        return;
+    }
+
+    if (isTaken) {
+      setToast({ show: true, message: 'This square is already taken!', type: 'warning' });
       setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
       return;
     }

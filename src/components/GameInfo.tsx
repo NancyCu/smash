@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Check, Trophy, Trash2, Edit2, Shuffle, Save, Share2, Copy, MoveRight, ArrowDownRight, CreditCard, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useGame } from "@/context/GameContext"; // Added useGame
 import { useRouter } from "next/navigation";
 import { getDisplayPeriods, getPeriodLabel, type SportType } from "@/lib/sport-config";
 import PaymentModal from "@/components/PaymentModal";
@@ -40,6 +41,7 @@ export default function GameInfo({
 }: GameInfoProps) {
   
   const { user } = useAuth();
+  const { game } = useGame(); // Get game context for square data
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -91,6 +93,24 @@ export default function GameInfo({
     await onUpdateScores(editScores);
     setIsEditingScores(false);
   };
+
+  // Calculate total owed based on UNPAID squares
+  const totalOwed = React.useMemo(() => {
+    if (!user || !game || !game.squares) return 0;
+    
+    let unpaidCount = 0;
+    Object.values(game.squares).forEach(sqValue => {
+        const list = Array.isArray(sqValue) ? sqValue : [sqValue];
+        list.forEach(sq => {
+            // Check if current user owns it AND it is not paid
+            if ((sq.userId === user.uid || (sq as any).uid === user.uid) && !sq.paid) {
+                unpaidCount++;
+            }
+        });
+    });
+    
+    return unpaidCount * pricePerSquare;
+  }, [game, user, pricePerSquare]);
 
   // --- FIXED SCRAMBLE HANDLER ---
   const handleToggleScramble = async () => {
@@ -302,7 +322,7 @@ export default function GameInfo({
           paymentLink={paymentLink}
           zellePhone={zellePhone}
           hostName={"Host"}
-          totalOwed={pricePerSquare}
+          totalOwed={totalOwed} // Use calculated total
           gameName={gameName}
         />
 
