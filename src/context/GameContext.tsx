@@ -100,6 +100,7 @@ interface GameContextType {
   togglePaymentStatus: (userId: string, isPaid: boolean) => Promise<void>;
   getUserGames: (userId: string) => Promise<GameData[]>;
   setGamePhase: (period: string) => Promise<void>;
+  updatePaymentInfo: (paymentLink: string | null, zellePhone: string | null) => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType>({} as GameContextType);
@@ -396,6 +397,19 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
     }
   };
 
+  const updatePaymentInfo = async (paymentLink: string | null, zellePhone: string | null) => {
+    if (!gameId) return;
+    try {
+        await updateDoc(doc(db, "games", gameId), { 
+            paymentLink,
+            zellePhone
+        });
+        console.log("✅ Payment info updated");
+    } catch (err) {
+        console.error("❌ Failed to update payment info:", err);
+    }
+  };
+
   const togglePaymentStatus = async (targetUserId: string, isPaid: boolean) => {
     if (!gameId || !game) return;
     
@@ -465,7 +479,8 @@ return (
       getUserGames, 
       setGamePhase,
       joinGame,
-      togglePaymentStatus
+      togglePaymentStatus,
+      updatePaymentInfo
     }}>
       {children}
     </GameContext.Provider>

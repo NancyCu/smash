@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getDisplayPeriods, getPeriodLabel, type SportType } from "@/lib/sport-config";
 import PaymentModal from "@/components/PaymentModal";
+import PaymentSettingsModal from "@/components/PaymentSettingsModal";
 interface GameInfoProps {
   gameId: string;
   gameName: string;
@@ -44,6 +45,7 @@ export default function GameInfo({
   const [codeCopied, setCodeCopied] = useState(false);
   const [isEditingScores, setIsEditingScores] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPaymentSettingsModal, setShowPaymentSettingsModal] = useState(false);
   
   const [editScores, setEditScores] = useState({ 
      teamA: scores?.teamA || 0, 
@@ -304,6 +306,16 @@ export default function GameInfo({
           gameName={gameName}
         />
 
+        {/* Payment Settings Modal (Host Only) */}
+        {isAdmin && (
+            <PaymentSettingsModal 
+                isOpen={showPaymentSettingsModal}
+                onClose={() => setShowPaymentSettingsModal(false)}
+                initialPaymentLink={paymentLink}
+                initialZellePhone={zellePhone}
+            />
+        )}
+
         {/* PAYOUTS */}
         <div>
             <div className="flex items-center justify-between mb-3">
@@ -374,6 +386,14 @@ export default function GameInfo({
                         </div>
                     )}
                 </div>
+
+                {/* PAYMENT SETTINGS */}
+                <button 
+                    onClick={() => setShowPaymentSettingsModal(true)}
+                    className="w-full py-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border border-blue-500/10 hover:border-blue-500/30"
+                >
+                    <CreditCard className="w-4 h-4" /> Update Payment Link
+                </button>
 
                 {/* DELETE */}
                 <button onClick={onDeleteGame} className="w-full py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border border-red-500/10 hover:border-red-500/30">
