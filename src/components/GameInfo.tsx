@@ -269,7 +269,7 @@ export default function GameInfo({
             </div>
             
             {/* Pay Host Button */}
-            {!isAdmin && (paymentLink || zellePhone) && (
+            {(paymentLink || zellePhone) && (
               <button
                 id="tour-pay-btn" // <--- ADD THIS
               onClick={() => setShowPaymentModal(true)}
