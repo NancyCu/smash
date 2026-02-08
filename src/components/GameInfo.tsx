@@ -291,29 +291,40 @@ export default function GameInfo({
                 <span className="text-white font-bold">${pricePerSquare}</span>
             </div>
             
-            {/* Pay Host Button */}
-            {(paymentLink || zellePhone) && (
+            {/* MAKE PAYMENT Button - Visible for all users with unpaid squares */}
+            {totalOwed > 0 && (paymentLink || zellePhone) && (
               <button
-                id="tour-pay-btn" // <--- ADD THIS
-              onClick={() => setShowPaymentModal(true)}
+                id="tour-pay-btn"
+                onClick={() => setShowPaymentModal(true)}
                 className="w-full mt-3 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-black text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
-              >
-                <CreditCard className="w-4 h-4" />
-                Pay Host
-              </button>
-            )}
-
-             {/* Make Payment Button */}
-             {isAdmin && !paymentLink && !zellePhone && (
-              <button
-                id="tour-make-pay-btn" // <--- ADD THIS
-                onClick={() => router.push(`/payments?id=${gameId}`)}
-                className="w-full mt-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 text-white font-black text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4" />
                 MAKE PAYMENT
               </button>
-             )}
+            )}
+
+            {/* MAKE PAYMENT Button - Fallback when no payment link is set (opens modal which shows "no link" message) */}
+            {totalOwed > 0 && !paymentLink && !zellePhone && (
+              <button
+                id="tour-make-pay-btn"
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full mt-3 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-black text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                MAKE PAYMENT
+              </button>
+            )}
+
+            {/* Admin: Setup Payment Link prompt when none is configured */}
+            {isAdmin && !paymentLink && !zellePhone && (
+              <button
+                onClick={() => setShowPaymentSettingsModal(true)}
+                className="w-full mt-2 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border border-white/10 hover:border-white/20"
+              >
+                <CreditCard className="w-3 h-3" />
+                Setup Payment Link
+              </button>
+            )}
         </div>
 
         {/* Payment Modal */}
