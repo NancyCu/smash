@@ -65,7 +65,8 @@ export default function WarpMenu({ liveGames, onClose }: WarpMenuProps) {
                   game.participants?.includes(user.uid) || 
                   game.host === user.uid
                 );
-                
+                const rawName = (game as any).operationName || (game as any).operation_name || (game as any).title;
+
                 return (
                   <button
                     key={game.id}
@@ -80,8 +81,8 @@ export default function WarpMenu({ liveGames, onClose }: WarpMenuProps) {
                       {/* Teams */}
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {((game as any).operationName && (game as any).operationName.trim() !== "") ? (
-                             <span className="text-xs font-bold text-white truncate">{(game as any).operationName}</span>
+                          {(rawName && rawName.trim().length > 0) ? (
+                             <span className="text-xs font-bold text-white truncate">{rawName}</span>
                           ) : (
                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
                                <span className="text-xs font-bold text-white truncate">{game.teamA}</span>

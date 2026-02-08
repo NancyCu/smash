@@ -48,6 +48,9 @@ export interface GameData { // Changed 'type' to 'export interface'
   host: string;
   hostDisplayName?: string;
   name: string;
+  operationName?: string;
+  operation_name?: string;
+  title?: string;
   teamA: string;
   teamB: string;
   teamALogo?: string;

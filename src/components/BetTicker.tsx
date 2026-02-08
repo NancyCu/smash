@@ -105,9 +105,10 @@ export default function BetTicker({ games = [] }: BetTickerProps) {
           const isLive = isGameLive(game);
           const showLiveIndicator = isLive && isParticipating;
           const gamePot = game.totalPot || game.pot || (Object.keys(game.squares || {}).length * (game.price || 0));
-          const gameTitle = (game as any).operationName && (game as any).operationName.trim() !== "" 
-            ? (game as any).operationName 
-            : `${game.teamA || 'Team A'} vs ${game.teamB || 'Team B'}`;
+          const rawName = (game as any).operationName || (game as any).operation_name || (game as any).title;
+          const gameTitle = (rawName && rawName.trim().length > 0) 
+            ? rawName 
+            : (game.name || `${game.teamA || 'Team A'} vs ${game.teamB || 'Team B'}`);
           
           return (
             <div
