@@ -80,11 +80,15 @@ export default function WarpMenu({ liveGames, onClose }: WarpMenuProps) {
                       {/* Teams */}
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                            <span className="text-xs font-bold text-white truncate">{game.teamA}</span>
-                            <span className="text-[10px] text-white/40 font-mono">vs</span>
-                            <span className="text-xs font-bold text-white truncate">{game.teamB}</span>
-                          </div>
+                          {((game as any).operationName && (game as any).operationName.trim() !== "") ? (
+                             <span className="text-xs font-bold text-white truncate">{(game as any).operationName}</span>
+                          ) : (
+                             <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                               <span className="text-xs font-bold text-white truncate">{game.teamA}</span>
+                               <span className="text-[10px] text-white/40 font-mono">vs</span>
+                               <span className="text-xs font-bold text-white truncate">{game.teamB}</span>
+                             </div>
+                          )}
                         </div>
                         {isParticipating && (
                           <div className="flex items-center gap-1 ml-2 px-2 py-0.5 bg-cyan-500/20 border border-cyan-500/30 rounded-full">
