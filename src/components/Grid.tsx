@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Lock } from "lucide-react";
 import { getNeonColor } from "../utils/colorHash";
 
@@ -44,8 +44,56 @@ export default function Grid({
     return Array.isArray(data) ? data : [data];
   };
 
-  // 2. Active Focus Logic
-  const activeFocus = selectedCell ?? winningCell ?? null;
+  // --- NEW: Spotlight & Crosshair State ---
+  const [highlightedUserId, setHighlightedUserId] = useState<string | null>(null);
+  const [activeCrosshair, setActiveCrosshair] = useState<{ row: number; col: number } | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const handleLocalClick = (r: number, c: number) => {
+    const owners = getOwners(r, c);
+    const isOccupied = owners.length > 0;
+    const isMySquare = currentUserId && owners.some((o) => o.uid === currentUserId);
+
+    // Constraint: Only highlight if:
+    // 1. Occupied
+    // 2. Someone else's square OR (My square AND Game is Locked/Scrambled)
+    const shouldHighlight = isOccupied && (!isMySquare || (isMySquare && isScrambled));
+
+    if (shouldHighlight) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+
+      // Spotlight the first owner (or current user if they own it)
+      const targetOwner = isMySquare 
+        ? owners.find(o => o.uid === currentUserId) 
+        : owners[0];
+        
+      if (targetOwner) {
+        setHighlightedUserId(targetOwner.uid);
+        setActiveCrosshair({ row: r, col: c });
+
+        // Auto-reset after 5 seconds
+        timerRef.current = setTimeout(() => {
+          setHighlightedUserId(null);
+          setActiveCrosshair(null);
+          timerRef.current = null;
+        }, 5000);
+      }
+    } else {
+      // Default: Toggle selection (Open game logic) or Empty square
+      onSquareClick(r, c);
+    }
+  };
+
+  // 2. Active Focus Logic (Updated to include Crosshair)
+  // Priority: User Interaction (Crosshair) > External Selection > Winner
+  const activeFocus = activeCrosshair ?? selectedCell ?? winningCell ?? null;
 
   // Grid configuration
   const config = {
@@ -326,6 +374,10 @@ export default function Grid({
                   const isInCrosshair =
                     isInHighlightedRow || isInHighlightedCol;
 
+                  // --- SPOTLIGHT CHECK ---
+                  const isSpotlightActive = highlightedUserId !== null;
+                  const isSpotlightTarget = isSpotlightActive && owners.some(o => o.uid === highlightedUserId);
+
                   // --- NEW STYLE LOGIC ---
                   const firstOwnerIsMe =
                     owners.length > 0 &&
@@ -386,10 +438,21 @@ export default function Grid({
                       }
                     }
 
+                    // --- SPOTLIGHT OVERRIDES ---
+                    if (isSpotlightActive) {
+                      if (!isSpotlightTarget) {
+                        // Dim everyone else
+                        containerClass += " opacity-20 grayscale brightness-50";
+                      } else {
+                        // Highlight target
+                        containerClass += " opacity-100 scale-105 z-30 shadow-[0_0_15px_rgba(255,255,255,0.3)] ring-1 ring-white/50";
+                      }
+                    }
+
                   return (
                     <div
                       key={cellKey}
-                      onClick={() => onSquareClick(rIndex, cIndex)}
+                      onClick={() => handleLocalClick(rIndex, cIndex)}
                       style={{
                         gridColumn: cIndex + 3, // Start at column 3
                         gridRow: rIndex + 3,     // Start at row 3
