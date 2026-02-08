@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 export interface EspnScoreData {
   id: string;
@@ -28,14 +28,22 @@ function formatDateKey(offsetDays: number): string {
   return `${year}${month}${day}`;
 }
 
+// Jittered polling intervals (ms)
+const BASE_INTERVAL = 15000;   // 15s base
+const JITTER_RANGE = 5000;     // +0-5s random jitter
+const BACKOFF_INTERVAL = 30000; // 30s retry on failure
+const MAX_BACKOFF = 120000;     // 2min max backoff
+
 export function useEspnScores() {
   const [games, setGames] = useState<EspnScoreData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const lastGoodGamesRef = useRef<EspnScoreData[]>([]);
+  const consecutiveFailsRef = useRef(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const fetchScores = async () => {
-      try {
+  const fetchScores = useCallback(async () => {
+    try {
         // STREET SMART CONFIG: 
         // We define exactly how far to look ahead for EACH league.
         const endpoints = [
@@ -72,14 +80,21 @@ export function useEspnScores() {
           }));
         });
 
-        // Execute all fetches concurrently
+        // Execute all fetches concurrently (with individual error swallowing)
         const responses = await Promise.all(
           fetchConfigs.map((cfg) =>
             fetch(cfg.url)
-              .then((res) => (res.ok ? res.json() : null))
+              .then((res) => {
+                if (res.status === 429) {
+                  console.warn(`[ESPN] Rate limited on ${cfg.key} — backing off`);
+                  return null;
+                }
+                return res.ok ? res.json() : null;
+              })
               .then((data) => ({ key: cfg.key, data }))
               .catch((err) => {
-                console.error(`Failed to fetch ${cfg.key}`, err);
+                // Swallow CORS / network errors silently — don't crash
+                console.warn(`[ESPN] Fetch failed for ${cfg.key}:`, err.message || err);
                 return { key: cfg.key, data: null };
               })
           )
@@ -172,20 +187,46 @@ export function useEspnScores() {
         });
 
         setGames(allGames);
+        lastGoodGamesRef.current = allGames; // Cache last successful result
+        consecutiveFailsRef.current = 0; // Reset fail counter on success
         setError(null);
       } catch (err) {
         console.error("ESPN API Error:", err);
-        setError("Failed to load scores");
+        consecutiveFailsRef.current += 1;
+        // SAFETY: Preserve last known scores instead of wiping state
+        if (lastGoodGamesRef.current.length > 0) {
+          setGames(lastGoodGamesRef.current);
+          console.warn(`[ESPN] Using cached scores (attempt #${consecutiveFailsRef.current})`);
+        }
+        setError("Score refresh failed — showing last known data");
       } finally {
         setLoading(false);
       }
+  }, []);
+
+  useEffect(() => {
+    // Schedule next poll with jitter
+    const scheduleNext = () => {
+      // Exponential backoff on consecutive failures (15s -> 30s -> 60s -> 120s max)
+      const backoffMs = consecutiveFailsRef.current > 0
+        ? Math.min(BACKOFF_INTERVAL * Math.pow(2, consecutiveFailsRef.current - 1), MAX_BACKOFF)
+        : BASE_INTERVAL;
+      const jitter = Math.floor(Math.random() * JITTER_RANGE);
+      const nextInterval = backoffMs + jitter;
+
+      timerRef.current = setTimeout(async () => {
+        await fetchScores();
+        scheduleNext(); // Chain the next poll
+      }, nextInterval);
     };
 
-    fetchScores();
-    const interval = setInterval(fetchScores, 60000); // 60s refresh
+    // Initial fetch
+    fetchScores().then(() => scheduleNext());
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [fetchScores]);
 
   return { games, loading, error };
 }
