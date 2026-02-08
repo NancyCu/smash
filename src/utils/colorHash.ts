@@ -13,3 +13,23 @@ export const getNeonColor = (name: string, isMe: boolean) => {
 
   return palettes[sum % palettes.length];
 };
+
+export const getDistinctColor = (username: string) => {
+  if (!username) return '#1f2937'; // Default gray for empty
+
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  // HUE: 0 to 360 (The variety)
+  const h = Math.abs(hash) % 360; 
+  
+  // SATURATION: Fixed at 65% (Keeps it vibrant/neon like current theme)
+  const s = 65; 
+  
+  // LIGHTNESS: Fixed at 45% (Ensures white text is always readable)
+  const l = 45; 
+
+  return `hsl(${h}, ${s}%, ${l}%)`;
+};

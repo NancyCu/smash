@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Lock } from "lucide-react";
-import { getNeonColor } from "../utils/colorHash";
+import { getNeonColor, getDistinctColor } from "../utils/colorHash";
 
 interface GridProps {
   rows: number[];
@@ -383,6 +383,8 @@ export default function Grid({
                     owners.length > 0 &&
                     owners[0].uid === currentUserId;
 
+                  let customBgColor: string | undefined;
+
                   let containerClass =
                     "relative w-full h-full cursor-pointer transition-all duration-300 overflow-hidden rounded-sm border border-white/10";
                   let textClass =
@@ -407,12 +409,15 @@ export default function Grid({
                         containerClass += " bg-white/20 backdrop-blur-sm";
                       } else {
                         // Dynamic Neon Color for Single Owner
-                        const neonClass = getNeonColor(owners[0].name, firstOwnerIsMe);
-                        containerClass += ` ${neonClass} backdrop-blur-sm`;
-                        if (!firstOwnerIsMe) {
-                           textClass += " text-white/90";
-                        } else {
+                        if (firstOwnerIsMe) {
+                           const neonClass = getNeonColor(owners[0].name, true);
+                           containerClass += ` ${neonClass} backdrop-blur-sm`;
                            textClass += " text-cyan-50 drop-shadow-[0_0_2px_rgba(34,211,238,0.8)]";
+                        } else {
+                           const distinctColor = getDistinctColor(owners[0].name);
+                           customBgColor = distinctColor;
+                           containerClass += " border-white/20 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(255,255,255,0.05)]"; 
+                           textClass += " text-white/90";
                         }
                       }
                     }
@@ -456,6 +461,7 @@ export default function Grid({
                       style={{
                         gridColumn: cIndex + 3, // Start at column 3
                         gridRow: rIndex + 3,     // Start at row 3
+                        backgroundColor: customBgColor,
                       }}
                       className={containerClass}
                     >
