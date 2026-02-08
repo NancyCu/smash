@@ -48,6 +48,7 @@ export default function GameInfo({
   const [isEditingScores, setIsEditingScores] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPaymentSettingsModal, setShowPaymentSettingsModal] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(0); // 0: Idle, 1: First Warning, 2: Final Warning
   
   const [editScores, setEditScores] = useState({ 
      teamA: scores?.teamA || 0, 
@@ -416,7 +417,7 @@ export default function GameInfo({
                 </button>
 
                 {/* DELETE */}
-                <button onClick={onDeleteGame} className="w-full py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border border-red-500/10 hover:border-red-500/30">
+                <button onClick={() => setDeleteStep(1)} className="w-full py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border border-red-500/10 hover:border-red-500/30">
                     <Trash2 className="w-4 h-4" /> Delete Game
                 </button>
             </div>
@@ -427,6 +428,56 @@ export default function GameInfo({
             <button onClick={() => router.push('/winners')} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 uppercase border border-white/5 hover:border-white/20 transition-all">Hall of Fame</button>
             <button onClick={() => router.push(`/game/${gameId}/ledger`)} className="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 uppercase border border-white/5 hover:border-white/20 transition-all">Payment Ledger</button>
         </div>
+
+        {/* DELETE CONFIRMATION MODAL */}
+        {deleteStep > 0 && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <div className="w-full max-w-sm bg-[#151725] border border-red-500/30 rounded-2xl p-6 shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+                    <div className="flex flex-col items-center text-center gap-4">
+                        <div className={`p-4 rounded-full ${deleteStep === 2 ? 'bg-red-500 animate-pulse' : 'bg-red-500/20'}`}>
+                            <Trash2 className={`w-8 h-8 ${deleteStep === 2 ? 'text-white' : 'text-red-500'}`} />
+                        </div>
+                        
+                        <div>
+                            <h3 className="text-xl font-black text-white uppercase tracking-wide">
+                                {deleteStep === 1 ? "Delete Game?" : "Final Warning!"}
+                            </h3>
+                            <p className="text-sm text-white/60 mt-2 font-medium leading-relaxed">
+                                {deleteStep === 1 
+                                    ? "Are you sure? This will permanently delete the game and remove all squares." 
+                                    : "This action cannot be undone. All game data, squares, and history will be lost forever."}
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 w-full mt-2">
+                            <button 
+                                onClick={() => setDeleteStep(0)} 
+                                className="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 font-bold text-xs uppercase tracking-widest transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    if (deleteStep === 1) {
+                                        setDeleteStep(2);
+                                    } else {
+                                        onDeleteGame();
+                                        setDeleteStep(0);
+                                    }
+                                }}
+                                className={`py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${
+                                    deleteStep === 1 
+                                        ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20"
+                                        : "bg-red-600 hover:bg-red-700 text-white animate-pulse shadow-[0_0_20px_rgba(220,38,38,0.5)]"
+                                }`}
+                            >
+                                {deleteStep === 1 ? "Yes, Delete" : "Delete Forever"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
 
     </div>
   );
