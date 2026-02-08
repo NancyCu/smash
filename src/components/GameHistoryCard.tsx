@@ -150,7 +150,7 @@ export default function GameHistoryCard({ game, quarterResults }: GameHistoryCar
           <div className="flex flex-col">
             {/* Matchup Title */}
             <h3 className="text-xl font-black italic text-white tracking-tight">
-              {game.teamA} vs {game.teamB}
+              {game.teamB} vs {game.teamA}
             </h3>
             {/* Total Pot Badge */}
             <div className="flex items-center gap-2 mt-1">
@@ -207,7 +207,7 @@ export default function GameHistoryCard({ game, quarterResults }: GameHistoryCar
               
               {/* Score */}
               <span className="text-sm font-mono text-white mb-1">
-                {q.scoreA} - {q.scoreB}
+                {q.scoreB} - {q.scoreA}
               </span>
               
               {/* Winner, Rollover, or Recipient */}

@@ -210,9 +210,9 @@ function SingleGameWinners({ gameId }: { gameId: string }) {
                 <div className="flex flex-col items-center md:items-start min-w-[150px]">
                   <span className={`text-xs font-bold uppercase tracking-widest mb-1 ${isFinal ? "text-yellow-400" : isRollover ? "text-amber-500/60" : "text-slate-500"}`}>{res.label}</span>
                   <div className="flex items-center gap-3 text-2xl font-black text-white">
-                    <span>{res.scoreA || 0}</span><span className="text-slate-600 text-sm">-</span><span>{res.scoreB || 0}</span>
+                    <span>{res.scoreB || 0}</span><span className="text-slate-600 text-sm">-</span><span>{res.scoreA || 0}</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono mt-1">Digits: {res.rowDigit} - {res.colDigit}</div>
+                  <div className="text-[10px] text-slate-500 font-mono mt-1">Digits: {res.colDigit} - {res.rowDigit}</div>
                 </div>
                 <div className="flex flex-col items-center">
                   <div className={`p-3 rounded-full mb-2 ${isFinal ? "bg-yellow-500 text-black shadow-lg" : isRollover ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"}`}>
