@@ -215,19 +215,19 @@ export default function ArteryVisualizer({
           </span>
         </div>
 
-        {/* Header: Team labels */}
+        {/* Header: Team labels with odds */}
         <div className="flex justify-between items-end px-4 pt-4 pb-0 tracking-wide font-black uppercase z-20 relative pointer-events-none">
           <div className="text-emerald-400 text-xs flex flex-col">
             <span className="opacity-50 text-[10px] italic">
-              Bitter Melon (Suffering Past)
+              Under {limitLine} · Healthy Boy Bonus
             </span>
-            <span className="text-sm">TEAM KHỔ QUA</span>
+            <span className="text-sm">TEAM KHỔ QUA <span className="text-emerald-300 text-[10px]">(+150)</span></span>
           </div>
           <div className="text-red-500 text-xs flex flex-col items-end">
             <span className="opacity-50 text-[10px] italic">
-              Fatty Broth (Guilty Pleasure)
+              Over {limitLine} · Standard Lock
             </span>
-            <span className="text-sm">TEAM NƯỚC BÉO</span>
+            <span className="text-sm">TEAM NƯỚC BÉO <span className="text-red-300 text-[10px]">(EVEN)</span></span>
           </div>
         </div>
 
@@ -381,7 +381,7 @@ export default function ArteryVisualizer({
           </svg>
 
           {/* ════════════════════════════════════════════
-              LIMIT LINE INDICATOR (Static 385 Mark)
+              LIMIT LINE INDICATOR (320 Mark)
               ════════════════════════════════════════════ */}
           {cSize.w > 0 && (
             <div
@@ -390,20 +390,21 @@ export default function ArteryVisualizer({
                 left: limitPos.x,
                 top: limitPos.y,
                 transform: "translate(-50%, -50%)",
-                zIndex: 35, // Below marker (50) but above tube text
+                zIndex: 35,
               }}
             >
               {/* Vertical Dashed Line */}
               <div className="w-px h-32 bg-gradient-to-b from-white/0 via-yellow-400/50 to-white/0 dashed-line" />
               
               {/* Limit Label Bubble */}
-              <div className="absolute top-[-30px] flex flex-col items-center">
-                 <div className="bg-yellow-500/20 backdrop-blur-sm border border-yellow-500/50 px-2 py-0.5 rounded text-[9px] font-bold text-yellow-200 uppercase tracking-wider shadow-lg whitespace-nowrap">
-                   LIMIT: {limitLine}
+              <div className="absolute top-[-42px] flex flex-col items-center">
+                 <div className="bg-yellow-500/20 backdrop-blur-sm border border-yellow-500/50 px-2.5 py-1 rounded-lg text-[9px] font-bold text-yellow-200 uppercase tracking-wider shadow-lg whitespace-nowrap flex flex-col items-center">
+                   <span>THE LINE: {limitLine}</span>
+                   <span className="text-[8px] text-yellow-400/60 font-medium normal-case mt-0.5">Under +150 · Over EVEN</span>
                  </div>
                  <div className="w-px h-8 border-l border-dashed border-yellow-500/50 mt-1"></div>
                  {/* Dot on the line */}
-                 <div className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)] mt-[-5px]"></div>
+                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.9)] ring-2 ring-yellow-400/30 mt-[-5px]"></div>
               </div>
             </div>
           )}

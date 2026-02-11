@@ -13,6 +13,8 @@ export interface LipidBet {
   team: "RABBIT_FOOD" | "TALLOW";
   targetValue: number;
   timestamp: number;
+  odds?: string;
+  potentialPayout?: number;
 }
 
 interface TabSectionProps {
@@ -61,52 +63,66 @@ export default function TabSection({
             {/* Header Row */}
             <div className="grid grid-cols-12 text-[10px] uppercase text-slate-500 font-bold mb-2 px-2">
               <div className="col-span-1">#</div>
-              <div className="col-span-4">Patient</div>
-              <div className="col-span-3 text-center">Target</div>
-              <div className="col-span-2 text-center">Dx</div>
-              <div className="col-span-2 text-right">Wager</div>
+              <div className="col-span-3">Patient</div>
+              <div className="col-span-2 text-center">Target</div>
+              <div className="col-span-1 text-center">Side</div>
+              <div className="col-span-2 text-center">Risked</div>
+              <div className="col-span-3 text-right">Win / Lose</div>
             </div>
 
-            {bets.map((bet, idx) => (
-              <div
-                key={bet.id}
-                className="grid grid-cols-12 items-center p-3 bg-slate-800/40 rounded-lg border border-slate-700/50"
-              >
-                <div className="col-span-1 text-slate-500 font-mono text-xs">
-                  {idx + 1}
-                </div>
-                <div className="col-span-4 font-semibold text-sm text-white truncate">
-                  {bet.userName}
-                </div>
-                <div className="col-span-3 text-center font-mono text-xs text-slate-300">
-                  <span className="bg-slate-700/50 px-2 py-1 rounded text-white">
-                    {bet.targetValue}
-                  </span>
-                </div>
-                <div className="col-span-2 text-center">
-                  <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${bet.team === "TALLOW" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"}`}
-                  >
-                    {bet.team === "TALLOW" ? "FAT" : "FIT"}
-                  </span>
-                </div>
-                <div className="col-span-2 flex items-center justify-end gap-1 font-mono text-[#00e676]">
-                  <span>${bet.amount}</span>
-                  {isAdmin && onDeleteBet && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm("Delete this bet?")) onDeleteBet(bet.id);
-                      }}
-                      className="p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded ml-1"
-                      title="Admin: Delete Bet"
+            {bets.map((bet, idx) => {
+              const isUnder = bet.team === "RABBIT_FOOD";
+              const winAmount = bet.potentialPayout
+                ? bet.potentialPayout
+                : isUnder ? bet.amount + bet.amount * 1.5 : bet.amount * 2;
+              const loseAmount = bet.amount;
+
+              return (
+                <div
+                  key={bet.id}
+                  className="grid grid-cols-12 items-center p-3 bg-slate-800/40 rounded-lg border border-slate-700/50"
+                >
+                  <div className="col-span-1 text-slate-500 font-mono text-xs">
+                    {idx + 1}
+                  </div>
+                  <div className="col-span-3 font-semibold text-sm text-white truncate">
+                    {bet.userName}
+                  </div>
+                  <div className="col-span-2 text-center font-mono text-xs text-slate-300">
+                    <span className="bg-slate-700/50 px-2 py-1 rounded text-white">
+                      {bet.targetValue}
+                    </span>
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <span
+                      className={`text-[10px] font-bold px-1 py-0.5 rounded ${bet.team === "TALLOW" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"}`}
                     >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
+                      {bet.team === "TALLOW" ? "FAT" : "FIT"}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-center font-mono text-xs text-white/70">
+                    ${bet.amount}
+                  </div>
+                  <div className="col-span-3 flex items-center justify-end gap-1">
+                    <span className="text-xs font-mono font-bold text-emerald-400">+${winAmount.toFixed(0)}</span>
+                    <span className="text-[9px] text-slate-500">/</span>
+                    <span className="text-xs font-mono font-bold text-red-400">-${loseAmount}</span>
+                    {isAdmin && onDeleteBet && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm("Delete this bet?")) onDeleteBet(bet.id);
+                        }}
+                        className="p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded ml-1"
+                        title="Admin: Delete Bet"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {bets.length === 0 && (
               <div className="p-8 text-center text-slate-500 text-xs italic">

@@ -28,8 +28,10 @@ import TabSection, {
   type LipidBet,
 } from "@/components/lipid/TabSection";
 
-const ENTRY_FEE = 5;
-const LIMIT_LINE = 385;
+const ENTRY_FEE = 10;
+const LIMIT_LINE = 320;
+const ODDS_UNDER = 1.5;   // +150 → bet $5 win $12.50
+const ODDS_OVER  = 1.0;  // EVEN  → bet $5 win $10.00
 const COLLECTION_NAME = "lipid_lotto_bets";
 
 // Target date: 3 days, 14 hours, 15 minutes from initial load
@@ -60,6 +62,8 @@ export default function LipidLottoPage() {
           amount: data.betAmount ?? ENTRY_FEE,
           team: data.team ?? "RABBIT_FOOD",
           targetValue: data.targetValue ?? 0,
+          odds: data.odds ?? undefined,
+          potentialPayout: data.potentialPayout ?? undefined,
           timestamp:
             data.timestamp instanceof Timestamp
               ? data.timestamp.toMillis()
@@ -109,8 +113,12 @@ export default function LipidLottoPage() {
 
   const handleConfirmBet = async () => {
     if (!user) return;
-    const team: "TALLOW" | "RABBIT_FOOD" =
-      cholesterolLevel > LIMIT_LINE ? "TALLOW" : "RABBIT_FOOD";
+    const isUnder = cholesterolLevel < LIMIT_LINE;
+    const team: "TALLOW" | "RABBIT_FOOD" = isUnder ? "RABBIT_FOOD" : "TALLOW";
+    const odds = isUnder ? `+${ODDS_UNDER * 100}` : "EVEN";
+    const potentialPayout = isUnder
+      ? ENTRY_FEE + ENTRY_FEE * ODDS_UNDER
+      : ENTRY_FEE + ENTRY_FEE * ODDS_OVER;
 
     try {
       await addDoc(collection(db, COLLECTION_NAME), {
@@ -119,6 +127,8 @@ export default function LipidLottoPage() {
         betAmount: ENTRY_FEE,
         targetValue: cholesterolLevel,
         team,
+        odds,
+        potentialPayout,
         timestamp: serverTimestamp(),
       });
       setHasBet(true);
@@ -225,17 +235,21 @@ export default function LipidLottoPage() {
             <p className="font-bold text-[#00e676] mb-2">HOW IT WORKS:</p>
             <ul className="space-y-1 list-disc list-inside">
               <li>
-                Pick Over/Under on a total cholesterol result (Target:{" "}
-                <strong>385 mg/dL</strong>).
+                Pick Over/Under on total cholesterol (Line:{" "}
+                <strong>320 mg/dL</strong>).
               </li>
               <li>
-                Entry fee: <strong>$5</strong> flat.
+                Entry fee: <strong>$10</strong> flat.
+              </li>
+              <li>
+                <strong className="text-emerald-400">Under 320 (+150):</strong>{" "}
+                Bet $10, win <strong>$25</strong>. 🥦 Healthy Boy Bonus.
+              </li>
+              <li>
+                <strong className="text-red-400">Over 320 (EVEN):</strong>{" "}
+                Bet $10, win <strong>$20</strong>.
               </li>
               <li>One bet per person. No take-backs.</li>
-              <li>
-                Winners split the pot 50/50 (minus 5% house fee for emotional
-                damages).
-              </li>
             </ul>
           </motion.div>
         )}
@@ -257,6 +271,8 @@ export default function LipidLottoPage() {
           entryFee={ENTRY_FEE}
           onPlaceBet={handlePlaceBet}
           isLocked={hasBet}
+          currentValue={cholesterolLevel}
+          limitLine={LIMIT_LINE}
         />
 
         {/* Tabs (Waiting Room / Lab Results) */}
