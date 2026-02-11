@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Zap, Gamepad2, User, Trophy } from 'lucide-react';
+import { Home, Zap, Gamepad2, User, Trophy, HeartPulse } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useGame, type GameData } from '@/context/GameContext';
 import { useEspnScores } from '@/hooks/useEspnScores';
@@ -226,6 +226,17 @@ export default function BottomNav() {
         >
           <Gamepad2 size={26} strokeWidth={2.5} className={isPlayActive ? "fill-cyan-400/20" : ""} />
           <span className="text-[10px] font-bold mt-1 tracking-wider">PLAY</span>
+        </Link>
+
+        {/* 4.5 LIPID LOTTO */}
+        <Link
+          href="/lipid-lotto"
+          className={`${getLinkClass('/lipid-lotto', [])} flex-1 h-full`}
+          aria-label="Lipid Lotto"
+          title="Lipid Lotto"
+        >
+          <HeartPulse size={26} strokeWidth={2.5} className={pathname === '/lipid-lotto' ? "text-[#00e676]" : ""} />
+          <span className="text-[10px] font-bold mt-1 tracking-wider">LOTTO</span>
         </Link>
 
         {/* 5. YOU (Profile) */}
