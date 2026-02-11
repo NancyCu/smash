@@ -180,46 +180,46 @@ export default function LipidLottoPage() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="px-4 py-4 flex justify-between items-center"
+          className="px-6 py-6 flex justify-between items-center sticky top-0 z-50 pointer-events-none"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 sm:gap-4 pointer-events-auto">
             {/* Mascot */}
-            <div className="relative group cursor-pointer">
+            <div className="relative group cursor-pointer w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 transition-all duration-300">
               <div className="absolute inset-0 bg-yellow-500/50 rounded-full blur-md group-hover:bg-yellow-400/80 transition-all duration-300" />
-              <div className="w-12 h-12 rounded-full border-2 border-[#0B0C15] bg-yellow-100 flex items-center justify-center relative z-10 shadow-lg transform group-hover:scale-105 transition-transform duration-200 text-2xl">
+              <div className="w-full h-full rounded-full border-2 border-[#0B0C15] bg-yellow-100 flex items-center justify-center relative z-10 shadow-lg transform group-hover:scale-105 transition-transform duration-200 text-2xl sm:text-3xl md:text-4xl">
                 🍜
               </div>
               <div className="absolute -bottom-1 -right-1 z-20 text-xs animate-bounce">
                 🍚
               </div>
             </div>
-            <div>
-              <h1 className="text-sm font-bold tracking-widest text-white">
+            <div className="flex flex-col">
+              <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-widest text-white transition-all">
                 LIPID LOTTO
               </h1>
-              <div className="text-[10px] text-slate-400">
+              <div className="text-[10px] sm:text-xs text-slate-400 transition-all">
                 Edition: Asian Parent
               </div>
             </div>
           </div>
 
-          <div className="flex gap-3 items-center">
+          <div className="flex gap-3 items-center pointer-events-auto">
             {/* Status badge */}
             <div
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] sm:text-xs font-bold uppercase tracking-wide transition-all ${
                 hasBet
                   ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400"
                   : "bg-red-500/10 border-red-500/50 text-red-400 animate-pulse"
               }`}
             >
-              <Wallet size={12} />
-              {hasBet ? "INVESTOR" : user ? "DEBTOR" : "SIGN IN"}
+              <Wallet size={14} className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>{hasBet ? "INVESTOR" : user ? "DEBTOR" : "SIGN IN"}</span>
             </div>
             <button
               onClick={() => setShowInfo(!showInfo)}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-slate-400 hover:text-white transition-colors p-1"
             >
-              <Info size={20} />
+              <Info size={20} className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
         </motion.div>

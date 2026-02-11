@@ -59,61 +59,84 @@ export default function TabSection({
 
       <div className="p-4">
         {currentTab === "WAITING_ROOM" ? (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {/* Header Row */}
-            <div className="grid grid-cols-12 text-[10px] uppercase text-slate-500 font-bold mb-2 px-2">
-              <div className="col-span-1">#</div>
-              <div className="col-span-3">Patient</div>
-              <div className="col-span-2 text-center">Target</div>
-              <div className="col-span-1 text-center">Side</div>
-              <div className="col-span-2 text-center">Risked</div>
-              <div className="col-span-3 text-right">Win / Lose</div>
+            <div className="grid grid-cols-[20px_1fr_45px_40px_45px_60px_20px] gap-2 px-4 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider border-b border-white/10">
+              <div className="text-left">#</div>
+              <div className="text-left">PATIENT</div>
+              <div className="text-center">TARGET</div>
+              <div className="text-center">SIDE</div>
+              <div className="text-right">RISK</div>
+              <div className="text-right">P/L</div>
+              <div></div> {/* Empty column for delete button */}
             </div>
 
-            {bets.map((bet, idx) => {
+            {bets.map((bet, index) => {
               const isUnder = bet.team === "RABBIT_FOOD";
               const winAmount = bet.potentialPayout
                 ? bet.potentialPayout
-                : isUnder ? bet.amount + bet.amount * 1.5 : bet.amount * 2;
+                : isUnder
+                  ? bet.amount + bet.amount * 1.5
+                  : bet.amount * 2;
               const loseAmount = bet.amount;
 
               return (
                 <div
                   key={bet.id}
-                  className="grid grid-cols-12 items-center p-3 bg-slate-800/40 rounded-lg border border-slate-700/50"
+                  className="grid grid-cols-[20px_1fr_45px_40px_45px_60px_20px] gap-2 px-4 py-3 border-b border-white/5 items-center hover:bg-white/5 transition-colors"
                 >
-                  <div className="col-span-1 text-slate-500 font-mono text-xs">
-                    {idx + 1}
+                  {/* Index */}
+                  <div className="text-gray-600 text-xs font-mono">{index + 1}</div>
+
+                  {/* Name (Truncate if too long) */}
+                  <div className="font-bold text-white text-sm truncate pr-2">
+                    {bet.userName || "Anonymous"}
                   </div>
-                  <div className="col-span-3 font-semibold text-sm text-white truncate">
-                    {bet.userName}
-                  </div>
-                  <div className="col-span-2 text-center font-mono text-xs text-slate-300">
-                    <span className="bg-slate-700/50 px-2 py-1 rounded text-white">
+
+                  {/* Target */}
+                  <div className="text-center">
+                    <span className="bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-mono">
                       {bet.targetValue}
                     </span>
                   </div>
-                  <div className="col-span-1 text-center">
+
+                  {/* Side (Fat/Veg) */}
+                  <div className="text-center">
                     <span
-                      className={`text-[10px] font-bold px-1 py-0.5 rounded ${bet.team === "TALLOW" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"}`}
+                      className={`text-[10px] font-bold px-1 py-0.5 rounded ${
+                        bet.team === "TALLOW"
+                          ? "bg-red-900/30 text-red-400"
+                          : "bg-green-900/30 text-green-400"
+                      }`}
                     >
-                      {bet.team === "TALLOW" ? "FAT" : "FIT"}
+                      {bet.team === "TALLOW" ? "FAT" : "VEG"}
                     </span>
                   </div>
-                  <div className="col-span-2 text-center font-mono text-xs text-white/70">
+
+                  {/* Risk Amount */}
+                  <div className="text-right text-gray-400 text-xs">
                     ${bet.amount}
                   </div>
-                  <div className="col-span-3 flex items-center justify-end gap-1">
-                    <span className="text-xs font-mono font-bold text-emerald-400">+${winAmount.toFixed(0)}</span>
-                    <span className="text-[9px] text-slate-500">/</span>
-                    <span className="text-xs font-mono font-bold text-red-400">-${loseAmount}</span>
+
+                  {/* Win/Lose - STACKED VERTICALLY to save space */}
+                  <div className="text-right flex flex-col leading-tight">
+                    <span className="text-green-400 text-[10px] font-bold">
+                      +${winAmount.toFixed(0)}
+                    </span>
+                    <span className="text-red-500 text-[10px]">
+                      -${loseAmount}
+                    </span>
+                  </div>
+                  
+                  {/* Delete Button */}
+                  <div className="text-center">
                     {isAdmin && onDeleteBet && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           if (confirm("Delete this bet?")) onDeleteBet(bet.id);
                         }}
-                        className="p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded ml-1"
+                        className="p-1 text-red-500/50 hover:text-red-400 hover:bg-red-500/10 rounded"
                         title="Admin: Delete Bet"
                       >
                         <Trash2 size={12} />

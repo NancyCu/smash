@@ -25,12 +25,12 @@ export default function BettingCard({
   const payout = isUnder ? (entryFee + entryFee * 1.5).toFixed(2) : (entryFee * 2).toFixed(2);
 
   return (
-    <div className={`mx-4 mt-6 mb-6 p-0.5 rounded-2xl transition-all duration-500 ${
+    <div className={`mx-4 mt-3 mb-2 p-0.5 rounded-2xl transition-all duration-500 ${
       isUnder
         ? "bg-gradient-to-br from-emerald-500/60 via-green-500/30 to-emerald-500/60 shadow-[0_0_40px_-5px_rgba(16,185,129,0.5)]"
         : "bg-gradient-to-br from-red-500/40 via-orange-500/20 to-yellow-500/40 shadow-[0_0_30px_-5px_rgba(239,68,68,0.3)]"
     }`}>
-      <div className="bg-[#151525] rounded-[0.9rem] p-5 relative overflow-hidden">
+      <div className="bg-[#151525] rounded-[0.9rem] p-4 relative overflow-hidden">
         {/* Shine blob */}
         <div className={`absolute top-0 right-0 w-32 h-32 blur-3xl rounded-full pointer-events-none transition-colors duration-500 ${
           isUnder ? "bg-emerald-600/15" : "bg-red-600/10"

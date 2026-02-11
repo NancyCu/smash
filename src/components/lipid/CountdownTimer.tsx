@@ -30,15 +30,7 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
   const f = (n: number) => n.toString().padStart(2, "0");
 
   return (
-    <div className="flex flex-col items-center justify-center my-6">
-      <div className="flex items-center gap-2 mb-2 animate-pulse">
-        <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-        <span className="text-[10px] text-red-200 font-bold tracking-[0.1em] uppercase drop-shadow-md">
-          TIME UNTIL CARDIAC EVENT (Or Lab Results)
-        </span>
-        <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-      </div>
-
+    <div className="flex flex-col items-center justify-center my-4">
       <div className="flex items-start gap-1 sm:gap-2 font-mono text-3xl sm:text-4xl font-black text-white tabular-nums tracking-widest bg-[#151525] px-6 py-3 rounded-xl border border-red-500/20 shadow-[0_0_30px_-5px_rgba(239,68,68,0.2)] relative overflow-hidden group">
         {/* Scanline overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-red-500/5 to-transparent bg-[length:100%_4px] opacity-20 pointer-events-none" />
@@ -78,6 +70,14 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
             SEC
           </span>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 mt-3 animate-pulse">
+        <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+        <span className="text-[10px] text-red-200 font-bold tracking-[0.1em] uppercase drop-shadow-md">
+          TIME UNTIL CARDIAC EVENT (Or Lab Results)
+        </span>
+        <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
       </div>
     </div>
   );

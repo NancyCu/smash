@@ -201,8 +201,8 @@ export default function ArteryVisualizer({
      RENDER
      ──────────────────────────────────────────────────── */
   return (
-    <div className="w-full px-4 py-2 select-none relative z-10">
-      <div className="w-full bg-[#0B0C15] rounded-xl border border-white/10 shadow-2xl font-sans relative overflow-visible pb-6 z-10">
+    <div className="w-full px-4 pt-1 pb-0 select-none relative z-10">
+      <div className="w-full bg-[#0B0C15] rounded-xl border border-white/10 shadow-2xl font-sans relative overflow-visible pb-2 z-10">
         {/* BIG BACKGROUND NUMBER */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none opacity-[0.15] flex flex-col items-center">
           <span
@@ -237,7 +237,7 @@ export default function ArteryVisualizer({
             ════════════════════════════════════════════════ */}
         <div
           ref={containerRef}
-          className="relative w-full mt-6 mb-2 overflow-visible"
+          className="relative w-full mt-2 mb-0 overflow-visible"
           style={{ height: 220, paddingLeft: 12, paddingRight: 12 }}
         >
           <svg
