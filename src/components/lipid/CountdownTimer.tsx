@@ -33,7 +33,7 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
     <div className="flex flex-col items-center justify-center my-6">
       <div className="flex items-center gap-2 mb-2 animate-pulse">
         <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-        <span className="text-[10px] text-red-400 font-bold tracking-[0.1em] uppercase">
+        <span className="text-[10px] text-red-200 font-bold tracking-[0.1em] uppercase drop-shadow-md">
           TIME UNTIL CARDIAC EVENT (Or Lab Results)
         </span>
         <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Users, FileText } from "lucide-react";
+import { Users, FileText, Trash2 } from "lucide-react";
 
 export type LipidTabView = "WAITING_ROOM" | "LAB_RESULTS";
 
@@ -19,12 +19,16 @@ interface TabSectionProps {
   currentTab: LipidTabView;
   onTabChange: (tab: LipidTabView) => void;
   bets: LipidBet[];
+  isAdmin?: boolean;
+  onDeleteBet?: (betId: string) => void;
 }
 
 export default function TabSection({
   currentTab,
   onTabChange,
   bets,
+  isAdmin = false,
+  onDeleteBet,
 }: TabSectionProps) {
   return (
     <div className="bg-[#151525] rounded-t-3xl border-t border-slate-800 min-h-[300px] pb-24">
@@ -86,8 +90,20 @@ export default function TabSection({
                     {bet.team === "TALLOW" ? "FAT" : "FIT"}
                   </span>
                 </div>
-                <div className="col-span-2 text-right font-mono text-[#00e676]">
-                  ${bet.amount}
+                <div className="col-span-2 flex items-center justify-end gap-1 font-mono text-[#00e676]">
+                  <span>${bet.amount}</span>
+                  {isAdmin && onDeleteBet && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm("Delete this bet?")) onDeleteBet(bet.id);
+                      }}
+                      className="p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded ml-1"
+                      title="Admin: Delete Bet"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

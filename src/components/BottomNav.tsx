@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Zap, Gamepad2, User, Trophy, HeartPulse } from 'lucide-react';
+import { Home, Zap, Gamepad2, User, HeartPulse } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useGame, type GameData } from '@/context/GameContext';
 import { useEspnScores } from '@/hooks/useEspnScores';
@@ -85,11 +85,9 @@ export default function BottomNav() {
     return () => clearInterval(interval);
   }, [user, getUserGames, espnGames]);
 
-  const getLinkClass = (path: string, altPaths: string[] = [], isWinners: boolean = false) => {
+  const getLinkClass = (path: string, altPaths: string[] = []) => {
     const isActive = pathname === path || altPaths.some(p => pathname.startsWith(p));
-    const activeColor = isWinners 
-      ? "text-yellow-400 scale-110 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]" 
-      : "text-cyan-400 scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]";
+    const activeColor = "text-cyan-400 scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]";
     return `flex flex-col items-center justify-center w-full transition-all duration-200 ${
       isActive ? activeColor : "text-white/40 hover:text-white/70"
     }`;
@@ -174,10 +172,15 @@ export default function BottomNav() {
           <span className="text-[10px] font-bold mt-1 tracking-wider">HOME</span>
         </Link>
 
-        {/* 2. WINNERS (Hall of Fame) */}
-        <Link href="/winners" className={`${getLinkClass('/winners', [], true)} flex-1 h-full`} aria-label="Hall of Fame" title="Hall of Fame">
-          <Trophy size={26} strokeWidth={2.5} />
-          <span className="text-[10px] font-bold mt-1 tracking-wider">WINNERS</span>
+        {/* 2. PLAY (Create/Join Hub) */}
+        <Link 
+          href="/play" 
+          className={`${getLinkClass('/play', ['/create', '/join'])} flex-1 h-full`} 
+          aria-label="Play Hub" 
+          title="Play Hub"
+        >
+          <Gamepad2 size={26} strokeWidth={2.5} className={isPlayActive ? "fill-cyan-400/20" : ""} />
+          <span className="text-[10px] font-bold mt-1 tracking-wider">PLAY</span>
         </Link>
 
         {/* 3. LIVE (The Big Center FAB - Beacon Mode) */}
@@ -217,26 +220,17 @@ export default function BottomNav() {
           </span>
         </button>
 
-        {/* 4. PLAY (Create/Join Hub) */}
-        <Link 
-          href="/play" 
-          className={`${getLinkClass('/play', ['/create', '/join'])} flex-1 h-full`} 
-          aria-label="Play Hub" 
-          title="Play Hub"
-        >
-          <Gamepad2 size={26} strokeWidth={2.5} className={isPlayActive ? "fill-cyan-400/20" : ""} />
-          <span className="text-[10px] font-bold mt-1 tracking-wider">PLAY</span>
-        </Link>
 
-        {/* 4.5 LIPID LOTTO */}
+
+        {/* 4. LIPID LOTTO */}
         <Link
           href="/lipid-lotto"
           className={`${getLinkClass('/lipid-lotto', [])} flex-1 h-full`}
           aria-label="Lipid Lotto"
           title="Lipid Lotto"
         >
-          <HeartPulse size={26} strokeWidth={2.5} className={pathname === '/lipid-lotto' ? "text-[#00e676]" : ""} />
-          <span className="text-[10px] font-bold mt-1 tracking-wider">LOTTO</span>
+          <HeartPulse size={26} strokeWidth={2.5} className={`${pathname === '/lipid-lotto' ? "text-red-500 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]" : "text-white/40 group-hover:text-white/70"}`} />
+          <span className={`text-[10px] font-bold mt-1 tracking-wider ${pathname === '/lipid-lotto' ? "text-red-400" : ""}`}>LOTTO</span>
         </Link>
 
         {/* 5. YOU (Profile) */}

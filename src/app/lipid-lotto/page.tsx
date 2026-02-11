@@ -6,6 +6,8 @@ import { db } from "@/lib/firebase";
 import {
   collection,
   addDoc,
+  deleteDoc,
+  doc,
   query,
   where,
   getDocs,
@@ -19,7 +21,6 @@ import { motion } from "framer-motion";
 import LipidTicker from "@/components/lipid/Ticker";
 import ArteryVisualizer from "@/components/lipid/ArteryVisualizer";
 import BettingCard from "@/components/lipid/BettingCard";
-import SurvivorSplit from "@/components/lipid/SurvivorSplit";
 import CountdownTimer from "@/components/lipid/CountdownTimer";
 import PaymentModal from "@/components/lipid/PaymentModal";
 import TabSection, {
@@ -36,7 +37,7 @@ const TARGET_DATE =
   Date.now() + 3 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000 + 15 * 60 * 1000;
 
 export default function LipidLottoPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useAuth();
 
   const [cholesterolLevel, setCholesterolLevel] = useState(350);
   const [totalPot, setTotalPot] = useState(0);
@@ -258,14 +259,20 @@ export default function LipidLottoPage() {
           isLocked={hasBet}
         />
 
-        {/* Survivor's Split */}
-        <SurvivorSplit totalPot={totalPot} />
-
         {/* Tabs (Waiting Room / Lab Results) */}
         <TabSection
           currentTab={currentTab}
           onTabChange={setCurrentTab}
           bets={bets}
+          isAdmin={isAdmin}
+          onDeleteBet={async (id) => {
+            try {
+              await deleteDoc(doc(db, COLLECTION_NAME, id));
+            } catch (e) {
+              console.error(e);
+              alert("Failed to delete bet");
+            }
+          }}
         />
 
         {/* Payment Modal */}

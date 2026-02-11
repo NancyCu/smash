@@ -165,6 +165,32 @@ export default function ArteryVisualizer({
     };
   }, [percentage, cSize]);
 
+  /* ────────────────────────────────────────────────────
+     Limit Line Position (Static 385)
+     ──────────────────────────────────────────────────── */
+  const limitPos = useMemo(() => {
+    if (cSize.w === 0) return { x: 0, y: 0 };
+
+    const svgAspect = SVG_W / SVG_H;
+    const boxAspect = cSize.w / cSize.h;
+    let rw: number, rh: number, ox: number, oy: number;
+    
+    if (boxAspect > svgAspect) {
+      rh = cSize.h; rw = rh * svgAspect; ox = (cSize.w - rw) / 2; oy = 0;
+    } else {
+      rw = cSize.w; rh = rw / svgAspect; ox = 0; oy = (cSize.h - rh) / 2;
+    }
+
+    const p = Math.max(0, Math.min((limitLine - MIN_VAL) / (MAX_VAL - MIN_VAL), 1));
+    const svgX = p * SVG_W;
+    const svgY = SVG_CENTER_Y + getCurveY(p * 100);
+
+    return {
+      x: ox + (svgX / SVG_W) * rw,
+      y: oy + (svgY / SVG_H) * rh,
+    };
+  }, [limitLine, cSize]);
+
   /* ── edge-awareness for the info bubble ── */
   const isLeftEdge = percentage < 0.15;
   const isRightEdge = percentage > 0.85;
@@ -214,7 +240,6 @@ export default function ArteryVisualizer({
           className="relative w-full mt-6 mb-2 overflow-visible"
           style={{ height: 220, paddingLeft: 12, paddingRight: 12 }}
         >
-          {/* ── SVG tube ── */}
           <svg
             className="absolute inset-0 w-full h-full pointer-events-none"
             viewBox={`0 0 ${SVG_W} ${SVG_H}`}
@@ -354,6 +379,34 @@ export default function ArteryVisualizer({
               </g>
             </g>
           </svg>
+
+          {/* ════════════════════════════════════════════
+              LIMIT LINE INDICATOR (Static 385 Mark)
+              ════════════════════════════════════════════ */}
+          {cSize.w > 0 && (
+            <div
+              className="absolute pointer-events-none flex flex-col items-center"
+              style={{
+                left: limitPos.x,
+                top: limitPos.y,
+                transform: "translate(-50%, -50%)",
+                zIndex: 35, // Below marker (50) but above tube text
+              }}
+            >
+              {/* Vertical Dashed Line */}
+              <div className="w-px h-32 bg-gradient-to-b from-white/0 via-yellow-400/50 to-white/0 dashed-line" />
+              
+              {/* Limit Label Bubble */}
+              <div className="absolute top-[-30px] flex flex-col items-center">
+                 <div className="bg-yellow-500/20 backdrop-blur-sm border border-yellow-500/50 px-2 py-0.5 rounded text-[9px] font-bold text-yellow-200 uppercase tracking-wider shadow-lg whitespace-nowrap">
+                   LIMIT: {limitLine}
+                 </div>
+                 <div className="w-px h-8 border-l border-dashed border-yellow-500/50 mt-1"></div>
+                 {/* Dot on the line */}
+                 <div className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)] mt-[-5px]"></div>
+              </div>
+            </div>
+          )}
 
           {/* ════════════════════════════════════════════
               MARKER — rides the sine curve, z-50

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { X, Smartphone, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { generatePaymentLink, isMobileDevice } from "@/utils/paymentLinks";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -26,12 +27,20 @@ export default function PaymentModal({
   const handlePay = async (provider: "venmo" | "cashapp") => {
     setProcessing(true);
 
+    const gameName = "Lipid Lotto";
+    // TODO: Update this handle to the correct host/banker for Lipid Lotto
+    const paymentHandle = "@Nancy-Cu"; 
+
     if (provider === "venmo") {
-      window.open(
-        `https://venmo.com/?txn=pay&amount=${amount}&note=LipidLottoBet`,
-        "_blank"
-      );
+      const link = generatePaymentLink("venmo", paymentHandle, amount, gameName);
+      // Use window.location for deep links on mobile to trigger app open
+      if (isMobileDevice()) {
+        window.location.href = link;
+      } else {
+        window.open(link, "_blank");
+      }
     } else {
+      // Fallback or CashApp logic
       window.open(`https://cash.app/$yourcashtag/${amount}`, "_blank");
     }
 
