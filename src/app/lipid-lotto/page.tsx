@@ -23,6 +23,7 @@ import ArteryVisualizer from "@/components/lipid/ArteryVisualizer";
 import BettingCard from "@/components/lipid/BettingCard";
 import CountdownTimer from "@/components/lipid/CountdownTimer";
 import PaymentModal from "@/components/lipid/PaymentModal";
+import RulesModal from "@/components/lipid/RulesModal";
 import TabSection, {
   type LipidTabView,
   type LipidBet,
@@ -294,12 +295,15 @@ export default function LipidLottoPage() {
         {/* Payment Modal */}
         <PaymentModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => setIsOpen(false)}
           onConfirm={handleConfirmBet}
           amount={ENTRY_FEE}
           team={cholesterolLevel > LIMIT_LINE ? "TALLOW" : "RABBIT_FOOD"}
           targetValue={cholesterolLevel}
         />
+
+        {/* Rules Modal (Auto-shows on page load) */}
+        <RulesModal />
       </div>
     </div>
   );
