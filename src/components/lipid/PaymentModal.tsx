@@ -28,8 +28,8 @@ export default function PaymentModal({
     setProcessing(true);
 
     const gameName = "Lipid Lotto";
-    // TODO: Update this handle to the correct host/banker for Lipid Lotto
-    const paymentHandle = "@Nancy-Cu"; 
+    // Updated to prompt correct host/banker for Lipid Lotto
+    const paymentHandle = "@cuviet76"; 
 
     if (provider === "venmo") {
       const link = generatePaymentLink("venmo", paymentHandle, amount, gameName);
