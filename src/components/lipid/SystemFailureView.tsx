@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { ChevronRight, ChevronLeft, Skull, Scale, Stethoscope, CheckCircle2, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, doc, setDoc, serverTimestamp, query, where, getDocs, onSnapshot } from "firebase/firestore";
 import ToothGame from "./ToothGame";
 import BloodPressureGame from "./BloodPressureGame";
 import WeightGame from "./WeightGame";
@@ -25,8 +25,22 @@ export default function SystemFailureView() {
   const [answers, setAnswers] = useState<SavedAnswers>({ bp: null, teethMissing: null, weight: null });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [existingDocId, setExistingDocId] = useState<string | null>(null);
   const [loadingExisting, setLoadingExisting] = useState(true);
+
+  /* ── Auto-reset if admin kicks user (deletes from waiting_room) ── */
+  useEffect(() => {
+    if (!user) return;
+    const docRef = doc(db, "waiting_room", user.uid);
+    const unsub = onSnapshot(docRef, (snap) => {
+      if (!snap.exists()) {
+        // Admin deleted this user — reset everything
+        setLevel(2);
+        setAnswers({ bp: null, teethMissing: null, weight: null });
+        setSaved(false);
+      }
+    });
+    return () => unsub();
+  }, [user]);
 
   // Load existing answers from Firestore on mount
   useEffect(() => {
@@ -41,7 +55,6 @@ export default function SystemFailureView() {
         if (!snap.empty) {
           const docData = snap.docs[0];
           const data = docData.data();
-          setExistingDocId(docData.id);
           setAnswers({
             bp: data.bp ?? null,
             teethMissing: data.teethMissing ?? null,
@@ -61,29 +74,20 @@ export default function SystemFailureView() {
     loadExisting();
   }, [user]);
 
-  // Save/update to Firestore whenever an answer is locked in
+  // Save/update to Firestore using setDoc with user.uid for upsert
   const saveAnswers = async (updatedAnswers: SavedAnswers) => {
     if (!user) return;
     setSaving(true);
     try {
-      const payload = {
+      await setDoc(doc(db, COLLECTION_NAME, user.uid), {
         uid: user.uid,
         userName: user.displayName ?? "Anonymous",
         bp: updatedAnswers.bp,
         teethMissing: updatedAnswers.teethMissing,
         weight: updatedAnswers.weight,
+        timestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      };
-
-      if (existingDocId) {
-        await updateDoc(doc(db, COLLECTION_NAME, existingDocId), payload);
-      } else {
-        const ref = await addDoc(collection(db, COLLECTION_NAME), {
-          ...payload,
-          timestamp: serverTimestamp(),
-        });
-        setExistingDocId(ref.id);
-      }
+      }, { merge: true });
 
       // Check if all answers are complete
       if (updatedAnswers.bp != null && updatedAnswers.teethMissing != null && updatedAnswers.weight != null) {

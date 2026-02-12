@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Lock, CheckCircle2 } from "lucide-react";
+import { Lock, CheckCircle2, RotateCcw } from "lucide-react";
 
 export default function BloodPressureGame({
   onComplete,
@@ -59,6 +59,17 @@ export default function BloodPressureGame({
     if (decayRef.current) clearInterval(decayRef.current);
     setIsLocked(true);
     onComplete?.(Math.floor(pressure));
+  };
+
+  const handleReset = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (decayRef.current) clearInterval(decayRef.current);
+    setPressure(100);
+    setIsLocked(false);
+    // Restart decay
+    decayRef.current = setInterval(() => {
+      setPressure((prev) => Math.max(100, prev - 1));
+    }, 150);
   };
 
   const fillHeight = Math.min(100, Math.max(0, (pressure - 100) / 1.4));
@@ -132,14 +143,23 @@ export default function BloodPressureGame({
             <p className="text-white/50 text-xs text-center">
               Hold to raise. Release to let it fall.
             </p>
-            <button
-              onClick={handleLockIn}
-              disabled={pressure <= 100}
-              className="w-full py-3 rounded-xl bg-[#00f0ff] hover:bg-[#00d4e6] disabled:bg-slate-700 disabled:text-slate-500 text-black font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,240,255,0.3)]"
-            >
-              <Lock size={16} />
-              LOCK IN READING
-            </button>
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={handleReset}
+                className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white/60 font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+              >
+                <RotateCcw size={14} />
+                RESET
+              </button>
+              <button
+                onClick={handleLockIn}
+                disabled={pressure <= 100}
+                className="flex-[2] py-3 rounded-xl bg-[#00f0ff] hover:bg-[#00d4e6] disabled:bg-slate-700 disabled:text-slate-500 text-black font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,240,255,0.3)]"
+              >
+                <Lock size={16} />
+                LOCK IN READING
+              </button>
+            </div>
           </>
         ) : (
           <div className="flex flex-col items-center gap-2">

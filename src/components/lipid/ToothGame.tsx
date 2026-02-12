@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Lock, CheckCircle2 } from "lucide-react";
+import { Lock, CheckCircle2, RotateCcw } from "lucide-react";
 
 export default function ToothGame({
   onComplete,
@@ -39,6 +39,11 @@ export default function ToothGame({
     if (isLocked) return;
     setIsLocked(true);
     onComplete?.(removedCount);
+  };
+
+  const handleReset = () => {
+    setTeeth(Array(totalTeeth).fill(true));
+    setIsLocked(false);
   };
 
   return (
@@ -102,13 +107,22 @@ export default function ToothGame({
       {/* Lock In / Locked State */}
       <div className="flex flex-col items-center gap-3">
         {!isLocked ? (
-          <button
-            onClick={handleLockIn}
-            className="w-full py-3 rounded-xl bg-[#00ffcc] hover:bg-[#00e6b8] text-black font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,255,204,0.3)]"
-          >
-            <Lock size={16} />
-            LOCK IN EXTRACTION
-          </button>
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={handleReset}
+              className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white/60 font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+            >
+              <RotateCcw size={14} />
+              RESET
+            </button>
+            <button
+              onClick={handleLockIn}
+              className="flex-[2] py-3 rounded-xl bg-[#00ffcc] hover:bg-[#00e6b8] text-black font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,255,204,0.3)]"
+            >
+              <Lock size={16} />
+              LOCK IN EXTRACTION
+            </button>
+          </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
             <div className="w-14 h-14 bg-[#00ffcc]/10 border-2 border-[#00ffcc] rounded-full flex items-center justify-center">

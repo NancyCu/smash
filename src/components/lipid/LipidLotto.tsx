@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import {
   Play,
   Lock,
@@ -43,12 +43,28 @@ export default function LipidLotto({ userId, userName }: { userId?: string; user
 
   const next = (nextLevel: Level) => setLevel(nextLevel);
 
-  /* ── Submit to Firestore ── */
+  /* ── Auto-reset if admin kicks user (deletes from waiting_room) ── */
+  useEffect(() => {
+    if (!userId || userId === "anon") return;
+    const docRef = doc(db, "waiting_room", userId);
+    const unsub = onSnapshot(docRef, (snap) => {
+      if (!snap.exists()) {
+        // Admin deleted this user — reset to intro
+        setLevel("intro");
+        setAnswers({ cholesterol: 250, bp: 120, teethMissing: 0, weight: 180 });
+        setSaved(false);
+      }
+    });
+    return () => unsub();
+  }, [userId]);
+
+  /* ── Submit to Firestore (setDoc with uid for upsert) ── */
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      await addDoc(collection(db, "bets"), {
-        uid: userId ?? "anon",
+      const docId = userId ?? "anon";
+      await setDoc(doc(db, "bets", docId), {
+        uid: docId,
         userName: userName ?? "Anonymous",
         cholesterol: answers.cholesterol,
         bp: answers.bp,
@@ -118,7 +134,10 @@ export default function LipidLotto({ userId, userName }: { userId?: string; user
           )}
           {level === "summary" && (
             <FadeIn key="summary">
-              <SummaryScreen answers={answers} />
+              <SummaryScreen
+                answers={answers}
+                onEdit={(target: Level) => setLevel(target)}
+              />
             </FadeIn>
           )}
         </AnimatePresence>
@@ -636,12 +655,12 @@ function WeightBtn({
    SUMMARY / RECEIPT
    ═════════════════════════════════════════════ */
 
-function SummaryScreen({ answers }: { answers: Answers }) {
-  const rows = [
-    { label: "Cholesterol", value: `${answers.cholesterol} mg/dL`, icon: "🩸" },
-    { label: "Blood Pressure", value: `${answers.bp} mmHg`, icon: "💉" },
-    { label: "Teeth Lost", value: `${answers.teethMissing}`, icon: "🦷" },
-    { label: "Weight", value: `${answers.weight} lbs`, icon: "⚖️" },
+function SummaryScreen({ answers, onEdit }: { answers: Answers; onEdit?: (level: Level) => void }) {
+  const rows: { label: string; value: string; icon: string; editLevel: Level }[] = [
+    { label: "Cholesterol", value: `${answers.cholesterol} mg/dL`, icon: "🩸", editLevel: "cholesterol" },
+    { label: "Blood Pressure", value: `${answers.bp} mmHg`, icon: "💉", editLevel: "bp" },
+    { label: "Teeth Lost", value: `${answers.teethMissing}`, icon: "🦷", editLevel: "teeth" },
+    { label: "Weight", value: `${answers.weight} lbs`, icon: "⚖️", editLevel: "weight" },
   ];
 
   return (
@@ -687,9 +706,19 @@ function SummaryScreen({ answers }: { answers: Answers }) {
                   {row.label}
                 </span>
               </div>
-              <span className="text-sm font-black text-white font-mono">
-                {row.value}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-white font-mono">
+                  {row.value}
+                </span>
+                {onEdit && (
+                  <button
+                    onClick={() => onEdit(row.editLevel)}
+                    className="text-[10px] font-bold text-cyan-400 border border-cyan-400/40 px-2 py-0.5 rounded hover:bg-cyan-400/10 transition-colors uppercase tracking-wider"
+                  >
+                    EDIT
+                  </button>
+                )}
+              </div>
             </motion.div>
           ))}
         </div>

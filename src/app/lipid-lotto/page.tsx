@@ -5,7 +5,6 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import {
   collection,
-  addDoc,
   deleteDoc,
   doc,
   query,
@@ -14,6 +13,7 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  setDoc,
 } from "firebase/firestore";
 import { Info, Wallet } from "lucide-react";
 import { motion } from "framer-motion";
@@ -122,7 +122,7 @@ export default function LipidLottoPage() {
       : ENTRY_FEE + ENTRY_FEE * ODDS_OVER;
 
     try {
-      await addDoc(collection(db, COLLECTION_NAME), {
+      await setDoc(doc(db, COLLECTION_NAME, user.uid), {
         uid: user.uid,
         userName: user.displayName ?? "Anon",
         betAmount: ENTRY_FEE,
@@ -284,7 +284,31 @@ export default function LipidLottoPage() {
           isAdmin={isAdmin}
           onDeleteBet={async (id) => {
             try {
+              // Find the uid of the bet being deleted so we can cascade
+              const betToDelete = bets.find((b) => b.id === id);
+              const uid = betToDelete?.oddsId;
+
+              // Delete the bet from the main collection
               await deleteDoc(doc(db, COLLECTION_NAME, id));
+
+              // Cascade: also delete their lab results (lipid_bets)
+              if (uid) {
+                const labQ = query(
+                  collection(db, "lipid_bets"),
+                  where("uid", "==", uid)
+                );
+                const labSnap = await getDocs(labQ);
+                const deletePromises = labSnap.docs.map((d) =>
+                  deleteDoc(doc(db, "lipid_bets", d.id))
+                );
+
+                // Also remove from waiting_room (triggers auto-reset on client)
+                deletePromises.push(
+                  deleteDoc(doc(db, "waiting_room", uid))
+                );
+
+                await Promise.all(deletePromises);
+              }
             } catch (e) {
               console.error(e);
               alert("Failed to delete bet");
