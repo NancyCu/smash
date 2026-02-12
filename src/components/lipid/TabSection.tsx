@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { Users, FileText, Trash2 } from "lucide-react";
+import { Users, FileText, Trash2, Skull } from "lucide-react";
+import SystemFailureView from "./SystemFailureView";
 
-export type LipidTabView = "WAITING_ROOM" | "LAB_RESULTS";
+export type LipidTabView = "WAITING_ROOM" | "LAB_RESULTS" | "SYSTEM_FAILURE";
 
 export interface LipidBet {
   id: string;
@@ -54,6 +55,16 @@ export default function TabSection({
           }`}
         >
           <FileText size={14} /> The Lab Results
+        </button>
+        <button
+          onClick={() => onTabChange("SYSTEM_FAILURE")}
+          className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${
+            currentTab === "SYSTEM_FAILURE"
+              ? "text-white border-b-2 border-red-500 bg-slate-800/30"
+              : "text-slate-500 hover:text-slate-300"
+          }`}
+        >
+          <Skull size={14} /> System Failure
         </button>
       </div>
 
@@ -160,6 +171,8 @@ export default function TabSection({
               </div>
             )}
           </div>
+        ) : currentTab === "SYSTEM_FAILURE" ? (
+          <SystemFailureView />
         ) : (
           <div className="flex flex-col items-center justify-center h-48 text-slate-500 space-y-4">
             <div className="w-16 h-16 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center animate-spin" style={{ animationDuration: "8s" }}>
