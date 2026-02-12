@@ -1,128 +1,102 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { Lock, CheckCircle2 } from "lucide-react";
 
 export default function WeightGame({
   onComplete,
+  savedValue,
 }: {
   onComplete?: (weight: number) => void;
+  savedValue?: number | null;
 }) {
-  const [foods, setFoods] = useState<string[]>([]);
-  
-  // Weights in "units"
-  const ITEM_WEIGHTS: Record<string, number> = {
-    RICE: 5,
-    PORK: 2,
-    SUGAR: 1,
+  const [weight, setWeight] = useState(savedValue ?? 180);
+  const [isLocked, setIsLocked] = useState(!!savedValue);
+
+  const adjust = (delta: number) => {
+    if (isLocked) return;
+    setWeight((prev) => Math.max(80, Math.min(350, prev + delta)));
   };
 
-  const currentLoad = foods.reduce((acc, item) => acc + ITEM_WEIGHTS[item], 0);
-  
-  // Visual tilt calculation (clamped -15 to 15 degrees)
-  // Target might be e.g. 180lbs. We simulate a balance scale.
-  // Visual only: Left pan has fixed "User Weight" (heavy), Right pan has "Food".
-  // Initially Left is down (User heavy). As food adds up, Right goes down.
-  const tilt = Math.max(-15, Math.min(15, (150 - currentLoad * 5) / 10)); 
-
-  const addFood = (type: string) => {
-    setFoods([...foods, type]);
+  const handleLockIn = () => {
+    if (isLocked) return;
+    setIsLocked(true);
+    onComplete?.(weight);
   };
+
+  const pct = ((weight - 80) / (350 - 80)) * 100;
 
   return (
     <div className="w-full max-w-md mx-auto p-4 bg-[#02040a] rounded-xl border-2 border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.15)] relative overflow-hidden font-mono text-[#00f0ff]">
-       {/* Background Grid */}
-       <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(0,240,255,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.2)_1px,transparent_1px)] bg-[size:20px_20px]" />
+      {/* Background Grid */}
+      <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(0,240,255,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.2)_1px,transparent_1px)] bg-[size:20px_20px]" />
 
       <div className="relative z-10 text-center mb-6">
         <h2 className="font-black text-lg tracking-widest uppercase mb-1">
           LEVEL 5: BIOMASS AUDIT
         </h2>
         <div className="text-[10px] text-white/50 uppercase">
-          Gravitational Load Calculation
+          {isLocked ? "Weight Locked In ✓" : "What's the gravitational load? Use +/- to guess."}
         </div>
       </div>
 
-      {/* SCALE VISUALIZATION */}
-      <div className="relative h-48 w-full mb-8">
-        
-        {/* Scale Base & Pillar (Static) */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-32 bg-[#00f0ff]/30 border border-[#00f0ff]" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-2 bg-[#00f0ff]" />
-
-        {/* The Beam (Rotates) */}
-        <motion.div 
-          className="absolute top-16 left-1/2 w-64 h-2 bg-[#00f0ff] origin-center"
-          style={{ x: "-50%" }}
-          animate={{ rotate: tilt }}
-          transition={{ type: "spring", stiffness: 60, damping: 10 }}
-        >
-             {/* Left Pan Hanger (User) */}
-             <div className="absolute left-0 top-0 w-[1px] h-20 bg-[#00f0ff]/50 origin-top" style={{ transform: `rotate(${-tilt}deg)` }}>
-                {/* Pan Base */}
-                <div className="absolute -bottom-1 -left-6 w-12 h-1 bg-[#00f0ff]" />
-                {/* User Block */}
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 -translate-y-1 w-8 h-12 bg-[#ff0055]/20 border border-[#ff0055] flex items-center justify-center">
-                    <span className="text-[8px] text-[#ff0055] font-bold rotate-90">DAD</span>
-                </div>
-             </div>
-
-             {/* Right Pan Hanger (Food) */}
-             <div className="absolute right-0 top-0 w-[1px] h-20 bg-[#00f0ff]/50 origin-top" style={{ transform: `rotate(${-tilt}deg)` }}>
-                {/* Pan Base */}
-                <div className="absolute -bottom-1 -left-6 w-12 h-1 bg-[#00f0ff]" />
-                
-                {/* Food Stack (Grows Upwards) */}
-                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex flex-col-reverse items-center w-12 gap-[1px]">
-                   <AnimatePresence>
-                    {foods.map((food, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`w-full border text-[6px] text-black font-bold flex items-center justify-center
-                          ${food === 'RICE' ? 'h-4 bg-yellow-200 border-yellow-400' : 
-                            food === 'PORK' ? 'h-3 bg-red-300 border-red-500' : 
-                            'h-2 bg-white border-gray-300'}
-                        `}
-                      >
-                         {food[0]}
-                      </motion.div>
-                    ))}
-                   </AnimatePresence>
-                </div>
-             </div>
-        </motion.div>
-      
-        {/* Needle / Readout Center */}
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-[#02040a] border-2 border-[#00f0ff] rounded-full z-20" />
+      {/* Weight Display */}
+      <div className="relative z-10 text-center mb-6">
+        <span className={`text-8xl font-black tabular-nums tracking-tighter transition-colors ${isLocked ? "text-[#00f0ff]" : "text-white"}`}>
+          {weight}
+        </span>
+        <div className="text-sm text-slate-500 font-bold tracking-widest uppercase mt-1">
+          LBS
+        </div>
       </div>
 
-      {/* Controls */}
-      <div className="relative z-10 grid grid-cols-3 gap-2 mb-4">
-        <button onClick={() => addFood("RICE")} className="p-2 border border-yellow-400/50 bg-yellow-900/20 text-yellow-200 text-xs hover:bg-yellow-900/40 rounded flex flex-col items-center">
-             <span>🍚</span>
-             <span className="font-bold mt-1">RICE</span>
-             <span className="text-[8px] opacity-60">+5 LB</span>
-        </button>
-        <button onClick={() => addFood("PORK")} className="p-2 border border-red-400/50 bg-red-900/20 text-red-200 text-xs hover:bg-red-900/40 rounded flex flex-col items-center">
-             <span>🍖</span>
-             <span className="font-bold mt-1">PORK</span>
-             <span className="text-[8px] opacity-60">+2 LB</span>
-        </button>
-        <button onClick={() => addFood("SUGAR")} className="p-2 border border-white/50 bg-white/10 text-white text-xs hover:bg-white/20 rounded flex flex-col items-center">
-             <span>🧋</span>
-             <span className="font-bold mt-1">SUGAR</span>
-             <span className="text-[8px] opacity-60">+1 LB</span>
-        </button>
+      {/* Control Buttons */}
+      {!isLocked && (
+        <div className="relative z-10 grid grid-cols-4 gap-2 max-w-xs mx-auto mb-4">
+          <button onClick={() => adjust(-5)} className="py-3 rounded-lg font-black text-lg transition-all active:scale-90 bg-pink-500/10 border border-pink-500/30 text-pink-500 hover:bg-pink-500/20">-5</button>
+          <button onClick={() => adjust(-1)} className="py-3 rounded-lg font-black text-lg transition-all active:scale-90 bg-pink-500/10 border border-pink-500/30 text-pink-500 hover:bg-pink-500/20">-1</button>
+          <button onClick={() => adjust(1)} className="py-3 rounded-lg font-black text-lg transition-all active:scale-90 bg-cyan-400/10 border border-cyan-400/30 text-cyan-400 hover:bg-cyan-400/20">+1</button>
+          <button onClick={() => adjust(5)} className="py-3 rounded-lg font-black text-lg transition-all active:scale-90 bg-cyan-400/10 border border-cyan-400/30 text-cyan-400 hover:bg-cyan-400/20">+5</button>
+        </div>
+      )}
+
+      {/* Visual Scale */}
+      <div className="relative z-10 flex justify-center mb-2">
+        <div className="relative w-full max-w-xs h-3 bg-slate-800 rounded-full border border-slate-700 overflow-hidden">
+          <motion.div
+            className="h-full bg-cyan-400 rounded-full"
+            animate={{ width: `${pct}%` }}
+            transition={{ type: "spring", stiffness: 120, damping: 20 }}
+          />
+        </div>
+      </div>
+      <div className="flex justify-between max-w-xs mx-auto text-[10px] text-slate-600 font-bold mb-6">
+        <span>80 lbs</span>
+        <span>350 lbs</span>
       </div>
 
-      {/* Stats */}
-      <div className="text-center">
-         <div className="text-[10px] text-white/50 mb-1">CURRENT LOAD</div>
-         <div className="text-3xl font-black text-white">{currentLoad} <span className="text-sm font-normal text-gray-500">units</span></div>
+      {/* Lock In / Locked State */}
+      <div className="relative z-10 flex flex-col items-center gap-3">
+        {!isLocked ? (
+          <button
+            onClick={handleLockIn}
+            className="w-full py-3 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(236,72,153,0.3)]"
+          >
+            <Lock size={16} />
+            LOCK IN WEIGHT
+          </button>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-14 h-14 bg-[#00f0ff]/10 border-2 border-[#00f0ff] rounded-full flex items-center justify-center">
+              <CheckCircle2 size={28} className="text-[#00f0ff]" />
+            </div>
+            <span className="text-[#00f0ff] text-xs font-bold uppercase tracking-widest">
+              {weight} lbs — Locked
+            </span>
+          </div>
+        )}
       </div>
-
     </div>
   );
 }

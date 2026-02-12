@@ -401,16 +401,12 @@ const joinGame = async (gameId: string, password?: string, userId?: string) => {
   };
 
   const updatePaymentInfo = async (paymentLink: string | null, zellePhone: string | null) => {
-    if (!gameId) return;
-    try {
-        await updateDoc(doc(db, "games", gameId), { 
-            paymentLink,
-            zellePhone
-        });
-        console.log("✅ Payment info updated");
-    } catch (err) {
-        console.error("❌ Failed to update payment info:", err);
-    }
+    if (!gameId) throw new Error("No active game selected");
+    await updateDoc(doc(db, "games", gameId), { 
+        paymentLink,
+        zellePhone
+    });
+    console.log("✅ Payment info updated");
   };
 
   const togglePaymentStatus = async (targetUserId: string, isPaid: boolean) => {

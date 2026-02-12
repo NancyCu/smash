@@ -1,26 +1,44 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { Lock, CheckCircle2 } from "lucide-react";
 
 export default function ToothGame({
   onComplete,
+  savedValue,
 }: {
   onComplete?: (count: number) => void;
+  savedValue?: number | null;
 }) {
-  const [teeth, setTeeth] = useState([true, true, true, true, true]); // 5 teeth
-  const [removedCount, setRemovedCount] = useState(0);
+  const totalTeeth = 5;
+  const hasSaved = savedValue != null;
+
+  // Initialize teeth state from saved value
+  const [teeth, setTeeth] = useState<boolean[]>(() => {
+    if (hasSaved) {
+      // Reconstruct: first N teeth removed (false), rest present (true)
+      const arr = Array(totalTeeth).fill(true);
+      for (let i = 0; i < (savedValue ?? 0) && i < totalTeeth; i++) arr[i] = false;
+      return arr;
+    }
+    return Array(totalTeeth).fill(true);
+  });
+  const [isLocked, setIsLocked] = useState(hasSaved);
+
+  const removedCount = teeth.filter((t) => !t).length;
 
   const handleToothClick = (index: number) => {
-    if (!teeth[index]) return;
-
+    if (isLocked) return;
     const newTeeth = [...teeth];
-    newTeeth[index] = false;
+    newTeeth[index] = !newTeeth[index]; // Toggle: click to remove or restore
     setTeeth(newTeeth);
-    setRemovedCount((prev) => prev + 1);
-    
-    // Optional: Trigger completion or callback
-    if (onComplete) onComplete(removedCount + 1);
+  };
+
+  const handleLockIn = () => {
+    if (isLocked) return;
+    setIsLocked(true);
+    onComplete?.(removedCount);
   };
 
   return (
@@ -31,101 +49,76 @@ export default function ToothGame({
           LEVEL 3: THE TOOTH TOLL
         </h2>
         <p className="text-white/60 text-xs italic">
-          "High BP caused some grinding..."
+          {isLocked ? "Extraction complete. Results locked." : "\"High BP caused some grinding...\" — Tap teeth to extract them."}
         </p>
       </div>
 
-      {/* The Face Visualization */}
-      <div className="relative aspect-square w-full max-w-[300px] mx-auto mb-6">
-        <svg
-          viewBox="0 0 100 100"
-          className="w-full h-full drop-shadow-2xl"
-        >
-          {/* Face Base */}
-          <circle cx="50" cy="60" r="30" fill="#f5d0a9" stroke="#d4a373" strokeWidth="1" />
-          
-          {/* Blush/Stress Cheeks */}
-          <circle cx="35" cy="55" r="5" fill="#ff9999" opacity="0.5" />
-          <circle cx="65" cy="55" r="5" fill="#ff9999" opacity="0.5" />
-
-          {/* Squinting Eyes (Stress) */}
-          <path d="M 35 65 L 45 65" stroke="black" strokeWidth="2" strokeLinecap="round" />
-          <path d="M 55 65 L 65 65" stroke="black" strokeWidth="2" strokeLinecap="round" />
-
-          {/* Sweat Drop */}
-          <motion.ellipse 
-            cx="72" cy="75" rx="2" ry="4" 
-            fill="#00d2ff" 
-            transform="rotate(20 72 75)"
-            animate={{ y: [0, 2, 0] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-          />
-
-          {/* Mouth (Open Wide) */}
-          <ellipse cx="50" cy="45" rx="15" ry="8" fill="#660000" stroke="black" strokeWidth="0.5" />
-
-          {/* Teeth Container - Positioned over mouth */}
-        </svg>
-
-        {/* Interactive Teeth Layer (HTML overlay for better click handling/animation) */}
-        <div className="absolute top-[40%] left-1/2 -translate-x-1/2 w-[30%] h-[10%] flex justify-between items-center px-1">
-            <AnimatePresence>
-              {teeth.map((isPresent, i) => (
-                <div key={i} className="relative w-4 h-6">
-                  {isPresent ? (
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => handleToothClick(i)}
-                      className="w-full h-full bg-white border border-gray-300 rounded-sm shadow-sm cursor-pointer hover:bg-yellow-50"
-                      layoutId={`tooth-${i}`}
-                    />
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
-                      animate={{ 
-                        opacity: 0, 
-                        scale: 0.5, 
-                        y: -100, 
-                        x: (Math.random() - 0.5) * 100,
-                        rotate: Math.random() * 360 
-                      }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
-                      className="absolute inset-0 w-full h-full bg-white border border-gray-300 rounded-sm pointer-events-none z-50"
-                    >
-                        {/* Tooth root visuals */}
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-2 bg-yellow-100/50"></div>
-                    </motion.div>
-                  )}
-                  
-                  {/* Gum/Socket (Always visible underneath) */}
-                  {!isPresent && (
-                    <div className="absolute bottom-0 left-0 w-full h-2 bg-[#330000] rounded-b-sm animate-pulse" />
-                  )}
-                </div>
-              ))}
-            </AnimatePresence>
-        </div>
+      {/* Teeth Row */}
+      <div className="flex justify-center gap-3 mb-6">
+        {teeth.map((isPresent, i) => (
+          <motion.button
+            key={i}
+            onClick={() => handleToothClick(i)}
+            whileTap={!isLocked ? { scale: 0.85 } : {}}
+            disabled={isLocked}
+            className={`relative w-14 h-20 rounded-md border-2 transition-all duration-200 flex items-center justify-center text-2xl font-black ${
+              isPresent
+                ? isLocked
+                  ? "bg-[#00ffcc]/5 border-[#00ffcc]/30 text-[#00ffcc]/50 cursor-default"
+                  : "bg-[#00ffcc]/10 border-[#00ffcc] text-[#00ffcc] hover:bg-[#00ffcc]/20 shadow-[0_0_10px_rgba(0,255,204,0.2)] cursor-pointer"
+                : isLocked
+                  ? "bg-pink-500/5 border-pink-500/30 text-pink-500/50 cursor-default"
+                  : "bg-pink-500/10 border-pink-500 text-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.3)] cursor-pointer"
+            }`}
+          >
+            {isPresent ? (
+              <span className="text-3xl">🦷</span>
+            ) : (
+              <span className="text-3xl">✕</span>
+            )}
+            <span className="absolute bottom-1 text-[8px] opacity-50">#{i + 1}</span>
+          </motion.button>
+        ))}
       </div>
 
-      {/* Controls / Instructions */}
-      <div className="text-center space-y-4">
-        <h3 className="text-[#ffcc00] font-black text-lg animate-pulse">
-          TAP TO EXTRACT
-        </h3>
-        
-        <div className="bg-[#333] border-2 border-[#00ffcc] rounded-lg p-3 inline-block min-w-[120px]">
+      {/* Counter */}
+      <div className="text-center mb-4">
+        <div className="inline-block bg-[#333] border-2 border-[#00ffcc] rounded-lg p-3 min-w-[120px]">
           <div className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">
             Teeth Removed
           </div>
-          <div className="text-2xl font-mono font-black text-white">
+          <div className={`text-2xl font-mono font-black ${removedCount > 0 ? "text-pink-500" : "text-white"}`}>
             {removedCount}
           </div>
         </div>
+      </div>
 
-        <p className="text-gray-500 text-xs mt-2">
-          Guess: How many did the dentist take?
+      {!isLocked && (
+        <p className="text-gray-500 text-xs text-center mb-4">
+          Tap to remove or restore teeth. Lock in when ready.
         </p>
+      )}
+
+      {/* Lock In / Locked State */}
+      <div className="flex flex-col items-center gap-3">
+        {!isLocked ? (
+          <button
+            onClick={handleLockIn}
+            className="w-full py-3 rounded-xl bg-[#00ffcc] hover:bg-[#00e6b8] text-black font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,255,204,0.3)]"
+          >
+            <Lock size={16} />
+            LOCK IN EXTRACTION
+          </button>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-14 h-14 bg-[#00ffcc]/10 border-2 border-[#00ffcc] rounded-full flex items-center justify-center">
+              <CheckCircle2 size={28} className="text-[#00ffcc]" />
+            </div>
+            <span className="text-[#00ffcc] text-xs font-bold uppercase tracking-widest">
+              {removedCount} Teeth Extracted — Locked
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

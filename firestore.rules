@@ -11,7 +11,7 @@ service cloud.firestore {
     }
 
     function isHost(gameId) {
-      return isSignedIn() && get(/databases/$(database)/documents/games/$(gameId)).data.hostUserId == request.auth.uid;
+      return isSignedIn() && get(/databases/$(database)/documents/games/$(gameId)).data.host == request.auth.uid;
     }
 
     // Admin registry
@@ -22,10 +22,26 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Lipid Lotto bets (cholesterol over/under)
+    match /lipid_lotto_bets/{betId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // Lipid mini-game results (BP, Teeth, Weight)
+    match /lipid_bets/{betId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
     // Games (metadata)
     match /games/{gameId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.hostUserId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.host == request.auth.uid;
 
       // Only host or admin can update game metadata/scores/settings.
       allow update, delete: if isHost(gameId) || isAdmin();

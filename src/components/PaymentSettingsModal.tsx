@@ -20,24 +20,38 @@ export default function PaymentSettingsModal({
 }: PaymentSettingsModalProps) {
   const { updatePaymentInfo } = useGame();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     paymentLink: initialPaymentLink || "",
     zellePhone: initialZellePhone || ""
   });
+
+  // Sync form data when props change (e.g., after a save or when re-opening)
+  React.useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        paymentLink: initialPaymentLink || "",
+        zellePhone: initialZellePhone || ""
+      });
+      setError(null);
+    }
+  }, [isOpen, initialPaymentLink, initialZellePhone]);
 
   if (!isOpen) return null;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       await updatePaymentInfo(
           formData.paymentLink || null, 
           formData.zellePhone || null
       );
       onClose();
-    } catch (error) {
-      console.error("Failed to update payment info", error);
+    } catch (err) {
+      console.error("Failed to update payment info", err);
+      setError("Failed to save. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -97,6 +111,12 @@ export default function PaymentSettingsModal({
                 value={formData.zellePhone}
                 onChange={e => setFormData({...formData, zellePhone: e.target.value})}
             />
+
+            {error && (
+              <div className="p-3 bg-red-500/20 border border-red-500/40 rounded-xl text-red-200 text-xs font-bold text-center">
+                {error}
+              </div>
+            )}
 
             <div className="pt-2">
                 <button 

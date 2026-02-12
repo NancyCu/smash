@@ -1,7 +1,9 @@
 "use client";
 
-import React from "react";
-import { Users, FileText, Trash2, Skull } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Users, FileText, Trash2, Skull, Activity, Stethoscope, Scale } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, Timestamp } from "firebase/firestore";
 import SystemFailureView from "./SystemFailureView";
 
 export type LipidTabView = "WAITING_ROOM" | "LAB_RESULTS" | "SYSTEM_FAILURE";
@@ -16,6 +18,15 @@ export interface LipidBet {
   timestamp: number;
   odds?: string;
   potentialPayout?: number;
+}
+
+interface LabResult {
+  id: string;
+  userName: string;
+  bp: number | null;
+  teethMissing: number | null;
+  weight: number | null;
+  timestamp: number;
 }
 
 interface TabSectionProps {
@@ -33,6 +44,33 @@ export default function TabSection({
   isAdmin = false,
   onDeleteBet,
 }: TabSectionProps) {
+  const [labResults, setLabResults] = useState<LabResult[]>([]);
+
+  // Subscribe to lab results (lipid_bets collection)
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "lipid_bets"), (snap) => {
+      const results: LabResult[] = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          userName: data.userName ?? "Anon",
+          bp: data.bp ?? null,
+          teethMissing: data.teethMissing ?? null,
+          weight: data.weight ?? null,
+          timestamp:
+            data.timestamp instanceof Timestamp
+              ? data.timestamp.toMillis()
+              : data.updatedAt instanceof Timestamp
+                ? data.updatedAt.toMillis()
+                : Date.now(),
+        };
+      });
+      // Sort by most recent
+      results.sort((a, b) => b.timestamp - a.timestamp);
+      setLabResults(results);
+    });
+    return () => unsub();
+  }, []);
   return (
     <div className="bg-[#151525] rounded-t-3xl border-t border-slate-800 min-h-[300px] pb-24">
       <div className="flex border-b border-slate-800">
@@ -174,13 +212,72 @@ export default function TabSection({
         ) : currentTab === "SYSTEM_FAILURE" ? (
           <SystemFailureView />
         ) : (
-          <div className="flex flex-col items-center justify-center h-48 text-slate-500 space-y-4">
-            <div className="w-16 h-16 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center animate-spin" style={{ animationDuration: "8s" }}>
-              <FileText size={24} />
-            </div>
-            <p className="text-xs font-mono">
-              LAB PROCESSING... (ETA: 3 Days)
-            </p>
+          /* LAB RESULTS TAB */
+          <div className="space-y-1">
+            {labResults.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-48 text-slate-500 space-y-4">
+                <FileText size={24} className="opacity-50" />
+                <p className="text-xs font-mono">No lab results submitted yet.</p>
+              </div>
+            ) : (
+              <>
+                {/* Header Row */}
+                <div className="grid grid-cols-[20px_1fr_60px_50px_60px] gap-2 px-4 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider border-b border-white/10">
+                  <div className="text-left">#</div>
+                  <div className="text-left">PATIENT</div>
+                  <div className="text-center flex items-center justify-center gap-1"><Stethoscope size={10} /> BP</div>
+                  <div className="text-center flex items-center justify-center gap-1"><Skull size={10} /> TEETH</div>
+                  <div className="text-center flex items-center justify-center gap-1"><Scale size={10} /> LBS</div>
+                </div>
+
+                {labResults.map((result, index) => {
+                  const allComplete = result.bp != null && result.teethMissing != null && result.weight != null;
+                  return (
+                    <div
+                      key={result.id}
+                      className={`grid grid-cols-[20px_1fr_60px_50px_60px] gap-2 px-4 py-3 border-b border-white/5 items-center hover:bg-white/5 transition-colors ${
+                        allComplete ? "" : "opacity-60"
+                      }`}
+                    >
+                      <div className="text-gray-600 text-xs font-mono">{index + 1}</div>
+                      <div className="font-bold text-white text-sm truncate pr-2 flex items-center gap-1.5">
+                        {result.userName}
+                        {allComplete && <span className="text-green-400 text-[10px]">✓</span>}
+                      </div>
+                      <div className="text-center">
+                        {result.bp != null ? (
+                          <span className={`text-xs font-mono font-bold ${result.bp > 160 ? "text-red-400" : "text-cyan-400"}`}>
+                            {result.bp}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 text-[10px]">—</span>
+                        )}
+                      </div>
+                      <div className="text-center">
+                        {result.teethMissing != null ? (
+                          <span className={`text-xs font-mono font-bold ${result.teethMissing > 0 ? "text-pink-400" : "text-cyan-400"}`}>
+                            {result.teethMissing}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 text-[10px]">—</span>
+                        )}
+                      </div>
+                      <div className="text-center">
+                        {result.weight != null ? (
+                          <span className="text-xs font-mono font-bold text-white">{result.weight}</span>
+                        ) : (
+                          <span className="text-slate-600 text-[10px]">—</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="p-4 text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest">
+                  {labResults.length} Patient{labResults.length !== 1 ? "s" : ""} Submitted
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
