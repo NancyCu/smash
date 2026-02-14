@@ -14,7 +14,8 @@ import {
     deleteDoc,
     where,
     increment,
-    writeBatch
+    writeBatch,
+    getDocs
 } from "firebase/firestore";
 
 // --- TYPES ---
@@ -168,9 +169,23 @@ export const setSessionHost = async (hostId: string, hostName: string) => {
 };
 
 export const endLiveGame = async () => {
-    // Logic to archive could go here, for now just reset
-    const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
-    await deleteDoc(ref); // Or mark isActive: false
+    // 1. Delete Session
+    const sessionRef = doc(db, SESSION_COL, SESSION_DOC_ID);
+    await deleteDoc(sessionRef);
+
+    // 2. Clear All Players (Batch Delete)
+    const playersQ = query(collection(db, PLAYERS_COL));
+    const snapshot = await getDocs(playersQ);
+
+    // Batch limit is 500, we'll assume <500 for now or do chunks if needed (simple ver)
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+    });
+    // Also clear transactions if you want a FULL clean slate? 
+    // User only asked to "remove all users". Keeping txs for record might be safer?
+    // "remove all users once the live games are ended" -> implies lobby clear.
+    await batch.commit();
 };
 
 

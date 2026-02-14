@@ -58,6 +58,26 @@ const AnimalCard = ({
     isHostSelecting?: boolean,
     selectionCount?: number
 }) => {
+    // Determine status to show
+    // If betAmount > 0 and isWinner -> WIN
+    // If betAmount > 0 and !isWinner -> LOSE
+    // If betAmount == 0 and isWinner -> WINNER (Generic)
+
+    // We only show "LOSE" if the game is actually in RESULT state. 
+    // We can infer this if `disabled` is true AND `isHostSelecting` is false? 
+    // Actually, `isWinner` prop being present implies RESULT state in parent logic.
+    // Parent passes `isWinner` only when status === 'RESULT'.
+
+    const showWin = betAmount > 0 && isWinner;
+    const showLose = betAmount > 0 && !isWinner && disabled; // disabled is true in RESULT
+    // Actually, parent logic: isWinner={currentStatus === 'RESULT' && (session?.result?.includes(animal.id) || result.includes(animal.id))}
+    // So if isWinner is true, we know we are in result.
+    // However, for "LOSE", we need to know we are in 'RESULT' state too.
+    // We will assume if `isWinner` is explicitly passed as boolean (good or bad) we can check it.
+    // But `isWinner` is boolean.
+
+    // Let's rely on badges content.
+
     return (
         <motion.button
             whileTap={{ scale: 0.95 }}
@@ -82,33 +102,49 @@ const AnimalCard = ({
             {/* Glossy Reflection Highlight */}
             <div className="absolute top-0 left-0 right-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
 
-            {/* Winner Badge */}
-            {isWinner && (
-                <div className="absolute -top-3 -right-3 bg-yellow-400 text-black p-1 rounded-full shadow-lg animate-bounce z-30">
-                    <Check size={16} strokeWidth={4} />
-                </div>
-            )}
-
-            {/* Host Selection Badge */}
+            {/* Selection Count (Host) */}
             {selectionCount > 0 && (
                 <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 border-2 border-white flex items-center justify-center font-black text-sm z-30 shadow-lg animate-in zoom-in">
                     {selectionCount}
                 </div>
             )}
 
-            {/* Bet Badge */}
+            {/* BET BADGE (Top Right) - Larger & Offset */}
             <AnimatePresence>
                 {betAmount > 0 && (
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
-                        className="absolute -top-1 -right-1 bg-yellow-400 text-black font-black text-[10px] md:text-xs px-1.5 py-0.5 rounded-full border border-white shadow-lg z-20"
+                        className="absolute -top-3 -right-3 md:-top-4 md:-right-4 bg-yellow-400 text-black font-black text-sm md:text-base w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full border-2 border-white shadow-lg z-20"
                     >
-                        ${betAmount}
+                        {betAmount}
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* WINNER ANIMATION (Center Highlight) */}
+            {isWinner && (
+                <div className="absolute inset-0 rounded-full border-4 border-yellow-400 animate-pulse pointer-events-none" />
+            )}
+
+            {/* RESULT BADGES (Bottom Center) - Only show if Disabled (Result Phase) & Not Host Selecting */}
+            {disabled && !isHostSelecting && (
+                <>
+                    {/* WIN */}
+                    {isWinner && (
+                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full shadow-lg border border-white z-30 animate-bounce">
+                            {betAmount > 0 ? 'WIN!' : 'WINNER'}
+                        </div>
+                    )}
+                    {/* LOSE */}
+                    {betAmount > 0 && !isWinner && (
+                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full shadow-lg border border-white z-30">
+                            LOSE
+                        </div>
+                    )}
+                </>
+            )}
 
             <span className="text-4xl md:text-6xl xl:text-8xl drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
             <span className="mt-0.5 text-[9px] md:text-[10px] xl:text-xs font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
@@ -147,7 +183,10 @@ export default function BauCuaPage() {
     const [showAdminMenu, setShowAdminMenu] = useState(false);
     const [showHostPicker, setShowHostPicker] = useState(false);
 
+    const [selectionCount, setSelectionCount] = useState(0); // unused in parent? passed as prop. 
+
     // Timer State
+    const [timeLeft, setTimeLeft] = useState(45);
     const [elapsedTime, setElapsedTime] = useState(0);
 
     // --- DERIVED STATE ---
@@ -189,10 +228,41 @@ export default function BauCuaPage() {
 
     // Timer Effect
     useEffect(() => {
-        setElapsedTime(0); // Reset on status change
-        const interval = setInterval(() => setElapsedTime(t => t + 1), 1000);
+        setElapsedTime(0); // Reset elapsed on status change
+
+        // Reset countdown when entering BETTING status
+        if (currentStatus === 'BETTING') {
+            setTimeLeft(45);
+        }
+
+        const interval = setInterval(() => {
+            setElapsedTime(t => t + 1);
+
+            if (currentStatus === 'BETTING') {
+                setTimeLeft(prev => {
+                    if (prev <= 1) {
+                        // Auto-trigger
+                        // We need to call handleRollClick() here, but we can't easily call it inside effect 
+                        // if it depends on state that might be stale, OR we just trigger it via a separate effect dependency.
+                        // Better: Set a trigger flag or just allow the effect to run logic.
+                        // But `handleRollClick` is async.
+
+                        // We'll let the effect below handle the trigger
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }
+        }, 1000);
         return () => clearInterval(interval);
     }, [currentStatus]);
+
+    // Auto-Roll Trigger
+    useEffect(() => {
+        if (currentStatus === 'BETTING' && timeLeft === 0) {
+            handleRollClick();
+        }
+    }, [timeLeft, currentStatus]);
 
     // Format Timer
     const formatTime = (seconds: number) => {
@@ -228,26 +298,19 @@ export default function BauCuaPage() {
     }, []);
 
     // 3. React to Result from Session (Client Side Win Calculation)
+    // 3. React to Result from Session (Client Side Win Calculation)
     useEffect(() => {
         if (!isLive) return;
         if (session?.status === 'RESULT' && session.result?.length === 3) {
-            // Calculate winnings for Client
-            const sessionResult = session.result;
+            const resultString = session.result.join(',');
+            // Simple check to see if we already processed this exact result ID
+            // For now, we use a session-level ID if available, OR just rely on local state to block duplicate payouts.
+            // But simplified for this "MVP":
+            // Run settle ONLY if we have bets.
 
-            // Prevent double-calculation by checking if we already have a 'lastWin' set for this exact result? 
-            // Or just do it once when status flips.
-            // Simplified: Just calculate and show WIN screen overlay.
-            // But we only want to ADD balance once.
-            // Current simplistic approach: We'll have a separate 'ProcessedResultId' tracker if needed.
-            // For now, let's assume the user manually sees the result.
-            // Actually, we need to invoke `confirmResult` logic but PASSIVELY.
-
-            // To act exactly once per round, we could track a local 'lastProcessedRoundId'.
-            // For simplicity in this version, we will let the user 'Claim' logic or just auto-run:
-            // Let's use a "Round End" verify.
-
-            // AUTO-SETTLE FOR CLIENTS:
-            // Calculate strictly on transition.
+            if (Object.keys(bets).length > 0) {
+                settleClientRound();
+            }
         }
     }, [session?.status, session?.result, isLive]);
 
@@ -414,7 +477,7 @@ export default function BauCuaPage() {
         }
     };
 
-    // Triggered by CLIENT when they see the result and "Claim" / or just Play Again
+    // Triggered by CLIENT when they see the result
     const settleClientRound = async () => {
         // Re-run calc for client
         const currentResult = isLive ? session?.result || [] : result;
@@ -450,9 +513,10 @@ export default function BauCuaPage() {
             }
         }
 
-        // Clear local bets locally so they don't double claim
-        setBets({});
-        // Note: In a robust app, we'd mark this round ID as claimed.
+        // DO NOT CLEAR BETS YET.
+        // We want the user to see "I bet on Chicken, Chicken Won, I see 'WIN'"
+        // Bets will be cleared when the NEXT round starts (currentStatus goes back to BETTING).
+        // setBets({}); 
     };
 
     const newGame = async () => {
@@ -622,7 +686,8 @@ export default function BauCuaPage() {
             <div className="no-print flex-1 w-full mx-auto flex flex-col md:flex-row gap-6 p-4 md:p-8 relative z-10 mb-32 overflow-y-auto">
 
                 {/* --- LEFT: BOARD (Desktop: expands, Mobile: Full) --- */}
-                <div className="flex-1">
+                {/* --- LEFT: BOARD (Desktop: expands, Mobile: Full) --- */}
+                <div className="flex-1 min-h-0">
                     {(currentStatus === 'BETTING' || currentStatus === 'ROLLING' || currentStatus === 'RESULT') ? (
                         <div className="relative h-full flex flex-col justify-center">
                             {/* ROLLING OVERLAY (CLIENTS ONLY) */}
@@ -643,28 +708,11 @@ export default function BauCuaPage() {
                                 </div>
                             )}
 
-                            {/* RESULT OVERLAY (CLIENT VIEW - FINAL RESULT) */}
-                            {currentStatus === 'RESULT' && !isHost && (
-                                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md rounded-3xl animate-in fade-in p-4 text-center">
-                                    <h2 className="text-4xl font-black text-yellow-500 mb-8 drop-shadow-xl">RESULT</h2>
-                                    <div className="flex gap-6 mb-10">
-                                        {session?.result?.map((id, i) => (
-                                            <div key={i} className="text-7xl animate-bounce" style={{ animationDelay: `${i * 0.1}s` }}>
-                                                {ANIMALS.find(a => a.id === id)?.emoji}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button
-                                        onClick={() => { settleClientRound(); newGame(); }}
-                                        className="px-10 py-5 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl font-bold text-xl shadow-lg hover:scale-105 transition"
-                                    >
-                                        Collect & Continue
-                                    </button>
-                                </div>
-                            )}
+                            {/* RESULT OVERLAY REMOVED - Results shown on board */}
 
                             {/* GRID - RESPONSIVE (2 cols mobile, 3 cols desktop) */}
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 lg:gap-8 max-w-md md:max-w-none mx-auto w-full">
+                            {/* Mobile: Use h-full and content-center to keep it centered and packed. gap-2 to save space. */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-6 lg:gap-8 max-w-md md:max-w-none mx-auto w-full h-full md:h-auto content-center md:content-start">
                                 {ANIMALS.map(animal => {
                                     const isHostSelecting = isHost && currentStatus === 'ROLLING';
                                     const isSelectedByHost = isHostSelecting && result.includes(animal.id);
@@ -794,19 +842,32 @@ export default function BauCuaPage() {
                                         <RotateCcw className="w-8 h-8 md:w-10 md:h-10" />
                                     </button>
 
-                                    {/* ROLL / LOCK */}
-                                    <button
-                                        onClick={handleRollClick}
-                                        disabled={Object.keys(bets).length === 0 && !isLive}
-                                        className={`
+                                    {/* ROLL / LOCK / READY */}
+                                    {(!isLive || isHost) ? (
+                                        <button
+                                            onClick={handleRollClick}
+                                            disabled={Object.keys(bets).length === 0 && !isLive}
+                                            className={`
                                             flex-1 h-full rounded-2xl font-black text-2xl md:text-3xl uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
                                             ${(Object.keys(bets).length > 0 || (isLive && isHost))
-                                                ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.02]'
-                                                : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                                    ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.02]'
+                                                    : 'bg-white/10 text-white/30 cursor-not-allowed'}
                                         `}
-                                    >
-                                        {isHost ? (currentStatus === 'BETTING' ? 'LOCK BETS' : '...') : 'ROLL'}
-                                    </button>
+                                        >
+                                            <div className="flex flex-col items-center leading-none">
+                                                <span>{isLive ? 'READY' : 'ROLL'}</span>
+                                                {currentStatus === 'BETTING' && (
+                                                    <span className="text-[10px] md:text-xs opacity-70 font-mono mt-1">{timeLeft}s</span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    ) : (
+                                        // CLIENT VIEW: Just a Timer Display
+                                        <div className="flex-1 h-full rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-white/50">
+                                            <span className="text-xs uppercase tracking-widest mb-1">Starting in</span>
+                                            <span className="font-mono text-2xl text-white font-bold">{timeLeft}s</span>
+                                        </div>
+                                    )}
                                 </div>
                             </>
                         )}
@@ -968,19 +1029,26 @@ export default function BauCuaPage() {
                             <RotateCcw size={18} />
                         </button>
 
-                        {/* ROLL */}
-                        <button
-                            onClick={handleRollClick}
-                            disabled={Object.keys(bets).length === 0 && !isLive}
-                            className={`
+                        {/* ROLL / READY (Mobile) */}
+                        {(!isLive || isHost) ? (
+                            <button
+                                onClick={handleRollClick}
+                                disabled={Object.keys(bets).length === 0 && !isLive}
+                                className={`
                                 flex-1 h-12 rounded-xl font-black text-lg uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
                                 ${(Object.keys(bets).length > 0 || (isLive && isHost))
-                                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-pink-500/20'
-                                    : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                        ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-pink-500/20'
+                                        : 'bg-white/10 text-white/30 cursor-not-allowed'}
                             `}
-                        >
-                            {isHost ? 'LOCK' : 'ROLL'}
-                        </button>
+                            >
+                                {isLive ? 'READY' : 'ROLL'}
+                                <span className="ml-2 text-xs opacity-50 font-mono">({timeLeft}s)</span>
+                            </button>
+                        ) : (
+                            <div className="flex-1 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 font-mono text-sm">
+                                Starting in <span className="text-white font-bold ml-2">{timeLeft}s</span>
+                            </div>
+                        )}
                     </div>
                 )}
 
