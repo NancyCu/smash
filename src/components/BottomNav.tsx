@@ -21,12 +21,25 @@ export default function BottomNav() {
   const [showWarpMenu, setShowWarpMenu] = useState(false);
 
   // Auto-Hide Nav Logic
-  const [isExpanded, setIsExpanded] = useState(false);
+  const isAlwaysOpen = pathname === '/' || pathname === '/create';
+  // Initialize isExpanded to true if isAlwaysOpen, otherwise false (default collapsed)
+  const [isExpanded, setIsExpanded] = useState(isAlwaysOpen);
   const navRef = React.useRef<HTMLDivElement>(null);
   const isInteracting = React.useRef(false); // Prevents immediate closing on open
 
-  // Handle scroll/touch to collapse
+  // Update expansion when path changes 
   useEffect(() => {
+    if (isAlwaysOpen) {
+      setIsExpanded(true);
+    } else {
+      setIsExpanded(false);
+    }
+  }, [pathname, isAlwaysOpen]);
+
+  // Handle scroll/touch to collapse (Only if NOT always open)
+  useEffect(() => {
+    if (isAlwaysOpen) return; // Disable auto-hide on these pages
+
     const handleInteraction = (e: Event) => {
       if (!isExpanded) return;
       if (isInteracting.current) {
@@ -56,7 +69,7 @@ export default function BottomNav() {
       window.removeEventListener('touchstart', handleInteraction);
       window.removeEventListener('click', handleInteraction);
     };
-  }, [isExpanded]);
+  }, [isExpanded, isAlwaysOpen]);
 
   useEffect(() => {
     // Check localStorage for last active game
@@ -201,15 +214,16 @@ export default function BottomNav() {
         />
       )}
 
-      {/* Mini Menu Button (Visible when collapsed) */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault(); // Prevent ghost clicks
-          setIsExpanded(true);
-          isInteracting.current = true;
-        }}
-        className={`
+      {/* Mini Menu Button (Visible when collapsed AND not always open) */}
+      {!isAlwaysOpen && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault(); // Prevent ghost clicks
+            setIsExpanded(true);
+            isInteracting.current = true;
+          }}
+          className={`
             fixed bottom-28 left-5 z-40 w-12 h-12 rounded-full 
             bg-[#0B0C15]/80 backdrop-blur-md border border-white/10 
             shadow-[0_8px_32px_rgba(0,0,0,0.5)] 
@@ -219,10 +233,11 @@ export default function BottomNav() {
             active:scale-95
             ${isExpanded ? 'opacity-0 scale-50 pointer-events-none translate-y-10' : 'opacity-100 scale-100 translate-y-0'}
           `}
-        aria-label="Open Menu"
-      >
-        <Menu size={20} strokeWidth={2.5} />
-      </button>
+          aria-label="Open Menu"
+        >
+          <Menu size={20} strokeWidth={2.5} />
+        </button>
+      )}
 
       <div
         ref={navRef}

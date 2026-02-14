@@ -1013,7 +1013,7 @@ export default function BauCuaPage() {
             </div>
 
             {/* MOBILE FIXED CONTROLS BAR */}
-            <div className="md:hidden no-print fixed bottom-12 left-0 right-0 z-50 bg-[#0B0C15]/95 backdrop-blur-xl border-t border-white/10 px-4 py-3 shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
+            <div className="md:hidden no-print fixed bottom-0 left-0 right-0 z-50 bg-[#0B0C15]/95 backdrop-blur-xl border-t border-white/10 px-4 pt-3 pb-8 shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
 
                 {/* STATE: BETTING */}
                 {currentStatus === 'BETTING' && (
