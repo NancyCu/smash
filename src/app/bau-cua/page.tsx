@@ -48,7 +48,8 @@ const AnimalCard = ({
     disabled,
     isWinner,
     isHostSelecting,
-    selectionCount = 0
+    selectionCount = 0,
+    matchCount = 0
 }: {
     animal: typeof ANIMALS[0],
     betAmount: number,
@@ -57,26 +58,11 @@ const AnimalCard = ({
     isWinner?: boolean,
     isHostSelecting?: boolean,
     selectionCount?: number
+    matchCount?: number
 }) => {
-    // Determine status to show
-    // If betAmount > 0 and isWinner -> WIN
-    // If betAmount > 0 and !isWinner -> LOSE
-    // If betAmount == 0 and isWinner -> WINNER (Generic)
-
-    // We only show "LOSE" if the game is actually in RESULT state. 
-    // We can infer this if `disabled` is true AND `isHostSelecting` is false? 
-    // Actually, `isWinner` prop being present implies RESULT state in parent logic.
-    // Parent passes `isWinner` only when status === 'RESULT'.
-
-    const showWin = betAmount > 0 && isWinner;
-    const showLose = betAmount > 0 && !isWinner && disabled; // disabled is true in RESULT
-    // Actually, parent logic: isWinner={currentStatus === 'RESULT' && (session?.result?.includes(animal.id) || result.includes(animal.id))}
-    // So if isWinner is true, we know we are in result.
-    // However, for "LOSE", we need to know we are in 'RESULT' state too.
-    // We will assume if `isWinner` is explicitly passed as boolean (good or bad) we can check it.
-    // But `isWinner` is boolean.
-
-    // Let's rely on badges content.
+    // Status Logic
+    const isLoser = disabled && !isWinner && !isHostSelecting; // Result phase, not winner
+    const winAmount = betAmount * matchCount;
 
     return (
         <motion.button
@@ -87,20 +73,22 @@ const AnimalCard = ({
         relative aspect-square rounded-full 
         border-[3px] 
         ${isWinner || selectionCount > 0 ? 'border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.6)] z-10 scale-105' : 'border-white/10'}
-        bg-gradient-to-br ${animal.color} 
-        backdrop-blur-md
         flex flex-col items-center justify-center 
         shadow-[0_8px_32px_0_rgba(0,0,0,0.3)]
         shadow-[inset_0_2px_20px_rgba(255,255,255,0.2)]
         transition-all duration-300
         group
-        ${disabled && !isWinner ? 'opacity-50 grayscale' : 'hover:scale-105 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]'}
-        ${isHostSelecting && selectionCount === 0 ? 'opacity-30 grayscale blur-[1px]' : ''}
-        ${selectionCount > 0 ? 'opacity-100 grayscale-0 ring-2 ring-white scale-110' : ''}
+        bg-black/20
+        ${!disabled ? 'hover:scale-105 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]' : ''}
+        ${isHostSelecting && selectionCount === 0 ? 'opacity-30 blur-[1px]' : ''}
+        ${selectionCount > 0 ? 'opacity-100 ring-2 ring-white scale-110' : ''}
       `}
         >
+            {/* COLOR BACKGROUND - Separated for Grayscale control */}
+            <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${animal.color} backdrop-blur-md transition-all duration-300 ${isLoser ? 'grayscale opacity-40' : ''}`} />
+
             {/* Glossy Reflection Highlight */}
-            <div className="absolute top-0 left-0 right-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+            <div className="absolute top-0 left-0 right-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/20 to-transparent pointer-events-none z-10" />
 
             {/* Selection Count (Host) */}
             {selectionCount > 0 && (
@@ -109,45 +97,63 @@ const AnimalCard = ({
                 </div>
             )}
 
-            {/* BET BADGE (Top Right) - Larger & Offset */}
+            {/* BET BADGE (Top Right) - Hide when Disabled (Result Phase) */}
             <AnimatePresence>
-                {betAmount > 0 && (
+                {betAmount > 0 && !disabled && (
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
                         className="absolute -top-3 -right-3 md:-top-4 md:-right-4 bg-yellow-400 text-black font-black text-sm md:text-base w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full border-2 border-white shadow-lg z-20"
                     >
-                        {betAmount}
+                        ${betAmount}
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* WINNER ANIMATION (Center Highlight) */}
+            {/* WINNER HIGHLIGHT */}
             {isWinner && (
-                <div className="absolute inset-0 rounded-full border-4 border-yellow-400 animate-pulse pointer-events-none" />
+                <div className="absolute inset-0 rounded-full border-4 border-yellow-400 animate-pulse pointer-events-none z-10" />
             )}
 
-            {/* RESULT BADGES (Bottom Center) - Only show if Disabled (Result Phase) & Not Host Selecting */}
+            {/* CONTENT (Emoji/Name) - Grayscale if loser */}
+            <div className={`relative z-10 flex flex-col items-center transition-all ${isLoser ? 'grayscale opacity-50' : ''}`}>
+                <span className="text-6xl md:text-6xl xl:text-8xl drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
+                <span className="mt-0.5 text-[9px] md:text-[10px] xl:text-xs font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
+            </div>
+
+            {/* RESULT INDICATORS (Floating on top, FULL COLOR) */}
             {disabled && !isHostSelecting && (
                 <>
-                    {/* WIN */}
-                    {isWinner && (
-                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full shadow-lg border border-white z-30 animate-bounce">
-                            {betAmount > 0 ? 'WIN!' : 'WINNER'}
+                    {/* WIN PROFIT */}
+                    {isWinner && betAmount > 0 && (
+                        <div className="absolute -top-4 right-0 bg-green-500 text-white text-xs md:text-sm font-black px-3 py-1 rounded-full shadow-[0_0_15px_rgba(34,197,94,0.6)] border border-white z-30 animate-bounce">
+                            +${winAmount}
                         </div>
                     )}
-                    {/* LOSE */}
+
+                    {/* WIN LABEL (No Bet) */}
+                    {isWinner && betAmount === 0 && (
+                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full shadow-lg border border-white z-20">
+                            WINNER
+                        </div>
+                    )}
+
+                    {/* LOSS AMOUNT */}
                     {betAmount > 0 && !isWinner && (
-                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full shadow-lg border border-white z-30">
+                        <div className="absolute -top-4 right-0 bg-red-600 text-white text-xs md:text-sm font-black px-3 py-1 rounded-full shadow-[0_0_15px_rgba(220,38,38,0.6)] border border-white z-30 animate-pulse">
+                            -${betAmount}
+                        </div>
+                    )}
+
+                    {/* LOSE LABEL */}
+                    {betAmount > 0 && !isWinner && (
+                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full shadow-lg border border-white z-20">
                             LOSE
                         </div>
                     )}
                 </>
             )}
-
-            <span className="text-4xl md:text-6xl xl:text-8xl drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
-            <span className="mt-0.5 text-[9px] md:text-[10px] xl:text-xs font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
         </motion.button>
     );
 };
@@ -233,6 +239,10 @@ export default function BauCuaPage() {
         // Reset countdown when entering BETTING status
         if (currentStatus === 'BETTING') {
             setTimeLeft(45);
+            // Clear bets for the new round
+            if (Object.keys(bets).length > 0) {
+                setBets({});
+            }
         }
 
         const interval = setInterval(() => {
@@ -474,7 +484,7 @@ export default function BauCuaPage() {
                     await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
                 }
             }
-        }
+        };
     };
 
     // Triggered by CLIENT when they see the result
@@ -717,12 +727,13 @@ export default function BauCuaPage() {
                                     const isHostSelecting = isHost && currentStatus === 'ROLLING';
                                     const isSelectedByHost = isHostSelecting && result.includes(animal.id);
                                     const selectionCount = isHostSelecting ? result.filter(r => r === animal.id).length : 0;
+                                    const betAmount = bets[animal.id] || 0;
 
                                     return (
                                         <AnimalCard
                                             key={animal.id}
                                             animal={animal}
-                                            betAmount={bets[animal.id] || 0}
+                                            betAmount={betAmount}
                                             onBet={() => {
                                                 if (isHostSelecting) {
                                                     if (result.length < 3) addResultItem(animal.id);
@@ -807,40 +818,46 @@ export default function BauCuaPage() {
 
 
                         {/* BETTING CONTROLS */}
-                        {currentStatus === 'BETTING' && (
+                        {(currentStatus === 'BETTING' || (isHost && currentStatus === 'ROLLING')) && (
                             <>
-                                <h3 className="text-white/50 font-bold uppercase tracking-widest text-xs md:text-sm">Place Your Bets</h3>
+                                {!isHost && <h3 className="text-white/50 font-bold uppercase tracking-widest text-xs md:text-sm">Place Your Bets</h3>}
 
-                                {/* Chips Row */}
-                                <div className="flex justify-center gap-4 py-2">
-                                    {CHIPS.map(chip => (
-                                        <button
-                                            key={chip}
-                                            onClick={() => setSelectedChip(chip)}
-                                            className={`
+                                {/* Chip Selector - Players Only */}
+                                {!isHost && (
+                                    <>
+                                        <div className="flex gap-2 justify-center py-2 overflow-x-auto no-scrollbar mask-grad-x md:mask-none">
+                                            {CHIPS.map(chip => (
+                                                <button
+                                                    key={chip}
+                                                    onClick={() => setSelectedChip(chip)}
+                                                    className={`
                                                 relative w-20 h-20 md:w-28 md:h-28 rounded-full flex flex-col items-center justify-center font-black text-2xl md:text-3xl border-[4px] transition-all shadow-xl
                                                 ${selectedChip === chip
-                                                    ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 border-white text-black scale-110 shadow-[0_0_20px_rgba(234,179,8,0.6)] z-10'
-                                                    : 'bg-black/60 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/30'}
+                                                            ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 border-white text-black scale-110 shadow-[0_0_20px_rgba(234,179,8,0.6)] z-10'
+                                                            : 'bg-black/60 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/30'}
                                             `}
-                                        >
-                                            <span>${chip}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                                                >
+                                                    <span>${chip}</span>
+                                                </button>
+                                            ))}
+                                        </div>
 
-                                <div className="h-px bg-white/10 w-full my-2" />
+                                        <div className="h-px bg-white/10 w-full my-2" />
+                                    </>
+                                )}
 
                                 {/* Action Buttons Row */}
                                 <div className="flex gap-3 h-20 md:h-28">
-                                    {/* Clear */}
-                                    <button
-                                        onClick={clearBets}
-                                        disabled={Object.keys(bets).length === 0}
-                                        className="h-full aspect-square rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 disabled:opacity-30 hover:bg-white/10 transition"
-                                    >
-                                        <RotateCcw className="w-8 h-8 md:w-10 md:h-10" />
-                                    </button>
+                                    {/* Clear - Players Only */}
+                                    {!isHost && (
+                                        <button
+                                            onClick={clearBets}
+                                            disabled={Object.keys(bets).length === 0}
+                                            className="h-full aspect-square rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 disabled:opacity-30 hover:bg-white/10 transition"
+                                        >
+                                            <RotateCcw className="w-8 h-8 md:w-10 md:h-10" />
+                                        </button>
+                                    )}
 
                                     {/* ROLL / LOCK / READY */}
                                     {(!isLive || isHost) ? (
@@ -855,7 +872,7 @@ export default function BauCuaPage() {
                                         `}
                                         >
                                             <div className="flex flex-col items-center leading-none">
-                                                <span>{isLive ? 'READY' : 'ROLL'}</span>
+                                                <span>{isLive ? (isHost ? (currentStatus === 'ROLLING' ? 'REVEAL WINNERS' : 'READY') : 'READY') : 'ROLL'}</span>
                                                 {currentStatus === 'BETTING' && (
                                                     <span className="text-[10px] md:text-xs opacity-70 font-mono mt-1">{timeLeft}s</span>
                                                 )}

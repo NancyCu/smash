@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Zap, Gamepad2, User, HeartPulse, Dices, Plus } from 'lucide-react';
+import { Home, Zap, Gamepad2, User, HeartPulse, Dices, Plus, Menu } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useGame, type GameData } from '@/context/GameContext';
 import { useEspnScores } from '@/hooks/useEspnScores';
@@ -19,6 +19,44 @@ export default function BottomNav() {
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [liveGames, setLiveGames] = useState<GameData[]>([]);
   const [showWarpMenu, setShowWarpMenu] = useState(false);
+
+  // Auto-Hide Nav Logic
+  const [isExpanded, setIsExpanded] = useState(false);
+  const navRef = React.useRef<HTMLDivElement>(null);
+  const isInteracting = React.useRef(false); // Prevents immediate closing on open
+
+  // Handle scroll/touch to collapse
+  useEffect(() => {
+    const handleInteraction = (e: Event) => {
+      if (!isExpanded) return;
+      if (isInteracting.current) {
+        isInteracting.current = false;
+        return;
+      }
+
+      // If click is inside nav, don't close
+      if (e.type === 'click' || e.type === 'touchstart') {
+        const target = e.target as Node;
+        if (navRef.current && navRef.current.contains(target)) {
+          return;
+        }
+      }
+
+      setIsExpanded(false);
+    };
+
+    if (isExpanded) {
+      window.addEventListener('scroll', handleInteraction, { passive: true });
+      window.addEventListener('touchstart', handleInteraction, { passive: true });
+      window.addEventListener('click', handleInteraction); // covers desktop clicks
+    }
+
+    return () => {
+      window.removeEventListener('scroll', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('click', handleInteraction);
+    };
+  }, [isExpanded]);
 
   useEffect(() => {
     // Check localStorage for last active game
@@ -163,7 +201,31 @@ export default function BottomNav() {
         />
       )}
 
-      <div className={`fixed bottom-0 left-0 right-0 z-50 bg-[#0B0C15]/90 backdrop-blur-xl border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] transition-all duration-300 ${isBauCua ? 'h-12 pb-1' : 'h-16 pb-safe'}`}>
+      {/* Mini Menu Button (Visible when collapsed) */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsExpanded(true);
+          isInteracting.current = true; // prevent immediate close by document listener
+        }}
+        className={`
+            fixed bottom-4 left-4 z-40 w-12 h-12 rounded-full 
+            bg-[#0B0C15]/90 backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.5)] 
+            flex items-center justify-center text-white/70 
+            transition-all duration-300 ease-out
+            hover:scale-110 hover:text-white hover:border-white/40
+            active:scale-95
+            ${isExpanded ? 'opacity-0 scale-50 pointer-events-none' : 'opacity-100 scale-100'}
+          `}
+        aria-label="Open Menu"
+      >
+        <Menu size={24} />
+      </button>
+
+      <div
+        ref={navRef}
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-[#0B0C15]/90 backdrop-blur-xl border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) ${isBauCua ? 'h-12 pb-1' : 'h-16 pb-safe'} ${isExpanded ? 'translate-y-0' : 'translate-y-full'}`}
+      >
         <div className="flex justify-between items-center h-full px-2 max-w-lg mx-auto w-full">
 
           {/* 1. HOME */}
