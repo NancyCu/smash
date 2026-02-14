@@ -183,28 +183,15 @@ export default function BottomNav() {
             {!isBauCua && <span className="text-[10px] font-bold mt-1 tracking-wider uppercase">HOST</span>}
           </Link>
 
-          {/* 3. BAU CUA (Center - Big Button) */}
+          {/* 3. BAU CUA (Inline) */}
           <Link
             href="/bau-cua"
-            className="relative -top-7 group flex flex-col items-center flex-1 h-full justify-start z-10"
+            className={`${getLinkClass('/bau-cua', [])} flex-1 h-full`}
             aria-label="Bau Cua"
             title="Play Bau Cua"
           >
-            <div className="relative overflow-visible">
-              {/* Glow/Pulse if on Bau Cua page */}
-              {pathname === '/bau-cua' && (
-                <div className="absolute inset-0 -m-1 rounded-full border-2 border-yellow-400 opacity-50 animate-pulse" />
-              )}
-
-              <div className={`p-3 rounded-full shadow-2xl transition-all duration-300 group-hover:scale-105 overflow-visible bg-gradient-to-br from-[#1A1C29] to-[#0F111A] border border-white/20
-                    ${pathname === '/bau-cua' ? 'shadow-[0_0_30px_rgba(234,179,8,0.4)] scale-110' : ''}
-                `}>
-                <span className="text-[36px] leading-none drop-shadow-lg filter">🦀</span>
-              </div>
-            </div>
-            <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold tracking-wider whitespace-nowrap ${pathname === '/bau-cua' ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.6)]" : "text-white/40 group-hover:text-white/70"}`}>
-              BAU CUA
-            </span>
+            <span className={`text-[26px] leading-none ${pathname === '/bau-cua' ? "drop-shadow-[0_0_8px_rgba(234,179,8,0.6)]" : "grayscale opacity-80"}`}>🦀</span>
+            {!isBauCua && <span className="text-[10px] font-bold mt-1 tracking-wider uppercase">Bau Cua</span>}
           </Link>
 
           {/* 
