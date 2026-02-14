@@ -5,6 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, RotateCcw, Coins, Trophy, Info, Plus, Check } from 'lucide-react';
 import Link from 'next/link';
 
+import {
+    identifyPlayer,
+    addTransaction,
+    updatePlayerStats,
+    subscribeToPlayers,
+    subscribeToTransactions,
+    type Player,
+    type Transaction
+} from '@/lib/bau-cua-service';
+
 // --- CONFIGURATION ---
 const VENMO_USERNAME = "your_username";
 
@@ -63,7 +73,6 @@ const AnimalCard = ({
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
-                        // Compacted badge size and position
                         className="absolute -top-1 -right-1 bg-yellow-400 text-black font-black text-[10px] md:text-xs px-1.5 py-0.5 rounded-full border border-white shadow-lg z-20"
                     >
                         ${betAmount}
@@ -77,34 +86,108 @@ const AnimalCard = ({
     );
 };
 
-
 export default function BauCuaPage() {
     // --- STATE ---
-    const [balance, setBalance] = useState(1000);
+    const [balance, setBalance] = useState(0);
     const [bets, setBets] = useState<Record<string, number>>({});
     const [selectedChip, setSelectedChip] = useState(5);
     const [gameState, setGameState] = useState<'BETTING' | 'RESULT' | 'WIN'>('BETTING');
-    const [result, setResult] = useState<string[]>([]); // Array of 3 animal IDs
+    const [result, setResult] = useState<string[]>([]);
     const [lastWin, setLastWin] = useState(0);
 
-    // Load Balance on Mount
+    const [showTopUpModal, setShowTopUpModal] = useState(false);
+    const [topUpAmount, setTopUpAmount] = useState(20);
+
+    // Multiplayer State
+    const [playerName, setPlayerName] = useState("");
+    const [playerId, setPlayerId] = useState("");
+    const [showIdentityModal, setShowIdentityModal] = useState(false);
+    const [activePlayers, setActivePlayers] = useState<Player[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [userInputName, setUserInputName] = useState("");
+
+    // 1. Identity Check
     useEffect(() => {
-        const stored = localStorage.getItem('bauCuaBalance');
-        if (stored) setBalance(parseInt(stored));
+        const checkIdentity = async () => {
+            const storedId = localStorage.getItem('bauCuaPlayerId');
+            const storedName = localStorage.getItem('bauCuaPlayerName');
+
+            if (storedId && storedName) {
+                setPlayerId(storedId);
+                setPlayerName(storedName);
+                // Sync with DB
+                const player = await identifyPlayer(storedId, storedName);
+                if (player) setBalance(player.balance);
+            } else {
+                setShowIdentityModal(true);
+            }
+        };
+        checkIdentity();
     }, []);
 
-    // Save Balance on Change
+    // 2. Subscriptions
     useEffect(() => {
-        localStorage.setItem('bauCuaBalance', balance.toString());
-    }, [balance]);
+        const unsubPlayers = subscribeToPlayers(setActivePlayers);
+        const unsubTx = subscribeToTransactions(setTransactions);
+        return () => {
+            unsubPlayers();
+            unsubTx();
+        };
+    }, []);
+
+    const generateUUID = () => {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    };
+
+    const handleJoin = async () => {
+        if (!userInputName.trim()) return;
+        const name = userInputName.trim();
+        const newId = generateUUID();
+
+        localStorage.setItem('bauCuaPlayerId', newId);
+        localStorage.setItem('bauCuaPlayerName', name);
+
+        setPlayerId(newId);
+        setPlayerName(name);
+
+        const player = await identifyPlayer(newId, name);
+        setBalance(player.balance);
+        setShowIdentityModal(false);
+    };
+
+    // Auto-save logic was here (removed in favor of explicit transactions)
+    // Actually, let's keep balance synced just in case? 
+    // No, we rely on identifyPlayer and explicit actions now.
 
     // --- ACTIONS ---
 
-    const handleVenmo = () => {
+    const handleAddMoneyClick = () => {
+        setShowTopUpModal(true);
+    };
+
+    const handleVenmoPayment = () => {
         const txnType = 'pay';
-        const note = 'Bau Cua Reload';
-        const webUrl = `https://venmo.com/${VENMO_USERNAME}?txn=${txnType}&note=${encodeURIComponent(note)}`;
+        const note = `Bau Cua Reload $${topUpAmount}`;
+        const webUrl = `https://venmo.com/${VENMO_USERNAME}?txn=${txnType}&note=${encodeURIComponent(note)}&amount=${topUpAmount}`;
         window.open(webUrl, '_blank');
+    };
+
+    const handleConfirmTopUp = async () => {
+        // Fire and forget (optimistic UI)
+        setBalance(prev => prev + topUpAmount);
+        setShowTopUpModal(false);
+
+        if (playerId) {
+            await addTransaction(playerId, playerName, 'DEPOSIT', topUpAmount, 'Venmo Top-up');
+            await updatePlayerStats(playerId, topUpAmount);
+        }
     };
 
     const placeBet = (animalId: string) => {
@@ -145,13 +228,15 @@ export default function BauCuaPage() {
 
     const resetResultInput = () => setResult([]);
 
-    const confirmResult = () => {
+    const confirmResult = async () => {
         if (result.length !== 3) return;
 
         let totalWinnings = 0;
         let totalBetReturn = 0;
+        let totalBetAmount = 0;
 
         Object.entries(bets).forEach(([animalId, betAmount]) => {
+            totalBetAmount += betAmount;
             const matches = result.filter(r => r === animalId).length;
             if (matches > 0) {
                 totalBetReturn += betAmount;
@@ -160,9 +245,31 @@ export default function BauCuaPage() {
         });
 
         const payout = totalBetReturn + totalWinnings;
+        const profit = payout - totalBetAmount; // Net profit (positive) or loss (negative)
+
         setBalance(prev => prev + payout);
         setLastWin(totalWinnings);
         setGameState('WIN');
+
+        // Log to Firestore
+        if (playerId && totalBetAmount > 0) {
+            if (profit > 0) {
+                await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`);
+                await updatePlayerStats(playerId, profit, true, false);
+            } else if (profit < 0) {
+                // Loss transaction if you want to track net loss per round
+                // Or just track the "Bet" earlier.
+                // Let's track the result summary
+                // Actually, simply: We deducted bets from balance already locally.
+                // But we didn't deduct from Firestore yet?
+                // Wait, 'placeBet' reduces local balance but did not touch DB.
+                // So we need to sync the NET change.
+                // Logic: At start of round balance was X. Now it is X - Bets + Payout.
+                // Change = Payout - Bets.
+                await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, profit >= 0 ? 'Win Round' : 'Loss Round');
+                await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
+            }
+        }
     };
 
     const newGame = () => {
@@ -172,12 +279,76 @@ export default function BauCuaPage() {
         setGameState('BETTING');
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
     // --- RENDER ---
     return (
-        <div className="min-h-[100dvh] bg-[#0B0C15] pb-24 text-white overflow-hidden font-sans select-none selection:bg-transparent flex flex-col">
+        <div className="min-h-[100dvh] bg-[#0B0C15] pb-24 text-white overflow-hidden font-sans select-none selection:bg-transparent flex flex-col relative">
+            <style jsx global>{`
+                @media print {
+                    .no-print { display: none !important; }
+                    .print-only { display: block !important; }
+                    body { background: white; color: black; }
+                }
+                .print-only { display: none; }
+            `}</style>
+
+            {/* PRINTABLE LEDGER */}
+            <div className="print-only p-8 text-black bg-white">
+                <h1 className="text-3xl font-bold mb-4">Bau Cua Ledger Report</h1>
+                <p className="mb-4">Generated: {new Date().toLocaleString()}</p>
+
+                <h2 className="text-xl font-bold mt-6 mb-2">Player Balances</h2>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="border-b-2 border-black">
+                            <th className="py-2">Player</th>
+                            <th className="py-2">Balance</th>
+                            <th className="py-2">Wins</th>
+                            <th className="py-2">Losses</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {activePlayers.map(p => (
+                            <tr key={p.id} className="border-b border-gray-300">
+                                <td className="py-2">{p.name}</td>
+                                <td className="py-2 font-mono font-bold">${p.balance.toLocaleString()}</td>
+                                <td className="py-2 text-green-600">{p.wins}</td>
+                                <td className="py-2 text-red-600">{p.losses}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                <h2 className="text-xl font-bold mt-8 mb-2">Recent Transactions</h2>
+                <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr className="border-b-2 border-black">
+                            <th className="py-1">Time</th>
+                            <th className="py-1">Player</th>
+                            <th className="py-1">Type</th>
+                            <th className="py-1">Amount</th>
+                            <th className="py-1">Desc</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {transactions.slice(0, 50).map(t => (
+                            <tr key={t.id} className="border-b border-gray-200">
+                                <td className="py-1">{t.timestamp ? new Date(t.timestamp.seconds * 1000).toLocaleTimeString() : 'Pending'}</td>
+                                <td className="py-1">{t.playerName}</td>
+                                <td className="py-1 font-bold">{t.type}</td>
+                                <td className="py-1">${t.amount}</td>
+                                <td className="py-1">{t.description}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
             {/* HEADER - COMPACTED */}
-            <div className="px-3 pt-3 pb-2 flex justify-between items-center bg-black/20 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30 shrink-0">
+            <div className="no-print px-3 pt-3 pb-2 flex justify-between items-center bg-black/20 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30 shrink-0">
                 <Link href="/" className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 transition">
                     <ChevronLeft className="w-5 h-5" />
                 </Link>
@@ -189,25 +360,25 @@ export default function BauCuaPage() {
                     </h1>
 
                     <div className="flex items-center gap-2 mt-0.5">
-                        <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-0.5 rounded-full border border-white/10">
+                        <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10">
                             <Coins className="w-3 h-3 text-yellow-500" />
-                            <span className="font-mono text-sm font-bold text-yellow-400">${balance.toLocaleString()}</span>
+                            <span className="font-mono text-sm font-bold text-yellow-400 min-w-[3ch] text-right">${balance.toLocaleString()}</span>
                         </div>
                         <button
-                            onClick={handleVenmo}
-                            className="w-5 h-5 rounded-full bg-[#008CFF] flex items-center justify-center text-white shadow-lg hover:bg-[#0074D4] transition"
+                            onClick={handleAddMoneyClick}
+                            className="px-3 py-1 rounded-lg bg-green-600 flex items-center gap-1 text-white shadow-lg hover:bg-green-500 transition font-bold text-[10px] uppercase tracking-wider"
                         >
                             <Plus className="w-3 h-3" strokeWidth={3} />
+                            <span>Add Money</span>
                         </button>
                     </div>
                 </div>
 
-                <button onClick={() => { if (confirm("Reset Balance to $1000?")) setBalance(1000) }} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 transition text-white/50">
-                    <RotateCcw className="w-4 h-4" />
-                </button>
+                <div className="w-8" />
+                {/* Replaces Reset Button with spacer for center alignment */}
             </div>
 
-            <div className="flex-1 p-2 max-w-sm mx-auto flex flex-col justify-center gap-2 relative z-10 w-full">
+            <div className="no-print flex-1 p-2 max-w-sm mx-auto flex flex-col justify-center gap-2 relative z-10 w-full mb-80">
 
                 {/* --- PHASE 1: BETTING BOARD --- */}
                 {gameState === 'BETTING' && (
@@ -225,48 +396,50 @@ export default function BauCuaPage() {
                             ))}
                         </div>
 
-                        {/* CONTROLS - Compacted padding/sizing */}
-                        <div className="flex flex-col gap-2 mt-1 bg-[#151725]/80 backdrop-blur-xl p-3 rounded-[1.5rem] border border-white/10 shadow-2xl shrink-0">
-                            {/* Chip Selector */}
-                            <div className="flex justify-center items-center gap-6">
+                        {/* CONTROLS - Single Row */}
+                        <div className="mt-1 bg-[#151725]/80 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl shrink-0 flex items-center justify-between gap-2">
+
+                            {/* 1. Clear Button (Left) */}
+                            <button
+                                onClick={clearBets}
+                                disabled={Object.keys(bets).length === 0}
+                                className="h-14 w-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 disabled:opacity-30 hover:bg-white/10 transition"
+                                title="Clear Bets"
+                            >
+                                <RotateCcw className="w-6 h-6" />
+                            </button>
+
+                            {/* 2. Chips (Center) */}
+                            <div className="flex gap-3">
                                 {CHIPS.map(chip => (
                                     <button
                                         key={chip}
                                         onClick={() => setSelectedChip(chip)}
                                         className={`
-                        relative w-14 h-14 rounded-full flex flex-col items-center justify-center font-black text-base border-[3px] transition-all shadow-xl
-                        ${selectedChip === chip
+                                            relative w-14 h-14 rounded-full flex flex-col items-center justify-center font-black text-base border-[3px] transition-all shadow-xl
+                                            ${selectedChip === chip
                                                 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 border-white text-black scale-110 shadow-[0_0_20px_rgba(234,179,8,0.6)] z-10'
                                                 : 'bg-black/60 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/30'}
-                      `}
+                                        `}
                                     >
                                         <span>${chip}</span>
-                                        {selectedChip === chip && <span className="text-[8px] font-bold opacity-60 uppercase tracking-wider -mt-1">CHIP</span>}
                                     </button>
                                 ))}
                             </div>
 
-                            <div className="flex gap-2 mt-1 h-12">
-                                <button
-                                    onClick={clearBets}
-                                    disabled={Object.keys(bets).length === 0}
-                                    className="px-4 h-full rounded-xl bg-white/5 border border-white/10 font-bold text-white/50 uppercase text-xs tracking-widest disabled:opacity-30 hover:bg-white/10 transition"
-                                >
-                                    Clear
-                                </button>
-                                <button
-                                    onClick={handleRollClick}
-                                    disabled={Object.keys(bets).length === 0}
-                                    className={`
-                      flex-1 h-full rounded-xl font-black text-lg uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all
-                      ${Object.keys(bets).length > 0
-                                            ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.02]'
-                                            : 'bg-white/10 text-white/30 cursor-not-allowed'}
-                    `}
-                                >
-                                    ROLL DICE
-                                </button>
-                            </div>
+                            {/* 3. Roll/Ready Button (Right) */}
+                            <button
+                                onClick={handleRollClick}
+                                disabled={Object.keys(bets).length === 0}
+                                className={`
+                                    h-14 px-6 rounded-xl font-black text-lg uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                    ${Object.keys(bets).length > 0
+                                        ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.05]'
+                                        : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                `}
+                            >
+                                ROLL
+                            </button>
                         </div>
                     </>
                 )}
@@ -397,8 +570,143 @@ export default function BauCuaPage() {
                         </button>
                     </div>
                 )}
-
             </div>
+
+            {/* LEDGER DRAWER */}
+            <div className="no-print absolute bottom-0 left-0 right-0 bg-[#0F111A] border-t border-white/10 rounded-t-3xl max-h-[40vh] overflow-hidden flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] w-full max-w-sm mx-auto">
+                <div className="flex items-center justify-between p-4 border-b border-white/5">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-white/60">Live Games</h3>
+                    <button onClick={handlePrint} className="text-xs bg-white/5 px-2 py-1 rounded hover:bg-white/10">Print Record</button>
+                </div>
+                <div className="overflow-y-auto flex-1 p-4 space-y-4">
+                    {/* Active Players */}
+                    <div>
+                        {activePlayers.map(player => (
+                            <div key={player.id} className={`flex items-center justify-between p-2 rounded-lg ${player.id === playerId ? 'bg-white/10 border border-white/20' : 'border-b border-white/5'}`}>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                                    <span className={`font-bold ${player.id === playerId ? 'text-white' : 'text-white/70'}`}>{player.name} {player.id === playerId && '(You)'}</span>
+                                </div>
+                                <div className="text-right">
+                                    <div className="font-mono font-bold text-yellow-400">${player.balance.toLocaleString()}</div>
+                                    <div className="text-[10px] text-white/30 flex gap-2 justify-end">
+                                        <span className="text-green-500/80">W: {player.wins}</span>
+                                        <span className="text-red-500/80">L: {player.losses}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* --- TOP UP MODAL --- */}
+            <AnimatePresence>
+                {showTopUpModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                            onClick={() => setShowTopUpModal(false)}
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="relative w-full max-w-sm bg-[#1A1C29] border border-white/10 rounded-3xl p-6 shadow-2xl overflow-hidden"
+                        >
+                            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none" />
+
+                            <h2 className="text-2xl font-russo text-center text-white mb-6 relative z-10">ADD FUNDS</h2>
+
+                            <div className="grid grid-cols-3 gap-3 mb-6 relative z-10">
+                                {[20, 50, 100].map(amount => (
+                                    <button
+                                        key={amount}
+                                        onClick={() => setTopUpAmount(amount)}
+                                        className={`
+                                                py-3 rounded-xl border transition-all font-bold text-lg
+                                                ${topUpAmount === amount
+                                                ? 'bg-green-600 border-green-400 text-white shadow-[0_0_20px_rgba(22,163,74,0.5)] scale-105'
+                                                : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}
+                                            `}
+                                    >
+                                        ${amount}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="space-y-3 relative z-10">
+                                <button
+                                    onClick={handleVenmoPayment}
+                                    className="w-full py-4 bg-[#008CFF] hover:bg-[#0074D4] rounded-xl font-bold uppercase tracking-wider text-white flex items-center justify-center gap-2 transition-all"
+                                >
+                                    <span className="text-xl">Step 1:</span> Pay with Venmo
+                                </button>
+
+                                <div className="text-center text-xs text-white/30 uppercase tracking-widest my-2">Then</div>
+
+                                <button
+                                    onClick={handleConfirmTopUp}
+                                    className="w-full py-4 bg-green-600 hover:bg-green-500 rounded-xl font-bold uppercase tracking-wider text-white flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(22,163,74,0.3)] transition-all"
+                                >
+                                    <Check className="w-5 h-5" />
+                                    <span>Step 2: I Sent It!</span>
+                                </button>
+                            </div>
+
+                            <button
+                                onClick={() => setShowTopUpModal(false)}
+                                className="w-full mt-4 py-3 text-white/30 font-bold hover:text-white/60 transition"
+                            >
+                                Cancel
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* --- IDENTITY MODAL --- */}
+            <AnimatePresence>
+                {showIdentityModal && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="relative w-full max-w-sm bg-[#1A1C29] border border-white/10 rounded-3xl p-8 shadow-2xl text-center"
+                        >
+                            <h2 className="text-2xl font-russo text-white mb-2">WHO IS PLAYING?</h2>
+                            <p className="text-white/50 text-sm mb-6">Enter your name to join the table.</p>
+
+                            <input
+                                type="text"
+                                value={userInputName}
+                                onChange={e => setUserInputName(e.target.value)}
+                                placeholder="Your Name"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-center text-xl font-bold text-white mb-4 focus:ring-2 focus:ring-pink-500 outline-none"
+                            />
+
+                            <button
+                                onClick={handleJoin}
+                                disabled={!userInputName.trim()}
+                                className="w-full py-4 bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white rounded-xl font-black text-lg uppercase tracking-widest shadow-lg transition-all"
+                            >
+                                Join Table
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 }
