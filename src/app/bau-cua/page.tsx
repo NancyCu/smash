@@ -750,6 +750,7 @@ export default function BauCuaPage() {
                                             isWinner={currentStatus === 'RESULT' && (session?.result?.includes(animal.id) || result.includes(animal.id))}
                                             isHostSelecting={isHostSelecting}
                                             selectionCount={selectionCount}
+                                            matchCount={matchCount}
                                         />
                                     )
                                 })}
