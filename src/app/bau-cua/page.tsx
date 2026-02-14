@@ -110,8 +110,8 @@ const AnimalCard = ({
                 )}
             </AnimatePresence>
 
-            <span className="text-4xl md:text-6xl drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
-            <span className="mt-0.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
+            <span className="text-4xl md:text-6xl xl:text-8xl drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
+            <span className="mt-0.5 text-[9px] md:text-[10px] xl:text-xs font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
         </motion.button>
     );
 };
@@ -622,7 +622,7 @@ export default function BauCuaPage() {
             <div className="no-print flex-1 w-full mx-auto flex flex-col md:flex-row gap-6 p-4 md:p-8 relative z-10 mb-32 overflow-y-auto">
 
                 {/* --- LEFT: BOARD (Desktop: expands, Mobile: Full) --- */}
-                <div className="flex-1 md:flex-[3]">
+                <div className="flex-1">
                     {(currentStatus === 'BETTING' || currentStatus === 'ROLLING' || currentStatus === 'RESULT') ? (
                         <div className="relative h-full flex flex-col justify-center">
                             {/* ROLLING OVERLAY (CLIENTS ONLY) */}
@@ -698,9 +698,9 @@ export default function BauCuaPage() {
                     ) : null}
                 </div>
 
-                {/* --- RIGHT: CONTROLS & PLAYERS (Desktop: 1/3, Mobile: Bottom Sticky) --- */}
+                {/* --- RIGHT: CONTROLS & PLAYERS (Desktop: Fixed Width Sidebar, Mobile: Bottom Sticky) --- */}
                 {/* Desktop: Sticky column, split into Top (Controls) and Bottom (Players) */}
-                <div className="flex-1 md:flex-[1] md:sticky md:top-24 md:h-[calc(100dvh-8rem)] flex flex-col gap-6">
+                <div className="flex-1 md:flex-none md:w-80 lg:w-96 md:sticky md:top-24 md:h-[calc(100dvh-8rem)] flex flex-col gap-6">
                     {/* DESKTOP CONTROLS (Hidden on Mobile) */}
                     <div className="hidden md:flex bg-[#151725]/90 backdrop-blur-xl p-4 md:p-6 rounded-3xl border border-white/10 shadow-2xl flex-col gap-4 md:gap-6">
 
