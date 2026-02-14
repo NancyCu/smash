@@ -110,7 +110,7 @@ const AnimalCard = ({
                 )}
             </AnimatePresence>
 
-            <span className="text-5xl md:text-6xl drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
+            <span className="text-4xl md:text-6xl drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
             <span className="mt-0.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
         </motion.button>
     );
@@ -663,8 +663,8 @@ export default function BauCuaPage() {
                                 </div>
                             )}
 
-                            {/* GRID - LARGER CARDS */}
-                            <div className="grid grid-cols-2 gap-4 md:gap-6">
+                            {/* GRID - LARGER CARDS (Horizontal Layout) */}
+                            <div className="grid grid-cols-3 gap-3 md:gap-6">
                                 {ANIMALS.map(animal => {
                                     const isHostSelecting = isHost && currentStatus === 'ROLLING';
                                     const isSelectedByHost = isHostSelecting && result.includes(animal.id);
@@ -698,8 +698,9 @@ export default function BauCuaPage() {
                     ) : null}
                 </div>
 
-                {/* --- RIGHT: CONTROLS (Desktop: 1/3, Mobile: Bottom Sticky) --- */}
-                <div className="flex-1 md:flex-[1] md:sticky md:top-24 h-fit">
+                {/* --- RIGHT: CONTROLS & PLAYERS (Desktop: 1/3, Mobile: Bottom Sticky) --- */}
+                {/* Desktop: Sticky column, split into Top (Controls) and Bottom (Players) */}
+                <div className="flex-1 md:flex-[1] md:sticky md:top-24 md:h-[calc(100dvh-8rem)] flex flex-col gap-6">
                     <div className="bg-[#151725]/90 backdrop-blur-xl p-4 md:p-6 rounded-3xl border border-white/10 shadow-2xl flex flex-col gap-4 md:gap-6">
 
                         {/* HOST START NEXT ROUND */}
@@ -768,7 +769,7 @@ export default function BauCuaPage() {
                                             key={chip}
                                             onClick={() => setSelectedChip(chip)}
                                             className={`
-                                                relative w-20 h-20 md:w-24 md:h-24 rounded-full flex flex-col items-center justify-center font-black text-xl md:text-2xl border-[4px] transition-all shadow-xl
+                                                relative w-20 h-20 md:w-28 md:h-28 rounded-full flex flex-col items-center justify-center font-black text-2xl md:text-3xl border-[4px] transition-all shadow-xl
                                                 ${selectedChip === chip
                                                     ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 border-white text-black scale-110 shadow-[0_0_20px_rgba(234,179,8,0.6)] z-10'
                                                     : 'bg-black/60 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/30'}
@@ -782,14 +783,14 @@ export default function BauCuaPage() {
                                 <div className="h-px bg-white/10 w-full my-2" />
 
                                 {/* Action Buttons Row */}
-                                <div className="flex gap-3 h-20">
+                                <div className="flex gap-3 h-20 md:h-28">
                                     {/* Clear */}
                                     <button
                                         onClick={clearBets}
                                         disabled={Object.keys(bets).length === 0}
                                         className="h-full aspect-square rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 disabled:opacity-30 hover:bg-white/10 transition"
                                     >
-                                        <RotateCcw className="w-8 h-8" />
+                                        <RotateCcw className="w-8 h-8 md:w-10 md:h-10" />
                                     </button>
 
                                     {/* ROLL / LOCK */}
@@ -797,7 +798,7 @@ export default function BauCuaPage() {
                                         onClick={handleRollClick}
                                         disabled={Object.keys(bets).length === 0 && !isLive}
                                         className={`
-                                            flex-1 h-full rounded-2xl font-black text-2xl uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                            flex-1 h-full rounded-2xl font-black text-2xl md:text-3xl uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
                                             ${(Object.keys(bets).length > 0 || (isLive && isHost))
                                                 ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.02]'
                                                 : 'bg-white/10 text-white/30 cursor-not-allowed'}
@@ -808,6 +809,38 @@ export default function BauCuaPage() {
                                 </div>
                             </>
                         )}
+                    </div>
+
+                    {/* DESKTOP PLAYER LIST (Bottom Right Box) */}
+                    <div className="hidden md:flex flex-col flex-1 bg-[#151725]/90 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden min-h-0">
+                        <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center shrink-0">
+                            <h3 className="font-russo text-white/70 uppercase tracking-widest text-sm">Live Players</h3>
+                            <div className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded font-bold">
+                                {activePlayers.length} Online
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                            {activePlayers.map(player => (
+                                <div key={player.id} className={`flex items-center justify-between p-3 rounded-xl transition-colors ${player.id === playerId ? 'bg-white/10 border border-white/20' : 'bg-black/20 border border-white/5'}`}>
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-3 h-3 rounded-full ${player.id === session?.hostId ? 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.5)]' : 'bg-gradient-to-br from-blue-400 to-purple-400'}`} />
+                                        <div className="flex flex-col">
+                                            <span className={`font-bold text-sm ${player.id === playerId ? 'text-white' : 'text-white/70'}`}>
+                                                {player.name} {player.id === playerId && '(You)'}
+                                            </span>
+                                            {player.id === session?.hostId && <span className="text-[8px] uppercase font-bold text-yellow-500 tracking-wider">Host</span>}
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="font-mono font-bold text-yellow-400 text-sm">${player.balance.toLocaleString()}</div>
+                                        <div className="text-[10px] text-white/30 flex gap-2 justify-end mt-0.5">
+                                            <span className="text-green-500/80 font-bold">W:{player.wins}</span>
+                                            <span className="text-red-500/80 font-bold">L:{player.losses}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
@@ -840,8 +873,8 @@ export default function BauCuaPage() {
             </AnimatePresence>
 
 
-            {/* LEDGER DRAWER */}
-            <div className="no-print absolute bottom-0 left-0 right-0 bg-[#0F111A] border-t border-white/10 rounded-t-3xl max-h-[40vh] overflow-hidden flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] w-full max-w-sm mx-auto">
+            {/* LEDGER DRAWER (Mobile Only) */}
+            <div className="md:hidden no-print absolute bottom-0 left-0 right-0 bg-[#0F111A] border-t border-white/10 rounded-t-3xl max-h-[40vh] overflow-hidden flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] w-full max-w-sm mx-auto">
                 <div className="flex items-center justify-between p-4 border-b border-white/5">
                     <h3 className="text-sm font-bold uppercase tracking-widest text-white/60">Live Games</h3>
                     <button onClick={handlePrint} className="text-xs bg-white/5 px-2 py-1 rounded hover:bg-white/10">Print Record</button>
