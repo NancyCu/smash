@@ -727,6 +727,7 @@ export default function BauCuaPage() {
                                     const isHostSelecting = isHost && currentStatus === 'ROLLING';
                                     const isSelectedByHost = isHostSelecting && result.includes(animal.id);
                                     const selectionCount = isHostSelecting ? result.filter(r => r === animal.id).length : 0;
+                                    const matchCount = (isLive && session?.result && session.result.length > 0) ? session.result.filter(r => r === animal.id).length : result.filter(r => r === animal.id).length;
                                     const betAmount = bets[animal.id] || 0;
 
                                     return (

@@ -205,26 +205,28 @@ export default function BottomNav() {
       <button
         onClick={(e) => {
           e.stopPropagation();
+          e.preventDefault(); // Prevent ghost clicks
           setIsExpanded(true);
-          isInteracting.current = true; // prevent immediate close by document listener
+          isInteracting.current = true;
         }}
         className={`
-            fixed bottom-4 left-4 z-40 w-12 h-12 rounded-full 
-            bg-[#0B0C15]/90 backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.5)] 
-            flex items-center justify-center text-white/70 
-            transition-all duration-300 ease-out
-            hover:scale-110 hover:text-white hover:border-white/40
+            fixed bottom-28 left-5 z-40 w-12 h-12 rounded-full 
+            bg-[#0B0C15]/80 backdrop-blur-md border border-white/10 
+            shadow-[0_8px_32px_rgba(0,0,0,0.5)] 
+            flex items-center justify-center text-white/90
+            transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)
+            hover:scale-110 hover:bg-white/10 hover:border-white/30 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]
             active:scale-95
-            ${isExpanded ? 'opacity-0 scale-50 pointer-events-none' : 'opacity-100 scale-100'}
+            ${isExpanded ? 'opacity-0 scale-50 pointer-events-none translate-y-10' : 'opacity-100 scale-100 translate-y-0'}
           `}
         aria-label="Open Menu"
       >
-        <Menu size={24} />
+        <Menu size={20} strokeWidth={2.5} />
       </button>
 
       <div
         ref={navRef}
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-[#0B0C15]/90 backdrop-blur-xl border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) ${isBauCua ? 'h-12 pb-1' : 'h-16 pb-safe'} ${isExpanded ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-[#0B0C15]/90 backdrop-blur-xl border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) ${isBauCua ? 'h-12 pb-1' : 'h-16 pb-safe'} ${isExpanded ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'}`}
       >
         <div className="flex justify-between items-center h-full px-2 max-w-lg mx-auto w-full">
 
