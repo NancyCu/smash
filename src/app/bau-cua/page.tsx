@@ -21,6 +21,7 @@ import {
     endLiveGame,
     getGameSession
 } from '@/lib/bau-cua-service';
+import { useAuth } from '@/context/AuthContext';
 
 // --- CONFIGURATION ---
 const VENMO_USERNAME = "your_username";
@@ -45,13 +46,17 @@ const AnimalCard = ({
     betAmount,
     onBet,
     disabled,
-    isWinner
+    isWinner,
+    isHostSelecting,
+    selectionCount = 0
 }: {
     animal: typeof ANIMALS[0],
     betAmount: number,
     onBet: () => void,
     disabled: boolean,
-    isWinner?: boolean
+    isWinner?: boolean,
+    isHostSelecting?: boolean,
+    selectionCount?: number
 }) => {
     return (
         <motion.button
@@ -61,7 +66,7 @@ const AnimalCard = ({
             className={`
         relative aspect-square rounded-full 
         border-[3px] 
-        ${isWinner ? 'border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.6)] z-10 scale-105' : 'border-white/10'}
+        ${isWinner || selectionCount > 0 ? 'border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.6)] z-10 scale-105' : 'border-white/10'}
         bg-gradient-to-br ${animal.color} 
         backdrop-blur-md
         flex flex-col items-center justify-center 
@@ -70,6 +75,8 @@ const AnimalCard = ({
         transition-all duration-300
         group
         ${disabled && !isWinner ? 'opacity-50 grayscale' : 'hover:scale-105 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]'}
+        ${isHostSelecting && selectionCount === 0 ? 'opacity-30 grayscale blur-[1px]' : ''}
+        ${selectionCount > 0 ? 'opacity-100 grayscale-0 ring-2 ring-white scale-110' : ''}
       `}
         >
             {/* Glossy Reflection Highlight */}
@@ -79,6 +86,13 @@ const AnimalCard = ({
             {isWinner && (
                 <div className="absolute -top-3 -right-3 bg-yellow-400 text-black p-1 rounded-full shadow-lg animate-bounce z-30">
                     <Check size={16} strokeWidth={4} />
+                </div>
+            )}
+
+            {/* Host Selection Badge */}
+            {selectionCount > 0 && (
+                <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 border-2 border-white flex items-center justify-center font-black text-sm z-30 shadow-lg animate-in zoom-in">
+                    {selectionCount}
                 </div>
             )}
 
@@ -103,6 +117,8 @@ const AnimalCard = ({
 };
 
 export default function BauCuaPage() {
+    const { user } = useAuth();
+
     // --- STATE ---
     const [balance, setBalance] = useState(0);
     const [bets, setBets] = useState<Record<string, number>>({});
@@ -131,6 +147,9 @@ export default function BauCuaPage() {
     const [showAdminMenu, setShowAdminMenu] = useState(false);
     const [showHostPicker, setShowHostPicker] = useState(false);
 
+    // Timer State
+    const [elapsedTime, setElapsedTime] = useState(0);
+
     // --- DERIVED STATE ---
     const isLive = session?.isActive ?? false;
     const isHost = isLive && session?.hostId === playerId;
@@ -141,6 +160,17 @@ export default function BauCuaPage() {
     // 1. Identity Check
     useEffect(() => {
         const checkIdentity = async () => {
+            // Priority 1: Global Auth User
+            if (user) {
+                setPlayerId(user.uid);
+                setPlayerName(user.displayName || 'Anonymous');
+                setShowIdentityModal(false);
+                const player = await identifyPlayer(user.uid, user.displayName || 'Anonymous');
+                if (player) setBalance(player.balance);
+                return;
+            }
+
+            // Priority 2: Standard LocalStorage fallback
             const storedId = localStorage.getItem('bauCuaPlayerId');
             const storedName = localStorage.getItem('bauCuaPlayerName');
 
@@ -155,7 +185,21 @@ export default function BauCuaPage() {
             }
         };
         checkIdentity();
-    }, []);
+    }, [user]);
+
+    // Timer Effect
+    useEffect(() => {
+        setElapsedTime(0); // Reset on status change
+        const interval = setInterval(() => setElapsedTime(t => t + 1), 1000);
+        return () => clearInterval(interval);
+    }, [currentStatus]);
+
+    // Format Timer
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
 
     // 2. Subscriptions
     useEffect(() => {
@@ -467,8 +511,9 @@ export default function BauCuaPage() {
 
             {/* ADMIN / HOST INDICATOR */}
             {isLive && (
-                <div className="no-print bg-gradient-to-r from-purple-900/80 to-blue-900/80 p-1 text-center text-[10px] uppercase font-bold tracking-widest text-cyan-200 border-b border-white/10 backdrop-blur-md sticky top-0 z-40">
-                    LIVE SESSION • HOST: {session?.hostName || 'Unknown'} {isHost && '(YOU)'} • {currentStatus}
+                <div className="no-print bg-gradient-to-r from-purple-900/80 to-blue-900/80 p-2 flex justify-between items-center text-[10px] uppercase font-bold tracking-widest text-cyan-200 border-b border-white/10 backdrop-blur-md sticky top-0 z-40">
+                    <span>HOST: {session?.hostName || 'Unknown'} {isHost && '(YOU)'}</span>
+                    <span className="bg-black/30 px-2 py-0.5 rounded text-white">{currentStatus} • {formatTime(elapsedTime)}</span>
                 </div>
             )}
 
@@ -577,25 +622,33 @@ export default function BauCuaPage() {
             <div className="no-print flex-1 p-2 max-w-sm mx-auto flex flex-col justify-center gap-2 relative z-10 w-full mb-32">
 
                 {/* --- DISPLAY: BOARD / RESULT --- */}
-                {/* Always show board if Betting or Rolling or Win(Background) */}
-                {/* If Host Inputting Result, show Input Grid */}
-
-                {(currentStatus === 'BETTING' || currentStatus === 'ROLLING' || (currentStatus === 'RESULT' && !isHost)) ? (
+                {/* Always show board unless it's a specific hidden state. Now Host sees board during ROLLING to select. */}
+                {(currentStatus === 'BETTING' || currentStatus === 'ROLLING' || currentStatus === 'RESULT') ? (
                     <>
+                        {/* ROLLING OVERLAY (CLIENTS ONLY) */}
                         {currentStatus === 'ROLLING' && !isHost && (
-                            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
+                            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in text-center p-4">
                                 <RefreshCw className="w-16 h-16 text-cyan-400 animate-spin mb-4" />
-                                <h2 className="text-2xl font-black text-white tracking-widest animate-pulse">ROLLING...</h2>
-                                <p className="text-white/50 text-sm mt-2">Host is shaking the dice!</p>
+                                <h2 className="text-2xl font-black text-white tracking-widest animate-pulse uppercase">Host is selecting winners</h2>
+                                <p className="text-white/50 text-sm mt-3 font-mono">Waiting for results...</p>
                             </div>
                         )}
 
-                        {/* RESULT OVERLAY (CLIENT VIEW) */}
+                        {/* HOST SELECTION INSTRUCTION (HOST ONLY - ROLLING) */}
+                        {currentStatus === 'ROLLING' && isHost && (
+                            <div className="text-center mb-2 animate-pulse">
+                                <span className="text-yellow-400 font-bold uppercase tracking-widest text-sm drop-shadow-md">
+                                    Tap 3 Dice Results
+                                </span>
+                            </div>
+                        )}
+
+                        {/* RESULT OVERLAY (CLIENT VIEW - FINAL RESULT) */}
                         {currentStatus === 'RESULT' && !isHost && (
                             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in p-4 text-center">
                                 <h2 className="text-3xl font-black text-yellow-500 mb-6 drop-shadow-xl">RESULT</h2>
                                 <div className="flex gap-4 mb-8">
-                                    {session?.result.map((id, i) => (
+                                    {session?.result?.map((id, i) => (
                                         <div key={i} className="text-6xl animate-bounce" style={{ animationDelay: `${i * 0.1}s` }}>
                                             {ANIMALS.find(a => a.id === id)?.emoji}
                                         </div>
@@ -612,130 +665,126 @@ export default function BauCuaPage() {
 
                         {/* GRID */}
                         <div className="grid grid-cols-2 gap-3 px-1">
-                            {ANIMALS.map(animal => (
-                                <AnimalCard
-                                    key={animal.id}
-                                    animal={animal}
-                                    betAmount={bets[animal.id] || 0}
-                                    onBet={() => placeBet(animal.id)}
-                                    // Disable rule: if not betting phase, or balance too low
-                                    disabled={currentStatus !== 'BETTING' || balance < selectedChip}
-                                    isWinner={currentStatus === 'RESULT' && session?.result.includes(animal.id)}
-                                />
-                            ))}
-                        </div>
+                            {ANIMALS.map(animal => {
+                                const isHostSelecting = isHost && currentStatus === 'ROLLING';
+                                const isSelectedByHost = isHostSelecting && result.includes(animal.id);
+                                const selectionCount = isHostSelecting ? result.filter(r => r === animal.id).length : 0;
 
-                        {/* CONTROLS */}
-                        <div className="mt-1 bg-[#151725]/80 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl shrink-0 flex items-center justify-between gap-2 relative z-10">
-
-                            {/* LOCKED STATE COVER */}
-                            {currentStatus !== 'BETTING' && !isHost ? (
-                                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-20 cursor-not-allowed">
-                                    <Lock className="w-6 h-6 text-white/40 mr-2" />
-                                    <span className="text-xs font-bold text-white/40 tracking-widest">BETS LOCKED</span>
-                                </div>
-                            ) : null}
-
-                            {/* 1. Clear Button */}
-                            <button
-                                onClick={clearBets}
-                                disabled={Object.keys(bets).length === 0}
-                                className="h-14 w-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 disabled:opacity-30 hover:bg-white/10 transition"
-                            >
-                                <RotateCcw className="w-6 h-6" />
-                            </button>
-
-                            {/* 2. Chips */}
-                            <div className="flex gap-3">
-                                {CHIPS.map(chip => (
-                                    <button
-                                        key={chip}
-                                        onClick={() => setSelectedChip(chip)}
-                                        className={`
-                                            relative w-14 h-14 rounded-full flex flex-col items-center justify-center font-black text-base border-[3px] transition-all shadow-xl
-                                            ${selectedChip === chip
-                                                ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 border-white text-black scale-110 shadow-[0_0_20px_rgba(234,179,8,0.6)] z-10'
-                                                : 'bg-black/60 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/30'}
-                                        `}
-                                    >
-                                        <span>${chip}</span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* 3. ROLL / HOST ACTION */}
-                            <button
-                                onClick={handleRollClick}
-                                disabled={Object.keys(bets).length === 0 && !isLive} // Allowed if Live host (can roll empty?) Yes.
-                                className={`
-                                    h-14 px-6 rounded-xl font-black text-base uppercase tracking-widest shadow-lg flex items-center justify-center transition-all min-w-[100px]
-                                    ${(Object.keys(bets).length > 0 || (isLive && isHost))
-                                        ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.05]'
-                                        : 'bg-white/10 text-white/30 cursor-not-allowed'}
-                                `}
-                            >
-                                {isHost ? (currentStatus === 'BETTING' ? 'LOCK' : '...') : 'ROLL'}
-                            </button>
-                        </div>
-                    </>
-                ) : (
-                    // --- PHASE: HOST INPUTTING RESULT or LOCAL RESULT ---
-                    <div className="flex flex-col items-center justify-between h-full animate-in zoom-in py-2">
-                        {/* Same Result Input logic as before, but modified for Host */}
-                        <div className="w-full flex flex-col items-center gap-2">
-                            <h2 className="text-xl font-bold text-center text-cyan-400 drop-shadow-lg uppercase tracking-widest">
-                                {isHost ? 'HOST: Input Dice' : 'Tap Result'}
-                            </h2>
-                            <div className="flex gap-3 mb-2">
-                                {[0, 1, 2].map(i => {
-                                    const animalId = result[i];
-                                    const animal = ANIMALS.find(a => a.id === animalId);
-                                    return (
-                                        <button
-                                            key={i}
-                                            onClick={() => removeResultItem(i)}
-                                            className="w-16 h-16 rounded-xl border-2 flex items-center justify-center text-4xl shadow-inner backdrop-blur-sm bg-black/40 border-dashed border-white/10"
-                                        >
-                                            {animal ? animal.emoji : <span className="opacity-10 text-xs">?</span>}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* INPUT GRID */}
-                        <div className="grid grid-cols-2 gap-3 w-full px-4 flex-1 content-center">
-                            {ANIMALS.map((animal) => {
-                                const count = result.filter(r => r === animal.id).length;
                                 return (
-                                    <button
+                                    <AnimalCard
                                         key={animal.id}
-                                        onClick={() => addResultItem(animal.id)}
-                                        disabled={result.length >= 3}
-                                        className={`
-                                relative aspect-[4/3] rounded-2xl border-2 transition-all duration-100 flex flex-col items-center justify-center
-                                ${count > 0 ? 'bg-white/20 border-white/50' : 'bg-white/5 border-white/10'}
-                                ${result.length >= 3 ? 'opacity-40 grayscale' : 'active:scale-95'}
-                            `}
-                                    >
-                                        <span className="text-5xl drop-shadow-xl">{animal.emoji}</span>
-                                    </button>
+                                        animal={animal}
+                                        betAmount={bets[animal.id] || 0}
+                                        onBet={() => {
+                                            if (isHostSelecting) {
+                                                if (result.length < 3) addResultItem(animal.id);
+                                            } else {
+                                                placeBet(animal.id);
+                                            }
+                                        }}
+                                        // Disable rule: 
+                                        // - Bettying: if balance too low
+                                        // - Rolling (Client): Always disabled
+                                        // - Rolling (Host): Never disabled (Selection Mode)
+                                        disabled={
+                                            (currentStatus === 'BETTING' && balance < selectedChip) ||
+                                            (currentStatus === 'ROLLING' && !isHost) ||
+                                            (currentStatus === 'RESULT')
+                                        }
+                                        isWinner={currentStatus === 'RESULT' && (session?.result?.includes(animal.id) || result.includes(animal.id))}
+                                        // Host Selection Visuals
+                                        isHostSelecting={isHostSelecting}
+                                        selectionCount={selectionCount}
+                                    />
                                 )
                             })}
                         </div>
 
-                        <div className="flex gap-3 w-full mt-auto pt-2 px-2">
-                            <button onClick={resetResultInput} className="px-4 py-4 bg-white/10 rounded-xl font-bold uppercase text-white/50">Reset</button>
-                            <button onClick={confirmResult} disabled={result.length !== 3} className="flex-1 py-4 bg-green-500 text-white rounded-xl font-black uppercase shadow-lg disabled:opacity-30">
-                                {isHost ? 'PUBLISH RESULT' : 'Confirm'}
-                            </button>
-                        </div>
-                    </div>
-                )}
+                        {/* HOST SELECTION CONTROLS (Only visible during ROLLING for Host) */}
+                        {isHost && currentStatus === 'ROLLING' && (
+                            <div className="mt-4 flex gap-2">
+                                <button
+                                    onClick={resetResultInput}
+                                    className="px-4 py-3 bg-white/10 rounded-xl font-bold text-white/50 hover:bg-white/20"
+                                >
+                                    Reset
+                                </button>
+                                <button
+                                    onClick={confirmResult}
+                                    disabled={result.length !== 3}
+                                    className={`flex-1 py-3 rounded-xl font-black uppercase tracking-widest shadow-lg transition-all
+                                        ${result.length === 3
+                                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white scale-105 animate-pulse'
+                                            : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                    `}
+                                >
+                                    Submit Winners
+                                </button>
+                            </div>
+                        )}
+
+                        {/* REGULAR CONTROLS (Betting Phase) */}
+                        {currentStatus === 'BETTING' && (
+                            <div className="mt-1 bg-[#151725]/80 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl shrink-0 flex items-center justify-between gap-2 relative z-10">
+
+                                {/* 1. Clear Button */}
+                                <button
+                                    onClick={clearBets}
+                                    disabled={Object.keys(bets).length === 0}
+                                    className="h-14 w-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 disabled:opacity-30 hover:bg-white/10 transition"
+                                >
+                                    <RotateCcw className="w-6 h-6" />
+                                </button>
+
+                                {/* 2. Chips */}
+                                <div className="flex gap-3">
+                                    {CHIPS.map(chip => (
+                                        <button
+                                            key={chip}
+                                            onClick={() => setSelectedChip(chip)}
+                                            className={`
+                                            relative w-14 h-14 rounded-full flex flex-col items-center justify-center font-black text-base border-[3px] transition-all shadow-xl
+                                            ${selectedChip === chip
+                                                    ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 border-white text-black scale-110 shadow-[0_0_20px_rgba(234,179,8,0.6)] z-10'
+                                                    : 'bg-black/60 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/30'}
+                                        `}
+                                        >
+                                            <span>${chip}</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* 3. LOCK / ROLL */}
+                                <button
+                                    onClick={handleRollClick}
+                                    disabled={Object.keys(bets).length === 0 && !isLive}
+                                    className={`
+                                    h-14 px-6 rounded-xl font-black text-base uppercase tracking-widest shadow-lg flex items-center justify-center transition-all min-w-[100px]
+                                    ${(Object.keys(bets).length > 0 || (isLive && isHost))
+                                            ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.05]'
+                                            : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                `}
+                                >
+                                    {isHost ? (currentStatus === 'BETTING' ? 'LOCK' : '...') : 'ROLL'}
+                                </button>
+                            </div>
+                        )}
+                    </>
+                ) : (null)}
 
                 {/* HOST NEXT ROUND CONTROLS */}
                 {isHost && currentStatus === 'RESULT' && (
-                    <div className="mt-4 px-4">
+                    <div className="mt-4 px-4 flex flex-col gap-4 items-center">
+                        <div className="text-center">
+                            <h2 className="text-xl font-bold text-white mb-2">Round Over</h2>
+                            <div className="flex justify-center gap-2">
+                                {session?.result?.map((id, i) => (
+                                    <div key={i} className="text-4xl bg-white/10 p-2 rounded-lg">
+                                        {ANIMALS.find(a => a.id === id)?.emoji}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                         <button onClick={newGame} className="w-full py-4 bg-blue-600 rounded-xl font-bold uppercase text-white shadow-xl animate-pulse">
                             Start Next Round
                         </button>
@@ -743,6 +792,8 @@ export default function BauCuaPage() {
                 )}
 
             </div>
+
+
 
             {/* HOST PICKER MODAL */}
             <AnimatePresence>
@@ -905,7 +956,7 @@ export default function BauCuaPage() {
                 )}
             </AnimatePresence>
 
-        </div>
+        </div >
     );
 }
 

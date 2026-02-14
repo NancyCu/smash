@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Zap, Gamepad2, User, HeartPulse, Dices } from 'lucide-react';
+import { Home, Zap, Gamepad2, User, HeartPulse, Dices, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useGame, type GameData } from '@/context/GameContext';
 import { useEspnScores } from '@/hooks/useEspnScores';
@@ -172,57 +172,51 @@ export default function BottomNav() {
             {!isBauCua && <span className="text-[10px] font-bold mt-1 tracking-wider">HOME</span>}
           </Link>
 
-          {/* 2. BAU CUA (Game) */}
+          {/* 2. CREATE (Host Game) - Formerly Bau Cua location */}
           <Link
-            href="/bau-cua"
-            className={`${getLinkClass('/bau-cua', [])} flex-1 h-full`}
-            aria-label="Bau Cua"
-            title="Bau Cua"
+            href="/create"
+            className={`${getLinkClass('/create', [])} flex-1 h-full`}
+            aria-label="Create Game"
+            title="Host New Game"
           >
-            <span className={`text-[26px] leading-none ${pathname === '/bau-cua' ? "drop-shadow-[0_0_8px_rgba(234,179,8,0.6)]" : "grayscale opacity-80"}`}>🦀</span>
-            {!isBauCua && <span className="text-[10px] font-bold mt-1 tracking-wider uppercase">Bau Cua</span>}
+            <Plus size={isBauCua ? 20 : 26} strokeWidth={2.5} />
+            {!isBauCua && <span className="text-[10px] font-bold mt-1 tracking-wider uppercase">HOST</span>}
           </Link>
 
-          {/* 3. LIVE (The Big Center FAB - Beacon Mode) */}
-          {!isBauCua && (
-            <button
-              id="tour-live-btn" // <--- ADD THIS ID HERE
-              onClick={handleLiveClick}
-              className="relative -top-7 group flex flex-col items-center flex-1 h-full justify-start z-10"
-              aria-label="Live Game"
-              title={
-                liveGames.length > 1 ? `${liveGames.length} LIVE Games - Quick Warp` :
-                  liveGames.length === 1 ? "Jump to LIVE Game" :
-                    activeGameId ? "Jump to Active Game" :
-                      "No Active Game"
-              }
-            >
-              <div className="relative overflow-visible">
-                {/* Active Ring - Shown when on the exact active game page */}
-                {isOnActiveGame && (
-                  <div className="absolute inset-0 -m-1 rounded-full border-2 border-cyan-400 opacity-50 animate-pulse" />
-                )}
+          {/* 3. BAU CUA (Center - Big Button) */}
+          <Link
+            href="/bau-cua"
+            className="relative -top-7 group flex flex-col items-center flex-1 h-full justify-start z-10"
+            aria-label="Bau Cua"
+            title="Play Bau Cua"
+          >
+            <div className="relative overflow-visible">
+              {/* Glow/Pulse if on Bau Cua page */}
+              {pathname === '/bau-cua' && (
+                <div className="absolute inset-0 -m-1 rounded-full border-2 border-yellow-400 opacity-50 animate-pulse" />
+              )}
 
-                <div className={`
-              p-4 rounded-full shadow-2xl transition-all duration-300 group-hover:scale-105 overflow-visible
-              ${shouldGlow
-                    ? `bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_0_30px_rgba(34,211,238,0.8)] ${shouldPulse ? 'animate-pulse' : ''}`
-                    : "bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-md border border-white/20 group-hover:from-cyan-500/30 group-hover:to-blue-600/30 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"}
-            `} style={{ filter: shouldGlow ? 'drop-shadow(0 0 20px rgba(34,211,238,0.6))' : 'none' }}>
-                  <Zap
-                    size={32}
-                    strokeWidth={2.5}
-                    className={`${shouldGlow ? "fill-white text-white" : "text-white"} drop-shadow-lg`}
-                  />
-                </div>
+              <div className={`p-3 rounded-full shadow-2xl transition-all duration-300 group-hover:scale-105 overflow-visible bg-gradient-to-br from-[#1A1C29] to-[#0F111A] border border-white/20
+                    ${pathname === '/bau-cua' ? 'shadow-[0_0_30px_rgba(234,179,8,0.4)] scale-110' : ''}
+                `}>
+                <span className="text-[36px] leading-none drop-shadow-lg filter">🦀</span>
               </div>
-              <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold tracking-wider whitespace-nowrap ${shouldGlow ? "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" : "text-white/40 group-hover:text-white/70"}`}>
-                LIVE
-              </span>
-            </button>
-          )}
+            </div>
+            <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold tracking-wider whitespace-nowrap ${pathname === '/bau-cua' ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.6)]" : "text-white/40 group-hover:text-white/70"}`}>
+              BAU CUA
+            </span>
+          </Link>
 
-
+          {/* 
+            // OLD LIVE BUTTON (Preserved Code)
+            <button
+              id="tour-live-btn"
+              onClick={handleLiveClick}
+              ...
+            >
+              ...
+            </button> 
+          */}
 
           {/* 4. LIPID LOTTO */}
           <Link
