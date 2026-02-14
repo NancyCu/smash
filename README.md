@@ -1,4 +1,4 @@
-# 🏈 SmashedBox - Souper Bowl Squares
+# 🏈 SmashedBox - The Ultimate Betting Suite
 
 > **"Because with us, a Nguyen is always a Win"**
 
@@ -6,74 +6,83 @@
 
 ## 📖 Introduction
 
-**SmashedBox** is a modern, real-time web application designed to take your Super Bowl Squares pool to the next level. Built with **Next.js 15**, **Firebase**, and **Tailwind CSS**, it offers a sleek, dark-themed interface for hosting and joining flexible sports betting games.
+**SmashedBox** is a modern, real-time web application that transforms traditional party games into sleek, digital experiences. Initially built to revolutionize the Super Bowl Squares pool, it has evolved into a multi-game platform featuring:
 
-Say goodbye to paper grids and spreadsheets. SmashedBox handles the randomization, user management, and live scoring updates automatically.
+*   **Super Bowl Squares**: Automated grid generation with live ESPN score integration.
+*   **Bau Cua**: A real-time, interactive digital version of the classic Vietnamese dice game.
+*   **Lipid Lotto**: A fun, quick-fire lottery game.
+
+Built with **Next.js 15**, **Firebase**, and **Tailwind CSS**, SmashedBox offers a premium, dark-themed interface mobile-responsiveness, and secure real-time gameplay.
+
+---
+
+## 🎮 Game Modes
+
+### 1. 🏈 Super Bowl Squares (The Classic)
+Say goodbye to paper grids.
+*   **Automated Shuffle**: Uses the Fisher-Yates algorithm to generate fair, random numbers for every quarter (Q1, Q2, Q3, Final).
+*   **Live Scoring**: Integrated with ESPN API to automatically track scores and highlight winning squares in real-time.
+*   **User Management**: Players can pick their own squares, or you can assign them.
+
+### 2. 🦀 Bau Cua (Live Dice Game)
+A digital reimagining of *Bầu Cua Tôm Cá*.
+*   **Host Mode**: One device acts as the "Host" table. The host controls the dice roll and inputs the result.
+*   **Client Mode**: Players join on their own phones to place bets on the 6 animals.
+*   **Real-Time Sync**: When the Host rolls, all player screens update to "Rolling...". When the Host submits results, payouts are calculated instantly.
+*   **Ledger System**: Tracks all wins, losses, and transfers for a complete game history.
+
+### 3. ❤️ Lipid Lotto
+*   **Quick Play**: A simple lottery-style game for quick fun.
+
+---
 
 ## ✨ Key Features
 
-*   **🏆 Dynamic Grids:** Automated, fair randomization of row/column numbers using the Fisher-Yates shuffle algorithm for every quarter (Q1, Q2, Q3, Final).
-*   **🔐 Secure Authentication:** Robust email/password login and account management powered by Firebase Auth.
-*   **⚡ Real-Time Updates:** Live integration with ESPN scores to track game progress and automatically determine winning squares.
-*   **📱 Responsive UI:** Mobile-first design ensuring a great experience on any device, featuring smooth animations with **Framer Motion**.
-*   **🎲 Prop Bets:** Create and manage side bets alongside the main grid.
-*   **🤝 Easy Sharing:** Simple game codes allow friends to join your pool instantly.
-*   **🎨 Personalized Profiles:** Track your game history and stats.
+*   **⚡ Real-Time Updates**: Powered by Firestore, game states sync across all devices instantly.
+*   **🔐 Secure Authentication**: Robust email/password login via Firebase Auth.
+*   **📱 Mobile-First Design**: Optimized for any device size with smooth Framer Motion animations.
+*   **🎲 Fair Play**: verifiable randomization algorithms ensuring game integrity.
+*   **💰 Digital Wallet**: Built-in banking system to track virtual currency across all games.
+*   **📊 Stats & History**: Personalized profiles tracking your wins, losses, and game participation.
 
-## 🚀 Technologies Used
+---
+
+## 🚀 Tech Stack
 
 *   **Framework:** [Next.js 15](https://nextjs.org/) (App Router)
 *   **Language:** [TypeScript](https://www.typescriptlang.org/)
 *   **Styling:** [Tailwind CSS](https://tailwindcss.com/) & [Tailwind Merge](https://github.com/dcastil/tailwind-merge)
+*   **Backend / Auth:** [Firebase](https://firebase.google.com/) (Firestore, Auth)
 *   **Icons:** [Lucide React](https://lucide.dev/)
-*   **Backend / Auth:** [Firebase](https://firebase.google.com/)
 *   **Animations:** [Framer Motion](https://www.framer.com/motion/)
 
-## 📸 Screenshots
+---
 
-### 🏠 Join & Authentication
-*Sleek landing page for logging in or joining a game via code.*  
-![Join Game](public/screenshots/join-game.png)
+## 📸 Gallery
 
-### 📊 Interactive Grid View
-*Navigate through different quarters and view the automated numbers.*  
-![Grid View](public/screenshots/grid-view.png)
+| **Join Screen** | **Squares Grid** |
+|:---:|:---:|
+| ![Join Game](public/screenshots/join-game.png) | ![Grid View](public/screenshots/grid-view.png) |
+| *Enter a game code to join instantly.* | *Live tracking of rows and columns.* |
 
-### 👥 Secure Auth Flow
-*User-friendly account creation and login process.*  
-![Auth Flow](public/screenshots/auth-flow.png)
+| **Bau Cua Board** | **Mobile Profile** |
+|:---:|:---:|
+| ![Bau Cua](public/screenshots/bau-cua.png) | ![Profile](public/screenshots/profile.png) |
+| *Interactive betting board.* | *Track your stats and history.* |
 
-### 📲 Share & Preview
-*Easily invite others to your game instance.*  
-![Share Preview](public/screenshots/share-preview.png)
+*(Note: Add screenshot files to `public/screenshots` folder)*
+
+---
 
 ## 🛠️ Getting Started
 
-<<<<<<< ours
 Follow these steps to set up the project locally.
-=======
-#### 📍 **How to Access Your Game History**
-
-Your complete game history can be found in your **Profile** page. Here's how to access it:
-
-1. **Log in** to your account
-2. Click on your **Profile** icon/button in the navigation
-3. View all your games, including:
-   - Games you've **hosted** (marked with a HOST badge)
-   - Games you've **joined** and participated in
-   - **Live games** currently in progress
-   - Completed games
-
-Your game history automatically shows all games where you've claimed at least one square, making it easy to track your participation across multiple pools!
-
----
->>>>>>> theirs
 
 ### Prerequisites
 
 *   Node.js (v18+ recommended)
 *   npm or yarn
-*   A Firebase project with Authentication and Firestore enabled.
+*   A Firebase project with **Authentication** and **Firestore** enabled.
 
 ### Installation
 
@@ -89,7 +98,7 @@ Your game history automatically shows all games where you've claimed at least on
     ```
 
 3.  **Environment Setup:**
-    Create a `.env.local` file in the root directory and add your Firebase configuration keys:
+    Create a `.env.local` file in the root directory and add your Firebase configuration:
     ```env
     NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
@@ -104,25 +113,12 @@ Your game history automatically shows all games where you've claimed at least on
     npm run dev
     ```
 
-5.  Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## 🎲 Game Logic
-
-The integrity of the game is paramount. We use the **Fisher-Yates Shuffle** algorithm to generate unique, random number pairings for the rows and columns for **each quarter** of the game.
-
-*   **Q1, Q2, Q3, & Final:** Distinctive sets of numbers are generated for every stage of the game, keeping the excitement alive until the very end.
-
-```typescript
-// Example Logic from src/lib/game-logic.ts
-export const generateQuarterlyNumbers = (): GameAxisData => {
-  return {
-    q1: { rows: shuffle(base), cols: shuffle(base) },
-    q2: { rows: shuffle(base), cols: shuffle(base) },
-    // ...
-  };
-};
-```
+5.  Open [http://localhost:3000](http://localhost:3000) to view the app.
 
 ---
 
-Made with ❤️ by Michael Nguyen & Nancy Cu
+## 📜 License
+
+This project is proprietary and intended for personal use.
+
+**Created by Michael Nguyen & Nancy Cu**
