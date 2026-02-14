@@ -619,12 +619,12 @@ export default function BauCuaPage() {
             </div>
 
             {/* MAIN GAME AREA - RESPONSIVE LAYOUT */}
-            <div className="no-print flex-1 w-full max-w-6xl mx-auto flex flex-col md:flex-row gap-6 p-4 md:p-8 relative z-10 mb-32 overflow-y-auto">
+            <div className="no-print flex-1 w-full mx-auto flex flex-col md:flex-row gap-6 p-4 md:p-8 relative z-10 mb-32 overflow-y-auto">
 
-                {/* --- LEFT: BOARD (Desktop: 2/3, Mobile: Full) --- */}
-                <div className="flex-1 md:flex-[2]">
+                {/* --- LEFT: BOARD (Desktop: expands, Mobile: Full) --- */}
+                <div className="flex-1 md:flex-[3]">
                     {(currentStatus === 'BETTING' || currentStatus === 'ROLLING' || currentStatus === 'RESULT') ? (
-                        <div className="relative">
+                        <div className="relative h-full flex flex-col justify-center">
                             {/* ROLLING OVERLAY (CLIENTS ONLY) */}
                             {currentStatus === 'ROLLING' && !isHost && (
                                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-3xl animate-in fade-in text-center p-4">
@@ -663,8 +663,8 @@ export default function BauCuaPage() {
                                 </div>
                             )}
 
-                            {/* GRID - LARGER CARDS (Horizontal Layout) */}
-                            <div className="grid grid-cols-3 gap-3 md:gap-6">
+                            {/* GRID - RESPONSIVE (2 cols mobile, 3 cols desktop) */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 lg:gap-8 max-w-md md:max-w-none mx-auto w-full">
                                 {ANIMALS.map(animal => {
                                     const isHostSelecting = isHost && currentStatus === 'ROLLING';
                                     const isSelectedByHost = isHostSelecting && result.includes(animal.id);
@@ -814,33 +814,51 @@ export default function BauCuaPage() {
                     {/* DESKTOP PLAYER LIST (Bottom Right Box) */}
                     <div className="hidden md:flex flex-col flex-1 bg-[#151725]/90 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden min-h-0">
                         <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center shrink-0">
-                            <h3 className="font-russo text-white/70 uppercase tracking-widest text-sm">Live Players</h3>
-                            <div className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded font-bold">
-                                {activePlayers.length} Online
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                            {activePlayers.map(player => (
-                                <div key={player.id} className={`flex items-center justify-between p-3 rounded-xl transition-colors ${player.id === playerId ? 'bg-white/10 border border-white/20' : 'bg-black/20 border border-white/5'}`}>
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-3 h-3 rounded-full ${player.id === session?.hostId ? 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.5)]' : 'bg-gradient-to-br from-blue-400 to-purple-400'}`} />
-                                        <div className="flex flex-col">
-                                            <span className={`font-bold text-sm ${player.id === playerId ? 'text-white' : 'text-white/70'}`}>
-                                                {player.name} {player.id === playerId && '(You)'}
-                                            </span>
-                                            {player.id === session?.hostId && <span className="text-[8px] uppercase font-bold text-yellow-500 tracking-wider">Host</span>}
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="font-mono font-bold text-yellow-400 text-sm">${player.balance.toLocaleString()}</div>
-                                        <div className="text-[10px] text-white/30 flex gap-2 justify-end mt-0.5">
-                                            <span className="text-green-500/80 font-bold">W:{player.wins}</span>
-                                            <span className="text-red-500/80 font-bold">L:{player.losses}</span>
-                                        </div>
-                                    </div>
+                            <h3 className="font-russo text-white/70 uppercase tracking-widest text-sm">
+                                {isLive ? 'Live Players' : 'Game History'}
+                            </h3>
+                            {isLive && (
+                                <div className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded font-bold">
+                                    {activePlayers.length} Online
                                 </div>
-                            ))}
+                            )}
                         </div>
+
+                        {isLive ? (
+                            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                                {activePlayers.map(player => (
+                                    <div key={player.id} className={`flex items-center justify-between p-3 rounded-xl transition-colors ${player.id === playerId ? 'bg-white/10 border border-white/20' : 'bg-black/20 border border-white/5'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-3 h-3 rounded-full ${player.id === session?.hostId ? 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.5)]' : 'bg-gradient-to-br from-blue-400 to-purple-400'}`} />
+                                            <div className="flex flex-col">
+                                                <span className={`font-bold text-sm ${player.id === playerId ? 'text-white' : 'text-white/70'}`}>
+                                                    {player.name} {player.id === playerId && '(You)'}
+                                                </span>
+                                                {player.id === session?.hostId && <span className="text-[8px] uppercase font-bold text-yellow-500 tracking-wider">Host</span>}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="font-mono font-bold text-yellow-400 text-sm">${player.balance.toLocaleString()}</div>
+                                            <div className="text-[10px] text-white/30 flex gap-2 justify-end mt-0.5">
+                                                <span className="text-green-500/80 font-bold">W:{player.wins}</span>
+                                                <span className="text-red-500/80 font-bold">L:{player.losses}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+                                <Trophy className="w-12 h-12 text-white/20" />
+                                <div>
+                                    <p className="text-white/50 text-sm">No live game active.</p>
+                                    <p className="text-white/30 text-xs mt-1">Check past results below.</p>
+                                </div>
+                                <Link href="/bau-cua/history" className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold uppercase tracking-wider text-sm transition text-white">
+                                    View Game History
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -876,30 +894,42 @@ export default function BauCuaPage() {
             {/* LEDGER DRAWER (Mobile Only) */}
             <div className="md:hidden no-print absolute bottom-0 left-0 right-0 bg-[#0F111A] border-t border-white/10 rounded-t-3xl max-h-[40vh] overflow-hidden flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] w-full max-w-sm mx-auto">
                 <div className="flex items-center justify-between p-4 border-b border-white/5">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-white/60">Live Games</h3>
-                    <button onClick={handlePrint} className="text-xs bg-white/5 px-2 py-1 rounded hover:bg-white/10">Print Record</button>
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-white/60">
+                        {isLive ? 'Live Games' : 'History'}
+                    </h3>
+                    {isLive && <button onClick={handlePrint} className="text-xs bg-white/5 px-2 py-1 rounded hover:bg-white/10">Print Record</button>}
                 </div>
-                <div className="overflow-y-auto flex-1 p-4 space-y-4">
-                    {/* Active Players */}
-                    <div>
-                        {activePlayers.map(player => (
-                            <div key={player.id} className={`flex items-center justify-between p-2 rounded-lg ${player.id === playerId ? 'bg-white/10 border border-white/20' : 'border-b border-white/5'}`}>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                                    <span className={`font-bold ${player.id === playerId ? 'text-white' : 'text-white/70'}`}>{player.name} {player.id === playerId && '(You)'}</span>
-                                    {isLive && session?.hostId === player.id && <Shield size={12} className="text-yellow-500 ml-1" />}
-                                </div>
-                                <div className="text-right">
-                                    <div className="font-mono font-bold text-yellow-400">${player.balance.toLocaleString()}</div>
-                                    <div className="text-[10px] text-white/30 flex gap-2 justify-end">
-                                        <span className="text-green-500/80">W: {player.wins}</span>
-                                        <span className="text-red-500/80">L: {player.losses}</span>
+
+                {isLive ? (
+                    <div className="overflow-y-auto flex-1 p-4 space-y-4">
+                        {/* Active Players */}
+                        <div>
+                            {activePlayers.map(player => (
+                                <div key={player.id} className={`flex items-center justify-between p-2 rounded-lg ${player.id === playerId ? 'bg-white/10 border border-white/20' : 'border-b border-white/5'}`}>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                                        <span className={`font-bold ${player.id === playerId ? 'text-white' : 'text-white/70'}`}>{player.name} {player.id === playerId && '(You)'}</span>
+                                        {isLive && session?.hostId === player.id && <Shield size={12} className="text-yellow-500 ml-1" />}
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="font-mono font-bold text-yellow-400">${player.balance.toLocaleString()}</div>
+                                        <div className="text-[10px] text-white/30 flex gap-2 justify-end">
+                                            <span className="text-green-500/80">W: {player.wins}</span>
+                                            <span className="text-red-500/80">L: {player.losses}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="p-6 flex flex-col items-center justify-center space-y-4 min-h-[200px]">
+                        <p className="text-white/40 text-sm text-center">No active game.</p>
+                        <Link href="/bau-cua/history" className="w-full py-4 bg-white/5 rounded-xl flex items-center justify-center font-bold text-white uppercase tracking-wider hover:bg-white/10 transition">
+                            View Past Games
+                        </Link>
+                    </div>
+                )}
             </div>
 
             {/* --- TOP UP MODAL (Same as before) --- */}

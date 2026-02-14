@@ -205,9 +205,30 @@ export const subscribeToTransactions = (callback: (txs: Transaction[]) => void) 
         orderBy("timestamp", "desc"),
         limit(50)
     );
+    const HISTORY_COL = "bau_cua_history";
 
-    return onSnapshot(q, (snapshot) => {
-        const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
-        callback(txs);
-    });
-};
+    export const archiveGameRound = async (result: string[], players: Player[], hostName: string) => {
+        await addDoc(collection(db, HISTORY_COL), {
+            timestamp: serverTimestamp(),
+            result,
+            hostName,
+            playersSnapshot: players.map(p => ({
+                name: p.name,
+                balance: p.balance,
+                wins: p.wins,
+                losses: p.losses
+            }))
+        });
+    };
+
+    export const subscribeToHistory = (callback: (history: any[]) => void) => {
+        const q = query(
+            collection(db, HISTORY_COL),
+            orderBy("timestamp", "desc"),
+            limit(50)
+        );
+        return onSnapshot(q, (snapshot) => {
+            const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            callback(history);
+        });
+    };
