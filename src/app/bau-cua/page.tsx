@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, RotateCcw, Coins, Trophy, Info, Plus, Check } from 'lucide-react';
+import { ChevronLeft, RotateCcw, Coins, Trophy, Info, Plus, Check, Settings, Shield, UserCheck, Lock, Play, StopCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 import {
@@ -12,14 +12,20 @@ import {
     subscribeToPlayers,
     subscribeToTransactions,
     type Player,
-    type Transaction
+    type Transaction,
+    type GameSession,
+    subscribeToSession,
+    initGameSession,
+    updateSessionStatus,
+    setSessionHost,
+    endLiveGame,
+    getGameSession
 } from '@/lib/bau-cua-service';
 
 // --- CONFIGURATION ---
 const VENMO_USERNAME = "your_username";
 
 // --- ASSETS & CONSTANTS ---
-// Using Emoji for high-quality visuals on Apple devices
 const ANIMALS = [
     { id: 'deer', name: 'Nai', emoji: '🦌', color: 'from-amber-700/80 to-amber-900/80' },
     { id: 'gourd', name: 'Bầu', emoji: '🍐', color: 'from-emerald-600/80 to-emerald-900/80' },
@@ -38,12 +44,14 @@ const AnimalCard = ({
     animal,
     betAmount,
     onBet,
-    disabled
+    disabled,
+    isWinner
 }: {
     animal: typeof ANIMALS[0],
     betAmount: number,
     onBet: () => void,
-    disabled: boolean
+    disabled: boolean,
+    isWinner?: boolean
 }) => {
     return (
         <motion.button
@@ -52,7 +60,8 @@ const AnimalCard = ({
             disabled={disabled}
             className={`
         relative aspect-square rounded-full 
-        border-[3px] border-white/10 
+        border-[3px] 
+        ${isWinner ? 'border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.6)] z-10 scale-105' : 'border-white/10'}
         bg-gradient-to-br ${animal.color} 
         backdrop-blur-md
         flex flex-col items-center justify-center 
@@ -60,11 +69,18 @@ const AnimalCard = ({
         shadow-[inset_0_2px_20px_rgba(255,255,255,0.2)]
         transition-all duration-300
         group
-        ${disabled ? 'opacity-50 grayscale' : 'hover:scale-105 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]'}
+        ${disabled && !isWinner ? 'opacity-50 grayscale' : 'hover:scale-105 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]'}
       `}
         >
             {/* Glossy Reflection Highlight */}
             <div className="absolute top-0 left-0 right-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+
+            {/* Winner Badge */}
+            {isWinner && (
+                <div className="absolute -top-3 -right-3 bg-yellow-400 text-black p-1 rounded-full shadow-lg animate-bounce z-30">
+                    <Check size={16} strokeWidth={4} />
+                </div>
+            )}
 
             {/* Bet Badge */}
             <AnimatePresence>
@@ -91,8 +107,12 @@ export default function BauCuaPage() {
     const [balance, setBalance] = useState(0);
     const [bets, setBets] = useState<Record<string, number>>({});
     const [selectedChip, setSelectedChip] = useState(5);
-    const [gameState, setGameState] = useState<'BETTING' | 'RESULT' | 'WIN'>('BETTING');
-    const [result, setResult] = useState<string[]>([]);
+
+    // Game State: Derived from Session for Clients, or Local for Host overrides
+    // We'll trust the session if active
+    const [localGameState, setLocalGameState] = useState<'BETTING' | 'RESULT' | 'WIN'>('BETTING');
+
+    const [result, setResult] = useState<string[]>([]); // Current round result keys
     const [lastWin, setLastWin] = useState(0);
 
     const [showTopUpModal, setShowTopUpModal] = useState(false);
@@ -105,6 +125,18 @@ export default function BauCuaPage() {
     const [activePlayers, setActivePlayers] = useState<Player[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [userInputName, setUserInputName] = useState("");
+
+    // Live Session State
+    const [session, setSession] = useState<GameSession | null>(null);
+    const [showAdminMenu, setShowAdminMenu] = useState(false);
+    const [showHostPicker, setShowHostPicker] = useState(false);
+
+    // --- DERIVED STATE ---
+    const isLive = session?.isActive ?? false;
+    const isHost = isLive && session?.hostId === playerId;
+
+    // If live, use session status. If not, use local.
+    const currentStatus = isLive ? session?.status || 'BETTING' : localGameState;
 
     // 1. Identity Check
     useEffect(() => {
@@ -129,12 +161,53 @@ export default function BauCuaPage() {
     useEffect(() => {
         const unsubPlayers = subscribeToPlayers(setActivePlayers);
         const unsubTx = subscribeToTransactions(setTransactions);
+        const unsubSession = subscribeToSession((s) => {
+            setSession(s);
+            // Sync local result display if session has result
+            if (s?.status === 'RESULT' && s.result) {
+                setResult(s.result);
+                // Auto-calculate winnings if logic hasn't run yet? 
+                // We'll rely on an explicit effect for that.
+            }
+            if (s?.status === 'BETTING') {
+                if (s.result?.length === 0) {
+                    setResult([]); // Clear board for new round
+                }
+            }
+        });
+
         return () => {
             unsubPlayers();
             unsubTx();
+            unsubSession();
         };
     }, []);
 
+    // 3. React to Result from Session (Client Side Win Calculation)
+    useEffect(() => {
+        if (!isLive) return;
+        if (session?.status === 'RESULT' && session.result?.length === 3) {
+            // Calculate winnings for Client
+            const sessionResult = session.result;
+
+            // Prevent double-calculation by checking if we already have a 'lastWin' set for this exact result? 
+            // Or just do it once when status flips.
+            // Simplified: Just calculate and show WIN screen overlay.
+            // But we only want to ADD balance once.
+            // Current simplistic approach: We'll have a separate 'ProcessedResultId' tracker if needed.
+            // For now, let's assume the user manually sees the result.
+            // Actually, we need to invoke `confirmResult` logic but PASSIVELY.
+
+            // To act exactly once per round, we could track a local 'lastProcessedRoundId'.
+            // For simplicity in this version, we will let the user 'Claim' logic or just auto-run:
+            // Let's use a "Round End" verify.
+
+            // AUTO-SETTLE FOR CLIENTS:
+            // Calculate strictly on transition.
+        }
+    }, [session?.status, session?.result, isLive]);
+
+    // Helper: UUID
     const generateUUID = () => {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             return crypto.randomUUID();
@@ -162,9 +235,6 @@ export default function BauCuaPage() {
         setShowIdentityModal(false);
     };
 
-    // Auto-save logic was here (removed in favor of explicit transactions)
-    // Actually, let's keep balance synced just in case? 
-    // No, we rely on identifyPlayer and explicit actions now.
 
     // --- ACTIONS ---
 
@@ -180,10 +250,8 @@ export default function BauCuaPage() {
     };
 
     const handleConfirmTopUp = async () => {
-        // Fire and forget (optimistic UI)
         setBalance(prev => prev + topUpAmount);
         setShowTopUpModal(false);
-
         if (playerId) {
             await addTransaction(playerId, playerName, 'DEPOSIT', topUpAmount, 'Venmo Top-up');
             await updatePlayerStats(playerId, topUpAmount);
@@ -191,6 +259,8 @@ export default function BauCuaPage() {
     };
 
     const placeBet = (animalId: string) => {
+        // Only allow betting if status is BETTING
+        if (currentStatus !== 'BETTING') return;
         if (balance < selectedChip) return;
 
         setBets(prev => ({
@@ -201,35 +271,110 @@ export default function BauCuaPage() {
     };
 
     const clearBets = () => {
+        if (currentStatus !== 'BETTING') return;
         let totalRefund = 0;
         Object.values(bets).forEach(amount => totalRefund += amount);
         setBalance(prev => prev + totalRefund);
         setBets({});
     };
 
-    const handleRollClick = () => {
-        if (Object.keys(bets).length === 0) return;
-        setGameState('RESULT');
-        setResult([]);
+    // --- GAME FLOW LOGIC ---
+
+    const handleRollClick = async () => {
+        if (isLive && !isHost) return; // Clients can't roll
+
+        // If local game:
+        if (!isLive) {
+            if (Object.keys(bets).length === 0) return;
+            setLocalGameState('RESULT');
+            setResult([]);
+            return;
+        }
+
+        // If HOST:
+        // Lock bets for everyone
+        await updateSessionStatus('ROLLING');
     };
 
+    // For Host inputting result
     const addResultItem = (animalId: string) => {
         if (result.length < 3) {
             setResult([...result, animalId]);
         }
     };
-
     const removeResultItem = (index: number) => {
         const newRes = [...result];
         newRes.splice(index, 1);
         setResult(newRes);
     }
-
-
     const resetResultInput = () => setResult([]);
 
     const confirmResult = async () => {
         if (result.length !== 3) return;
+
+        // Common Logic: Calculate Payout
+        const calculatePayout = (currentBets: Record<string, number>, currentResult: string[]) => {
+            let totalWinnings = 0;
+            let totalBetReturn = 0;
+            let totalBetAmount = 0;
+
+            Object.entries(currentBets).forEach(([animalId, betAmount]) => {
+                totalBetAmount += betAmount;
+                const matches = currentResult.filter(r => r === animalId).length;
+                if (matches > 0) {
+                    totalBetReturn += betAmount;
+                    totalWinnings += betAmount * matches;
+                }
+            });
+            return { payout: totalBetReturn + totalWinnings, profit: (totalBetReturn + totalWinnings) - totalBetAmount, totalBetAmount, totalWinnings };
+        };
+
+        if (isLive) {
+            if (isHost) {
+                // Host publishes result
+                await updateSessionStatus('RESULT', result);
+
+                // Host also needs to settle their own bets if they played (optional)
+                const { payout, profit, totalBetAmount, totalWinnings } = calculatePayout(bets, result);
+                if (totalBetAmount > 0) {
+                    setBalance(prev => prev + payout);
+                    setLastWin(totalWinnings);
+                    // Log Host Tx
+                    if (profit > 0) {
+                        await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`);
+                        await updatePlayerStats(playerId, profit, true, false);
+                    } else if (profit <= 0) {
+                        await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result');
+                        await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
+                    }
+                }
+            }
+            // Clients handle settlement via effect or manual claim? 
+            // For now, we'll auto-settle active players in the view Logic below
+        } else {
+            // Local Mode
+            const { payout, profit, totalBetAmount, totalWinnings } = calculatePayout(bets, result);
+            setBalance(prev => prev + payout);
+            setLastWin(totalWinnings);
+            setLocalGameState('WIN');
+
+            if (playerId && totalBetAmount > 0) {
+                if (profit > 0) {
+                    await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`);
+                    await updatePlayerStats(playerId, profit, true, false);
+                } else if (profit <= 0) {
+                    await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result');
+                    await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
+                }
+            }
+        }
+    };
+
+    // Triggered by CLIENT when they see the result and "Claim" / or just Play Again
+    const settleClientRound = async () => {
+        // Re-run calc for client
+        const currentResult = isLive ? session?.result || [] : result;
+        if (currentResult.length !== 3) return;
 
         let totalWinnings = 0;
         let totalBetReturn = 0;
@@ -237,7 +382,7 @@ export default function BauCuaPage() {
 
         Object.entries(bets).forEach(([animalId, betAmount]) => {
             totalBetAmount += betAmount;
-            const matches = result.filter(r => r === animalId).length;
+            const matches = currentResult.filter(r => r === animalId).length;
             if (matches > 0) {
                 totalBetReturn += betAmount;
                 totalWinnings += betAmount * matches;
@@ -245,38 +390,63 @@ export default function BauCuaPage() {
         });
 
         const payout = totalBetReturn + totalWinnings;
-        const profit = payout - totalBetAmount; // Net profit (positive) or loss (negative)
+        const profit = payout - totalBetAmount;
 
-        setBalance(prev => prev + payout);
-        setLastWin(totalWinnings);
-        setGameState('WIN');
+        if (totalBetAmount > 0) {
+            setBalance(prev => prev + payout);
+            setLastWin(totalWinnings);
 
-        // Log to Firestore
-        if (playerId && totalBetAmount > 0) {
+            // Log
             if (profit > 0) {
                 await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`);
                 await updatePlayerStats(playerId, profit, true, false);
-            } else if (profit < 0) {
-                // Loss transaction if you want to track net loss per round
-                // Or just track the "Bet" earlier.
-                // Let's track the result summary
-                // Actually, simply: We deducted bets from balance already locally.
-                // But we didn't deduct from Firestore yet?
-                // Wait, 'placeBet' reduces local balance but did not touch DB.
-                // So we need to sync the NET change.
-                // Logic: At start of round balance was X. Now it is X - Bets + Payout.
-                // Change = Payout - Bets.
-                await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, profit >= 0 ? 'Win Round' : 'Loss Round');
+            } else if (profit <= 0) {
+                await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result');
                 await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
             }
         }
+
+        // Clear local bets locally so they don't double claim
+        setBets({});
+        // Note: In a robust app, we'd mark this round ID as claimed.
     };
 
-    const newGame = () => {
-        setBets({});
-        setResult([]);
-        setLastWin(0);
-        setGameState('BETTING');
+    const newGame = async () => {
+        if (isLive && isHost) {
+            await updateSessionStatus('BETTING', []);
+            setBets({});
+            setResult([]);
+            setLastWin(0);
+        } else if (!isLive) {
+            setBets({});
+            setResult([]);
+            setLastWin(0);
+            setLocalGameState('BETTING');
+        } else {
+            // Client clicking Play Again
+            // Just reset their local view state, wait for host
+            setBets({});
+            setLastWin(0);
+        }
+    };
+
+    // --- ADMIN ACTIONS ---
+    const toggleLiveMode = async () => {
+        if (isLive) {
+            if (confirm("End Live Session? This will archive the game.")) {
+                await endLiveGame();
+            }
+        } else {
+            await initGameSession();
+            await setSessionHost(playerId, playerName); // Creator defaults to host
+        }
+        setShowAdminMenu(false);
+    };
+
+    const assignHost = async (targetId: string, targetName: string) => {
+        await setSessionHost(targetId, targetName);
+        setShowHostPicker(false);
+        setShowAdminMenu(false);
     };
 
     const handlePrint = () => {
@@ -295,11 +465,17 @@ export default function BauCuaPage() {
                 .print-only { display: none; }
             `}</style>
 
-            {/* PRINTABLE LEDGER */}
+            {/* ADMIN / HOST INDICATOR */}
+            {isLive && (
+                <div className="no-print bg-gradient-to-r from-purple-900/80 to-blue-900/80 p-1 text-center text-[10px] uppercase font-bold tracking-widest text-cyan-200 border-b border-white/10 backdrop-blur-md sticky top-0 z-40">
+                    LIVE SESSION • HOST: {session?.hostName || 'Unknown'} {isHost && '(YOU)'} • {currentStatus}
+                </div>
+            )}
+
+            {/* PRINTABLE LEDGER (Same as before) */}
             <div className="print-only p-8 text-black bg-white">
                 <h1 className="text-3xl font-bold mb-4">Bau Cua Ledger Report</h1>
                 <p className="mb-4">Generated: {new Date().toLocaleString()}</p>
-
                 <h2 className="text-xl font-bold mt-6 mb-2">Player Balances</h2>
                 <table className="w-full text-left border-collapse">
                     <thead>
@@ -321,7 +497,6 @@ export default function BauCuaPage() {
                         ))}
                     </tbody>
                 </table>
-
                 <h2 className="text-xl font-bold mt-8 mb-2">Recent Transactions</h2>
                 <table className="w-full text-left border-collapse text-sm">
                     <thead>
@@ -347,8 +522,8 @@ export default function BauCuaPage() {
                 </table>
             </div>
 
-            {/* HEADER - COMPACTED */}
-            <div className="no-print px-3 pt-3 pb-2 flex justify-between items-center bg-black/20 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30 shrink-0">
+            {/* HEADER - COMPACTED WITH ADMIN BTN */}
+            <div className="no-print px-3 pt-3 pb-2 flex justify-between items-center bg-black/20 backdrop-blur-xl border-b border-white/5 sticky top-6 z-30 shrink-0">
                 <Link href="/" className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 transition">
                     <ChevronLeft className="w-5 h-5" />
                 </Link>
@@ -369,21 +544,73 @@ export default function BauCuaPage() {
                             className="px-3 py-1 rounded-lg bg-green-600 flex items-center gap-1 text-white shadow-lg hover:bg-green-500 transition font-bold text-[10px] uppercase tracking-wider"
                         >
                             <Plus className="w-3 h-3" strokeWidth={3} />
-                            <span>Add Money</span>
+                            <span>Add</span>
                         </button>
                     </div>
                 </div>
 
-                <div className="w-8" />
-                {/* Replaces Reset Button with spacer for center alignment */}
+                <button
+                    onClick={() => setShowAdminMenu(!showAdminMenu)}
+                    className={`p-1.5 rounded-full transition ${isLive ? 'bg-cyan-500/20 text-cyan-400 animate-pulse' : 'bg-white/5 hover:bg-white/10'}`}>
+                    <Settings className="w-5 h-5" />
+                </button>
+
+                {/* ADMIN DROPDOWN */}
+                {showAdminMenu && (
+                    <div className="absolute top-full right-2 mt-2 w-48 bg-[#1A1C29] border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col z-50 animate-in fade-in zoom-in-95 origin-top-right">
+                        <div className="px-4 py-2 text-[10px] uppercase font-bold text-white/40 bg-white/5">Session Control</div>
+                        <button onClick={toggleLiveMode} className="px-4 py-3 text-left text-sm font-bold text-white hover:bg-white/5 flex items-center gap-2">
+                            {isLive ? <StopCircle size={16} className="text-red-500" /> : <Play size={16} className="text-green-500" />}
+                            {isLive ? 'End Live Game' : 'Go Live'}
+                        </button>
+                        {isLive && (
+                            <button onClick={() => setShowHostPicker(true)} className="px-4 py-3 text-left text-sm font-bold text-white hover:bg-white/5 flex items-center gap-2 border-t border-white/5">
+                                <UserCheck size={16} className="text-yellow-500" />
+                                Set Host
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
-            <div className="no-print flex-1 p-2 max-w-sm mx-auto flex flex-col justify-center gap-2 relative z-10 w-full mb-80">
+            {/* MAIN GAME AREA */}
+            <div className="no-print flex-1 p-2 max-w-sm mx-auto flex flex-col justify-center gap-2 relative z-10 w-full mb-32">
 
-                {/* --- PHASE 1: BETTING BOARD --- */}
-                {gameState === 'BETTING' && (
+                {/* --- DISPLAY: BOARD / RESULT --- */}
+                {/* Always show board if Betting or Rolling or Win(Background) */}
+                {/* If Host Inputting Result, show Input Grid */}
+
+                {(currentStatus === 'BETTING' || currentStatus === 'ROLLING' || (currentStatus === 'RESULT' && !isHost)) ? (
                     <>
-                        {/* GRID - Compacted gaps */}
+                        {currentStatus === 'ROLLING' && !isHost && (
+                            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
+                                <RefreshCw className="w-16 h-16 text-cyan-400 animate-spin mb-4" />
+                                <h2 className="text-2xl font-black text-white tracking-widest animate-pulse">ROLLING...</h2>
+                                <p className="text-white/50 text-sm mt-2">Host is shaking the dice!</p>
+                            </div>
+                        )}
+
+                        {/* RESULT OVERLAY (CLIENT VIEW) */}
+                        {currentStatus === 'RESULT' && !isHost && (
+                            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in p-4 text-center">
+                                <h2 className="text-3xl font-black text-yellow-500 mb-6 drop-shadow-xl">RESULT</h2>
+                                <div className="flex gap-4 mb-8">
+                                    {session?.result.map((id, i) => (
+                                        <div key={i} className="text-6xl animate-bounce" style={{ animationDelay: `${i * 0.1}s` }}>
+                                            {ANIMALS.find(a => a.id === id)?.emoji}
+                                        </div>
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => { settleClientRound(); newGame(); }}
+                                    className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl font-bold text-lg shadow-lg hover:scale-105 transition"
+                                >
+                                    Collect & Continue
+                                </button>
+                            </div>
+                        )}
+
+                        {/* GRID */}
                         <div className="grid grid-cols-2 gap-3 px-1">
                             {ANIMALS.map(animal => (
                                 <AnimalCard
@@ -391,25 +618,34 @@ export default function BauCuaPage() {
                                     animal={animal}
                                     betAmount={bets[animal.id] || 0}
                                     onBet={() => placeBet(animal.id)}
-                                    disabled={balance < selectedChip}
+                                    // Disable rule: if not betting phase, or balance too low
+                                    disabled={currentStatus !== 'BETTING' || balance < selectedChip}
+                                    isWinner={currentStatus === 'RESULT' && session?.result.includes(animal.id)}
                                 />
                             ))}
                         </div>
 
-                        {/* CONTROLS - Single Row */}
-                        <div className="mt-1 bg-[#151725]/80 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl shrink-0 flex items-center justify-between gap-2">
+                        {/* CONTROLS */}
+                        <div className="mt-1 bg-[#151725]/80 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl shrink-0 flex items-center justify-between gap-2 relative z-10">
 
-                            {/* 1. Clear Button (Left) */}
+                            {/* LOCKED STATE COVER */}
+                            {currentStatus !== 'BETTING' && !isHost ? (
+                                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-20 cursor-not-allowed">
+                                    <Lock className="w-6 h-6 text-white/40 mr-2" />
+                                    <span className="text-xs font-bold text-white/40 tracking-widest">BETS LOCKED</span>
+                                </div>
+                            ) : null}
+
+                            {/* 1. Clear Button */}
                             <button
                                 onClick={clearBets}
                                 disabled={Object.keys(bets).length === 0}
                                 className="h-14 w-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 disabled:opacity-30 hover:bg-white/10 transition"
-                                title="Clear Bets"
                             >
                                 <RotateCcw className="w-6 h-6" />
                             </button>
 
-                            {/* 2. Chips (Center) */}
+                            {/* 2. Chips */}
                             <div className="flex gap-3">
                                 {CHIPS.map(chip => (
                                     <button
@@ -427,34 +663,29 @@ export default function BauCuaPage() {
                                 ))}
                             </div>
 
-                            {/* 3. Roll/Ready Button (Right) */}
+                            {/* 3. ROLL / HOST ACTION */}
                             <button
                                 onClick={handleRollClick}
-                                disabled={Object.keys(bets).length === 0}
+                                disabled={Object.keys(bets).length === 0 && !isLive} // Allowed if Live host (can roll empty?) Yes.
                                 className={`
-                                    h-14 px-6 rounded-xl font-black text-lg uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
-                                    ${Object.keys(bets).length > 0
+                                    h-14 px-6 rounded-xl font-black text-base uppercase tracking-widest shadow-lg flex items-center justify-center transition-all min-w-[100px]
+                                    ${(Object.keys(bets).length > 0 || (isLive && isHost))
                                         ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.05]'
                                         : 'bg-white/10 text-white/30 cursor-not-allowed'}
                                 `}
                             >
-                                ROLL
+                                {isHost ? (currentStatus === 'BETTING' ? 'LOCK' : '...') : 'ROLL'}
                             </button>
                         </div>
                     </>
-                )}
-
-                {/* --- PHASE 2: RESULT INPUT --- */}
-                {gameState === 'RESULT' && (
+                ) : (
+                    // --- PHASE: HOST INPUTTING RESULT or LOCAL RESULT ---
                     <div className="flex flex-col items-center justify-between h-full animate-in zoom-in py-2">
-
-                        {/* Top Section: Prompt & Slots */}
+                        {/* Same Result Input logic as before, but modified for Host */}
                         <div className="w-full flex flex-col items-center gap-2">
                             <h2 className="text-xl font-bold text-center text-cyan-400 drop-shadow-lg uppercase tracking-widest">
-                                Tap Result (3)
+                                {isHost ? 'HOST: Input Dice' : 'Tap Result'}
                             </h2>
-
-                            {/* The 3 Result Slots - Compacted */}
                             <div className="flex gap-3 mb-2">
                                 {[0, 1, 2].map(i => {
                                     const animalId = result[i];
@@ -463,10 +694,7 @@ export default function BauCuaPage() {
                                         <button
                                             key={i}
                                             onClick={() => removeResultItem(i)}
-                                            className={`
-                                    w-16 h-16 rounded-xl border-2 flex items-center justify-center text-4xl shadow-inner backdrop-blur-sm transition-all
-                                    ${animal ? 'bg-gradient-to-br from-white/20 to-white/5 border-white/40' : 'bg-black/40 border-dashed border-white/10'}
-                                `}
+                                            className="w-16 h-16 rounded-xl border-2 flex items-center justify-center text-4xl shadow-inner backdrop-blur-sm bg-black/40 border-dashed border-white/10"
                                         >
                                             {animal ? animal.emoji : <span className="opacity-10 text-xs">?</span>}
                                         </button>
@@ -475,7 +703,7 @@ export default function BauCuaPage() {
                             </div>
                         </div>
 
-                        {/* Center Section: BIG INPUT GRID - Compacted */}
+                        {/* INPUT GRID */}
                         <div className="grid grid-cols-2 gap-3 w-full px-4 flex-1 content-center">
                             {ANIMALS.map((animal) => {
                                 const count = result.filter(r => r === animal.id).length;
@@ -490,87 +718,56 @@ export default function BauCuaPage() {
                                 ${result.length >= 3 ? 'opacity-40 grayscale' : 'active:scale-95'}
                             `}
                                     >
-                                        {count > 0 && (
-                                            <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-green-500 border-2 border-white flex items-center justify-center font-black text-xs z-10 shadow-lg">
-                                                {count}
-                                            </div>
-                                        )}
                                         <span className="text-5xl drop-shadow-xl">{animal.emoji}</span>
                                     </button>
                                 )
                             })}
                         </div>
 
-                        {/* Bottom Section: Confirm Action - Compacted */}
                         <div className="flex gap-3 w-full mt-auto pt-2 px-2">
-                            <button
-                                onClick={resetResultInput}
-                                className="px-4 py-4 bg-white/10 rounded-xl font-bold uppercase text-white/50 hover:bg-white/20 text-sm"
-                            >
-                                Reset
-                            </button>
-                            <button
-                                onClick={confirmResult}
-                                disabled={result.length !== 3}
-                                className={`
-                    flex-1 py-4 rounded-xl font-black text-lg uppercase tracking-widest transition-all shadow-xl
-                    ${result.length === 3
-                                        ? 'bg-green-500 text-white shadow-[0_0_30px_rgba(34,197,94,0.5)] transform scale-105'
-                                        : 'bg-white/10 text-white/30'}
-                  `}
-                            >
-                                Confirm
+                            <button onClick={resetResultInput} className="px-4 py-4 bg-white/10 rounded-xl font-bold uppercase text-white/50">Reset</button>
+                            <button onClick={confirmResult} disabled={result.length !== 3} className="flex-1 py-4 bg-green-500 text-white rounded-xl font-black uppercase shadow-lg disabled:opacity-30">
+                                {isHost ? 'PUBLISH RESULT' : 'Confirm'}
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* --- PHASE 3: WIN SCREEN --- */}
-                {gameState === 'WIN' && (
-                    <div className="flex flex-col items-center justify-center gap-6 py-6 animate-in zoom-in-50 h-full">
-
-                        {lastWin > 0 ? (
-                            <>
-                                <div className="relative">
-                                    <div className="absolute inset-0 bg-yellow-400 blur-[80px] opacity-30 animate-pulse" />
-                                    <Trophy className="w-24 h-24 text-yellow-400 drop-shadow-[0_0_30px_rgba(234,179,8,0.8)] relative z-10" />
-                                </div>
-
-                                <div className="text-center relative z-10">
-                                    <h2 className="text-4xl font-black italic text-white mb-2 drop-shadow-md">YOU WON</h2>
-                                    <p className="text-6xl font-russo text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-[0_0_30px_rgba(234,179,8,0.5)]">
-                                        ${lastWin}
-                                    </p>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="text-center opacity-80 py-6">
-                                <div className="text-6xl mb-4 grayscale">🥺</div>
-                                <h2 className="text-2xl font-bold text-slate-400">Not this time...</h2>
-                            </div>
-                        )}
-
-                        {/* Breakdown of what happened */}
-                        <div className="bg-white/5 backdrop-blur-md p-5 rounded-3xl border border-white/10 w-full shadow-xl">
-                            <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3">The Result</h3>
-                            <div className="flex justify-center gap-4 mb-2">
-                                {result.map((id, i) => (
-                                    <div key={i} className="text-5xl drop-shadow-md animate-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 100}ms` }}>
-                                        {ANIMALS.find(a => a.id === id)?.emoji}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={newGame}
-                            className="w-full py-5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-black text-lg uppercase tracking-widest shadow-[0_0_30px_rgba(79,70,229,0.4)] transition-all hover:scale-[1.02] mt-4"
-                        >
-                            Play Again
+                {/* HOST NEXT ROUND CONTROLS */}
+                {isHost && currentStatus === 'RESULT' && (
+                    <div className="mt-4 px-4">
+                        <button onClick={newGame} className="w-full py-4 bg-blue-600 rounded-xl font-bold uppercase text-white shadow-xl animate-pulse">
+                            Start Next Round
                         </button>
                     </div>
                 )}
+
             </div>
+
+            {/* HOST PICKER MODAL */}
+            <AnimatePresence>
+                {showHostPicker && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowHostPicker(false)} />
+                        <div className="relative w-full max-w-sm bg-[#1A1C29] border border-white/10 rounded-3xl p-6 shadow-2xl">
+                            <h2 className="text-xl font-bold text-white mb-4">Assign Host</h2>
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                {activePlayers.map(p => (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => assignHost(p.id, p.name)}
+                                        className="w-full p-3 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-between text-white"
+                                    >
+                                        <span className="font-bold">{p.name}</span>
+                                        {p.id === session?.hostId && <Shield size={16} className="text-yellow-500" />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </AnimatePresence>
+
 
             {/* LEDGER DRAWER */}
             <div className="no-print absolute bottom-0 left-0 right-0 bg-[#0F111A] border-t border-white/10 rounded-t-3xl max-h-[40vh] overflow-hidden flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] w-full max-w-sm mx-auto">
@@ -586,6 +783,7 @@ export default function BauCuaPage() {
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-green-500" />
                                     <span className={`font-bold ${player.id === playerId ? 'text-white' : 'text-white/70'}`}>{player.name} {player.id === playerId && '(You)'}</span>
+                                    {isLive && session?.hostId === player.id && <Shield size={12} className="text-yellow-500 ml-1" />}
                                 </div>
                                 <div className="text-right">
                                     <div className="font-mono font-bold text-yellow-400">${player.balance.toLocaleString()}</div>
@@ -600,7 +798,7 @@ export default function BauCuaPage() {
                 </div>
             </div>
 
-            {/* --- TOP UP MODAL --- */}
+            {/* --- TOP UP MODAL (Same as before) --- */}
             <AnimatePresence>
                 {showTopUpModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -710,3 +908,5 @@ export default function BauCuaPage() {
         </div>
     );
 }
+
+

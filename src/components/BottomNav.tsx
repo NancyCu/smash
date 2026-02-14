@@ -151,6 +151,7 @@ export default function BottomNav() {
     pathname.includes(activeGameId || '')
   );
   const isPlayActive = pathname === '/play' || pathname === '/create' || pathname === '/join';
+  const isBauCua = pathname === '/bau-cua';
 
   return (
     <>
@@ -162,13 +163,13 @@ export default function BottomNav() {
         />
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 h-16 pb-safe bg-[#0B0C15]/90 backdrop-blur-xl border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+      <div className={`fixed bottom-0 left-0 right-0 z-50 bg-[#0B0C15]/90 backdrop-blur-xl border-t border-white/10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] transition-all duration-300 ${isBauCua ? 'h-12 pb-1' : 'h-16 pb-safe'}`}>
         <div className="flex justify-between items-center h-full px-2 max-w-lg mx-auto w-full">
 
           {/* 1. HOME */}
           <Link href="/" className={`${getLinkClass('/', [])} flex-1 h-full`} aria-label="Home" title="Home">
-            <Home size={26} strokeWidth={2.5} />
-            <span className="text-[10px] font-bold mt-1 tracking-wider">HOME</span>
+            <Home size={isBauCua ? 20 : 26} strokeWidth={2.5} />
+            {!isBauCua && <span className="text-[10px] font-bold mt-1 tracking-wider">HOME</span>}
           </Link>
 
           {/* 2. BAU CUA (Game) */}
@@ -178,46 +179,48 @@ export default function BottomNav() {
             aria-label="Bau Cua"
             title="Bau Cua"
           >
-            <Dices size={26} strokeWidth={2.5} className={pathname === '/bau-cua' ? "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" : ""} />
-            <span className="text-[10px] font-bold mt-1 tracking-wider">GAME</span>
+            <span className={`text-[26px] leading-none ${pathname === '/bau-cua' ? "drop-shadow-[0_0_8px_rgba(234,179,8,0.6)]" : "grayscale opacity-80"}`}>🦀</span>
+            {!isBauCua && <span className="text-[10px] font-bold mt-1 tracking-wider uppercase">Bau Cua</span>}
           </Link>
 
           {/* 3. LIVE (The Big Center FAB - Beacon Mode) */}
-          <button
-            id="tour-live-btn" // <--- ADD THIS ID HERE
-            onClick={handleLiveClick}
-            className="relative -top-7 group flex flex-col items-center flex-1 h-full justify-start z-10"
-            aria-label="Live Game"
-            title={
-              liveGames.length > 1 ? `${liveGames.length} LIVE Games - Quick Warp` :
-                liveGames.length === 1 ? "Jump to LIVE Game" :
-                  activeGameId ? "Jump to Active Game" :
-                    "No Active Game"
-            }
-          >
-            <div className="relative overflow-visible">
-              {/* Active Ring - Shown when on the exact active game page */}
-              {isOnActiveGame && (
-                <div className="absolute inset-0 -m-1 rounded-full border-2 border-cyan-400 opacity-50 animate-pulse" />
-              )}
+          {!isBauCua && (
+            <button
+              id="tour-live-btn" // <--- ADD THIS ID HERE
+              onClick={handleLiveClick}
+              className="relative -top-7 group flex flex-col items-center flex-1 h-full justify-start z-10"
+              aria-label="Live Game"
+              title={
+                liveGames.length > 1 ? `${liveGames.length} LIVE Games - Quick Warp` :
+                  liveGames.length === 1 ? "Jump to LIVE Game" :
+                    activeGameId ? "Jump to Active Game" :
+                      "No Active Game"
+              }
+            >
+              <div className="relative overflow-visible">
+                {/* Active Ring - Shown when on the exact active game page */}
+                {isOnActiveGame && (
+                  <div className="absolute inset-0 -m-1 rounded-full border-2 border-cyan-400 opacity-50 animate-pulse" />
+                )}
 
-              <div className={`
+                <div className={`
               p-4 rounded-full shadow-2xl transition-all duration-300 group-hover:scale-105 overflow-visible
               ${shouldGlow
-                  ? `bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_0_30px_rgba(34,211,238,0.8)] ${shouldPulse ? 'animate-pulse' : ''}`
-                  : "bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-md border border-white/20 group-hover:from-cyan-500/30 group-hover:to-blue-600/30 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"}
+                    ? `bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_0_30px_rgba(34,211,238,0.8)] ${shouldPulse ? 'animate-pulse' : ''}`
+                    : "bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-md border border-white/20 group-hover:from-cyan-500/30 group-hover:to-blue-600/30 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"}
             `} style={{ filter: shouldGlow ? 'drop-shadow(0 0 20px rgba(34,211,238,0.6))' : 'none' }}>
-                <Zap
-                  size={32}
-                  strokeWidth={2.5}
-                  className={`${shouldGlow ? "fill-white text-white" : "text-white"} drop-shadow-lg`}
-                />
+                  <Zap
+                    size={32}
+                    strokeWidth={2.5}
+                    className={`${shouldGlow ? "fill-white text-white" : "text-white"} drop-shadow-lg`}
+                  />
+                </div>
               </div>
-            </div>
-            <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold tracking-wider whitespace-nowrap ${shouldGlow ? "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" : "text-white/40 group-hover:text-white/70"}`}>
-              LIVE
-            </span>
-          </button>
+              <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold tracking-wider whitespace-nowrap ${shouldGlow ? "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" : "text-white/40 group-hover:text-white/70"}`}>
+                LIVE
+              </span>
+            </button>
+          )}
 
 
 
@@ -228,14 +231,14 @@ export default function BottomNav() {
             aria-label="Lipid Lotto"
             title="Lipid Lotto"
           >
-            <HeartPulse size={26} strokeWidth={2.5} className={`${pathname === '/lipid-lotto' ? "text-red-500 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]" : "text-white/40 group-hover:text-white/70"}`} />
-            <span className={`text-[10px] font-bold mt-1 tracking-wider ${pathname === '/lipid-lotto' ? "text-red-400" : ""}`}>LOTTO</span>
+            <HeartPulse size={isBauCua ? 20 : 26} strokeWidth={2.5} className={`${pathname === '/lipid-lotto' ? "text-red-500 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]" : "text-white/40 group-hover:text-white/70"}`} />
+            {!isBauCua && <span className={`text-[10px] font-bold mt-1 tracking-wider ${pathname === '/lipid-lotto' ? "text-red-400" : ""}`}>LOTTO</span>}
           </Link>
 
           {/* 5. YOU (Profile) */}
           <Link href="/profile" className={`${getLinkClass('/profile', [])} flex-1 h-full`} aria-label="Profile" title="Your Profile">
-            <User size={26} strokeWidth={2.5} />
-            <span className="text-[10px] font-bold mt-1 tracking-wider">YOU</span>
+            <User size={isBauCua ? 20 : 26} strokeWidth={2.5} />
+            {!isBauCua && <span className="text-[10px] font-bold mt-1 tracking-wider">YOU</span>}
           </Link>
 
         </div>

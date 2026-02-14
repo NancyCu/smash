@@ -11,7 +11,10 @@ import {
     limit,
     setDoc,
     getDoc,
-    increment
+    deleteDoc,
+    where,
+    increment,
+    writeBatch
 } from "firebase/firestore";
 
 // --- TYPES ---
@@ -34,9 +37,21 @@ export interface Transaction {
     timestamp: any;
 }
 
+export interface GameSession {
+    isActive: boolean;
+    hostId: string | null;
+    hostName: string | null;
+    status: 'BETTING' | 'ROLLING' | 'RESULT';
+    timerEnd: any; // Timestamp
+    result: string[]; // [deer, gourd, crab]
+    historyId: string; // ID to group transactions for archiving
+}
+
 // --- CONSTANTS ---
 const PLAYERS_COL = "bau_cua_players";
 const TRANSACTIONS_COL = "bau_cua_transactions";
+const SESSION_COL = "bau_cua_session";
+const SESSION_DOC_ID = "live_game";
 
 // --- SERVICE FUNCTIONS ---
 
@@ -86,8 +101,6 @@ export const updatePlayerStats = async (
     };
 
     if (isWin) updates.wins = increment(1);
-    // Only increment loss if it's a pure loss event, 
-    // but usually in Bau Cua, a non-win round is a loss.
     if (isLoss) updates.losses = increment(1);
 
     await updateDoc(playerRef, updates);
@@ -122,7 +135,56 @@ export const addTransaction = async (
     });
 };
 
+// --- SESSION MANAGEMENT ---
+
+export const getGameSession = async (): Promise<GameSession | null> => {
+    const snap = await getDoc(doc(db, SESSION_COL, SESSION_DOC_ID));
+    if (snap.exists()) return snap.data() as GameSession;
+    return null;
+};
+
+export const initGameSession = async () => {
+    const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
+    const initialSession: GameSession = {
+        isActive: true,
+        hostId: null,
+        hostName: null,
+        status: 'BETTING',
+        timerEnd: null,
+        result: [],
+        historyId: crypto.randomUUID()
+    };
+    await setDoc(ref, initialSession);
+};
+
+export const updateSessionStatus = async (status: GameSession['status'], result: string[] = []) => {
+    const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
+    await updateDoc(ref, { status, result });
+};
+
+export const setSessionHost = async (hostId: string, hostName: string) => {
+    const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
+    await updateDoc(ref, { hostId, hostName });
+};
+
+export const endLiveGame = async () => {
+    // Logic to archive could go here, for now just reset
+    const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
+    await deleteDoc(ref); // Or mark isActive: false
+};
+
+
 // --- SUBSCRIPTIONS ---
+
+export const subscribeToSession = (callback: (session: GameSession | null) => void) => {
+    return onSnapshot(doc(db, SESSION_COL, SESSION_DOC_ID), (doc) => {
+        if (doc.exists()) {
+            callback(doc.data() as GameSession);
+        } else {
+            callback(null);
+        }
+    });
+};
 
 export const subscribeToPlayers = (callback: (players: Player[]) => void) => {
     const q = query(
