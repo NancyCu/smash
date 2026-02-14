@@ -701,7 +701,8 @@ export default function BauCuaPage() {
                 {/* --- RIGHT: CONTROLS & PLAYERS (Desktop: 1/3, Mobile: Bottom Sticky) --- */}
                 {/* Desktop: Sticky column, split into Top (Controls) and Bottom (Players) */}
                 <div className="flex-1 md:flex-[1] md:sticky md:top-24 md:h-[calc(100dvh-8rem)] flex flex-col gap-6">
-                    <div className="bg-[#151725]/90 backdrop-blur-xl p-4 md:p-6 rounded-3xl border border-white/10 shadow-2xl flex flex-col gap-4 md:gap-6">
+                    {/* DESKTOP CONTROLS (Hidden on Mobile) */}
+                    <div className="hidden md:flex bg-[#151725]/90 backdrop-blur-xl p-4 md:p-6 rounded-3xl border border-white/10 shadow-2xl flex-col gap-4 md:gap-6">
 
                         {/* HOST START NEXT ROUND */}
                         {isHost && currentStatus === 'RESULT' && (
@@ -932,7 +933,100 @@ export default function BauCuaPage() {
                 )}
             </div>
 
-            {/* --- TOP UP MODAL (Same as before) --- */}
+            {/* MOBILE FIXED CONTROLS BAR */}
+            <div className="md:hidden no-print fixed bottom-12 left-0 right-0 z-50 bg-[#0B0C15]/95 backdrop-blur-xl border-t border-white/10 px-4 py-3 shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
+
+                {/* STATE: BETTING */}
+                {currentStatus === 'BETTING' && (
+                    <div className="flex items-center gap-3">
+                        {/* Chips */}
+                        <div className="flex gap-2">
+                            {CHIPS.map(chip => (
+                                <button
+                                    key={chip}
+                                    onClick={() => setSelectedChip(chip)}
+                                    className={`
+                                        w-12 h-12 rounded-full flex items-center justify-center font-black text-sm border-2 transition-all
+                                        ${selectedChip === chip
+                                            ? 'bg-yellow-500 border-white text-black scale-110 shadow-lg'
+                                            : 'bg-white/10 border-white/10 text-white/50'}
+                                    `}
+                                >
+                                    ${chip}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="w-px h-8 bg-white/10 mx-1" />
+
+                        {/* Clear */}
+                        <button
+                            onClick={clearBets}
+                            disabled={Object.keys(bets).length === 0}
+                            className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 disabled:opacity-30 active:bg-white/20"
+                        >
+                            <RotateCcw size={18} />
+                        </button>
+
+                        {/* ROLL */}
+                        <button
+                            onClick={handleRollClick}
+                            disabled={Object.keys(bets).length === 0 && !isLive}
+                            className={`
+                                flex-1 h-12 rounded-xl font-black text-lg uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                ${(Object.keys(bets).length > 0 || (isLive && isHost))
+                                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-pink-500/20'
+                                    : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                            `}
+                        >
+                            {isHost ? 'LOCK' : 'ROLL'}
+                        </button>
+                    </div>
+                )}
+
+                {/* STATE: HOST ROLLING (Review) */}
+                {isHost && currentStatus === 'ROLLING' && (
+                    <div className="flex items-center gap-3">
+                        <div className="flex gap-1">
+                            {result.map((id, i) => (
+                                <button key={i} onClick={() => removeResultItem(i)} className="text-3xl hover:scale-90 transition">
+                                    {ANIMALS.find(a => a.id === id)?.emoji}
+                                </button>
+                            ))}
+                            {Array.from({ length: 3 - result.length }).map((_, i) => (
+                                <div key={i} className="w-9 h-9 rounded-full border border-white/20 border-dashed" />
+                            ))}
+                        </div>
+                        <button onClick={resetResultInput} className="px-4 py-2 rounded-lg bg-white/10 text-xs font-bold uppercase">Reset</button>
+                        <button
+                            onClick={confirmResult}
+                            disabled={result.length !== 3}
+                            className={`flex-1 h-12 rounded-xl font-bold uppercase tracking-wider text-sm transition-all
+                                ${result.length === 3 ? 'bg-green-500 text-white shadow-lg' : 'bg-white/10 text-white/30'}
+                            `}
+                        >
+                            Submit
+                        </button>
+                    </div>
+                )}
+
+                {/* STATE: RESULT/ROUND OVER */}
+                {isHost && currentStatus === 'RESULT' && (
+                    <button onClick={newGame} className="w-full h-12 bg-blue-600 rounded-xl font-bold uppercase text-white shadow-lg animate-pulse">
+                        Start Next Round
+                    </button>
+                )}
+
+                {/* STATE: WAITING (Client) */}
+                {!isHost && currentStatus !== 'BETTING' && (
+                    <div className="flex items-center justify-center h-12 text-white/40 font-mono text-xs animate-pulse">
+                        WAITING FOR HOST...
+                    </div>
+                )}
+
+            </div>
+
+            {/* --- TOP UP MODAL --- */}
             <AnimatePresence>
                 {showTopUpModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1002,42 +1096,44 @@ export default function BauCuaPage() {
 
             {/* --- IDENTITY MODAL --- */}
             <AnimatePresence>
-                {showIdentityModal && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/90 backdrop-blur-xl"
-                        />
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="relative w-full max-w-sm bg-[#1A1C29] border border-white/10 rounded-3xl p-8 shadow-2xl text-center"
-                        >
-                            <h2 className="text-2xl font-russo text-white mb-2">WHO IS PLAYING?</h2>
-                            <p className="text-white/50 text-sm mb-6">Enter your name to join the table.</p>
-
-                            <input
-                                type="text"
-                                value={userInputName}
-                                onChange={e => setUserInputName(e.target.value)}
-                                placeholder="Your Name"
-                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-center text-xl font-bold text-white mb-4 focus:ring-2 focus:ring-pink-500 outline-none"
+                {
+                    showIdentityModal && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-black/90 backdrop-blur-xl"
                             />
-
-                            <button
-                                onClick={handleJoin}
-                                disabled={!userInputName.trim()}
-                                className="w-full py-4 bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white rounded-xl font-black text-lg uppercase tracking-widest shadow-lg transition-all"
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.9, opacity: 0 }}
+                                className="relative w-full max-w-sm bg-[#1A1C29] border border-white/10 rounded-3xl p-8 shadow-2xl text-center"
                             >
-                                Join Table
-                            </button>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+                                <h2 className="text-2xl font-russo text-white mb-2">WHO IS PLAYING?</h2>
+                                <p className="text-white/50 text-sm mb-6">Enter your name to join the table.</p>
+
+                                <input
+                                    type="text"
+                                    value={userInputName}
+                                    onChange={e => setUserInputName(e.target.value)}
+                                    placeholder="Your Name"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-center text-xl font-bold text-white mb-4 focus:ring-2 focus:ring-pink-500 outline-none"
+                                />
+
+                                <button
+                                    onClick={handleJoin}
+                                    disabled={!userInputName.trim()}
+                                    className="w-full py-4 bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white rounded-xl font-black text-lg uppercase tracking-widest shadow-lg transition-all"
+                                >
+                                    Join Table
+                                </button>
+                            </motion.div>
+                        </div>
+                    )
+                }
+            </AnimatePresence >
 
         </div >
     );
