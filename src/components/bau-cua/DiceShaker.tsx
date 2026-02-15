@@ -6,13 +6,14 @@
  * Props
  * ─────
  *  trigger        — increment this number to start a new shake sequence
+ *  shakeType      — 1 or 2, determines sound and perhaps nuance of animation
  *  onRollComplete — called with [n, n, n] (0-5) once the bowl is fully lifted
  *  disabled       — prevents new shakes from starting
  *
  * Usage
  * ─────
  *  const [trigger, setTrigger] = useState(0);
- *  <DiceShaker trigger={trigger} onRollComplete={handleResult} />
+ *  <DiceShaker trigger={trigger} shakeType={1} onRollComplete={handleResult} />
  *  <button onClick={() => setTrigger(t => t + 1)}>SHAKE</button>
  */
 "use client";
@@ -37,7 +38,7 @@ import { useShakeAudio } from "./useShakeAudio";
 type ShakerState = "IDLE" | "SHAKING" | "ROLLED" | "REVEALED";
 
 /** Duration of each phase (seconds). */
-const SHAKE_DURATION = 2.4;
+const SHAKE_DURATION = 3.0; // Slower, "once twice third"
 const ROLL_PAUSE = 0.25; // brief pause before bowl lifts
 const REVEAL_DURATION = 1.4;
 
@@ -160,25 +161,19 @@ function Plate() {
  */
 function Bowl({
   liftProgress,
-  shakeOffset,
 }: {
   liftProgress: number; // 0 = closed, 1 = fully lifted
-  shakeOffset: THREE.Vector3;
 }) {
   const ref = useRef<THREE.Mesh>(null!);
 
   useFrame(() => {
     if (!ref.current) return;
-    // Lift + tilt animation
+    // Lift + tilt animation (relative to the group)
     const y = THREE.MathUtils.lerp(0.05, 3.8, liftProgress);
     const tiltX = THREE.MathUtils.lerp(0, -0.45, liftProgress);
     const tiltZ = THREE.MathUtils.lerp(0, 0.2, liftProgress);
 
-    ref.current.position.set(
-      shakeOffset.x,
-      y + shakeOffset.y,
-      shakeOffset.z,
-    );
+    ref.current.position.set(0, y, 0);
     ref.current.rotation.set(tiltX, 0, tiltZ);
   });
 
@@ -201,18 +196,15 @@ function Die({
   index,
   resultIndex,
   state,
-  shakeOffset,
   faceTextures,
 }: {
   index: number;
   resultIndex: number;
   state: ShakerState;
-  shakeOffset: THREE.Vector3;
   faceTextures: THREE.CanvasTexture[];
 }) {
   const ref = useRef<THREE.Mesh>(null!);
   const targetRotRef = useRef(new THREE.Euler());
-  const currentRotRef = useRef(new THREE.Euler());
 
   // 6 materials, one per face
   const materials = useMemo(
@@ -242,15 +234,16 @@ function Die({
     const pos = DICE_POSITIONS[index];
 
     if (state === "SHAKING") {
-      // Random jitter (constrained to a small area)
+      // Random jitter INSIDE the bowl (relative to plate)
+      // Since the whole group moves, we just need small local rattle
       ref.current.position.set(
-        pos[0] + shakeOffset.x + (Math.random() - 0.5) * 0.15,
-        pos[1] + Math.abs(shakeOffset.y) * 0.3,
-        pos[2] + shakeOffset.z + (Math.random() - 0.5) * 0.15,
+        pos[0] + (Math.random() - 0.5) * 0.1,
+        pos[1] + (Math.random() - 0.5) * 0.1,
+        pos[2] + (Math.random() - 0.5) * 0.1,
       );
-      ref.current.rotation.x += (Math.random() - 0.5) * 0.6;
-      ref.current.rotation.y += (Math.random() - 0.5) * 0.6;
-      ref.current.rotation.z += (Math.random() - 0.5) * 0.6;
+      ref.current.rotation.x += (Math.random() - 0.5) * 0.8;
+      ref.current.rotation.y += (Math.random() - 0.5) * 0.8;
+      ref.current.rotation.z += (Math.random() - 0.5) * 0.8;
     } else if (state === "ROLLED" || state === "REVEALED") {
       // Smoothly interpolate to target rotation
       const speed = 12 * delta;
@@ -304,10 +297,12 @@ function Die({
 
 function Scene({
   trigger,
+  shakeType,
   onRollComplete,
   disabled,
 }: {
   trigger: number;
+  shakeType: 1 | 2;
   onRollComplete?: (results: number[]) => void;
   disabled?: boolean;
 }) {
@@ -315,9 +310,9 @@ function Scene({
   const [results, setResults] = useState<[number, number, number]>([2, 4, 0]);
   const liftRef = useRef(0); // 0→1 eased
   const clockRef = useRef(0);
-  const shakeOffset = useRef(new THREE.Vector3());
   const lastTrigger = useRef(trigger);
   const callbackFiredRef = useRef(false);
+  const groupRef = useRef<THREE.Group>(null!);
 
   const { startShake, stopShake, playThud, playChime } = useShakeAudio();
 
@@ -331,23 +326,51 @@ function Scene({
       clockRef.current = 0;
       liftRef.current = 0;
       callbackFiredRef.current = false;
-      shakeOffset.current.set(0, 0, 0);
       setState("SHAKING");
-      startShake();
+      startShake(shakeType);
     }
-  }, [trigger, disabled, startShake]);
+  }, [trigger, disabled, startShake, shakeType]);
 
   // Per-frame state machine
   useFrame((_, delta) => {
     clockRef.current += delta;
 
     if (state === "SHAKING") {
-      // Bowl vibration
-      shakeOffset.current.set(
-        (Math.random() - 0.5) * 0.12,
-        (Math.random() - 0.5) * 0.06,
-        (Math.random() - 0.5) * 0.12,
-      );
+      // "Once, twice, third" animation
+      // We want 3 peaks.
+      // Total duration ~3.0s. 
+      // Lift up: 0.3s
+      // Shake: 3 cycles.
+      // Slam down: last 0.2s.
+
+      const t = clockRef.current;
+      const progress = Math.min(t / SHAKE_DURATION, 1);
+
+      // Vertical lift: Go up and stay up while shaking, then drop
+      // Lift phase
+      let y = 0;
+      if (progress < 0.1) {
+        y = THREE.MathUtils.lerp(0, 1.5, progress / 0.1);
+      } else if (progress > 0.9) {
+        y = THREE.MathUtils.lerp(1.5, 0, (progress - 0.9) / 0.1);
+      } else {
+        y = 1.5;
+        // Add the "shake" on top of the lift
+        // 3 distinct shakes. 
+        // Sin wave with frequency matched to give 3 peaks in remaining time (0.1 to 0.9 = 0.8 total time? No, need more time)
+        // Let's use specific sin waves.
+        const shakeContent = (progress - 0.1) / 0.8; // 0 to 1 during the hold phase
+        // 3 full sine waves: 3 * 2PI
+        const shakeY = Math.sin(shakeContent * Math.PI * 6) * 0.3;
+        y += shakeY;
+      }
+
+      if (groupRef.current) {
+        groupRef.current.position.y = y;
+        // Add some rotation shake
+        groupRef.current.rotation.z = Math.sin(clockRef.current * 15) * 0.05;
+        groupRef.current.rotation.x = Math.cos(clockRef.current * 12) * 0.05;
+      }
 
       if (clockRef.current >= SHAKE_DURATION) {
         // Transition → ROLLED
@@ -355,7 +378,10 @@ function Scene({
         const roll = secureRoll();
         setResults(roll);
         clockRef.current = 0;
-        shakeOffset.current.set(0, 0, 0);
+        if (groupRef.current) {
+          groupRef.current.position.y = 0;
+          groupRef.current.rotation.set(0, 0, 0);
+        }
         playThud();
         setState("ROLLED");
       }
@@ -376,14 +402,16 @@ function Scene({
         onRollComplete?.(results);
       }
     } else {
-      // IDLE – settle offsets
-      shakeOffset.current.set(0, 0, 0);
+      // IDLE
+      if (groupRef.current) {
+        groupRef.current.position.y = 0;
+        groupRef.current.rotation.set(0, 0, 0);
+      }
     }
   });
 
   return (
     <>
-      {/* Lighting */}
       <ambientLight intensity={0.5} />
       <spotLight
         position={[3, 8, 4]}
@@ -395,27 +423,22 @@ function Scene({
         shadow-mapSize-height={1024}
       />
       <pointLight position={[-3, 4, -2]} intensity={0.4} color="#ffe4c4" />
-
-      {/* Environment for reflections */}
       <Environment preset="city" />
 
-      {/* Plate */}
-      <Plate />
-
-      {/* Bowl */}
-      <Bowl liftProgress={liftRef.current} shakeOffset={shakeOffset.current} />
-
-      {/* Dice */}
-      {([0, 1, 2] as const).map((i) => (
-        <Die
-          key={i}
-          index={i}
-          resultIndex={results[i]}
-          state={state}
-          shakeOffset={shakeOffset.current}
-          faceTextures={faceTextures}
-        />
-      ))}
+      {/* Group the whole assembly for the "pickup" animation */}
+      <group ref={groupRef}>
+        <Plate />
+        <Bowl liftProgress={liftRef.current} />
+        {([0, 1, 2] as const).map((i) => (
+          <Die
+            key={i}
+            index={i}
+            resultIndex={results[i]}
+            state={state}
+            faceTextures={faceTextures}
+          />
+        ))}
+      </group>
     </>
   );
 }
@@ -427,6 +450,8 @@ function Scene({
 export interface DiceShakerProps {
   /** Increment to start a new shake. */
   trigger: number;
+  /** 1 or 2 */
+  shakeType?: 1 | 2;
   /** Called with [n, n, n] (0-5) once the bowl is fully lifted. */
   onRollComplete?: (results: number[]) => void;
   /** Prevent new shakes. */
@@ -437,6 +462,7 @@ export interface DiceShakerProps {
 
 export default function DiceShaker({
   trigger,
+  shakeType = 1,
   onRollComplete,
   disabled,
   className = "",
@@ -457,6 +483,7 @@ export default function DiceShaker({
       >
         <Scene
           trigger={trigger}
+          shakeType={shakeType}
           onRollComplete={onRollComplete}
           disabled={disabled}
         />
@@ -464,3 +491,4 @@ export default function DiceShaker({
     </div>
   );
 }
+

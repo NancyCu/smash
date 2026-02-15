@@ -1,0 +1,42 @@
+I have successfully implemented the 3D Bau Cua Shaker with a virtual dealer experience, cryptographic RNG, and synthesized audio.
+
+1. New Components & Logic
+A. The 3D Scene (src/components/bau-cua/DiceShaker.tsx)
+
+Tech: Built with @react-three/fiber and @react-three/drei.
+Models:
+Bowl: A procedurally generated ceramic dome (inverted hemisphere) that animates upwards to reveal the dice.
+Dice: Three BoxGeometry meshes with custom textures.
+Textures: I implemented a renderFaceCanvas helper that generates high-quality dice textures (black circular backgrounds with emojis and labels) on the fly using the HTML5 Canvas API. This avoids external image requests and keeps the bundle small.
+Animation State Machine:
+IDLE: Bowl rests on the plate.
+SHAKING (2.4s): The bowl and dice vibrate randomly with position/rotation jitter.
+ROLLED (Hidden): The shaking stops, and the dice instantly "snap" to their cryptographically determined rotation under the closed bowl.
+REVEALED (1.4s): The bowl smoothly lifts and tilts to reveal the result.
+B. Audio Engine (src/components/bau-cua/useShakeAudio.ts)
+
+Zero Assets: Instead of loading MP3 files, I built a custom hook using the Web Audio API.
+Synthesis:
+Scanning/Shaking: A white noise buffer processed through a band-pass filter to simulate the clatter of dice.
+Thud: A low-frequency sine wave with rapid exponential decay for the bowl hitting the plate.
+Chime: A 3-note major chord (C-E-G) with staggered attack and smooth release for the "success" reveal sound.
+C. Secure RNG (src/lib/secure-roll.ts)
+
+Logic: Replaced Math.random() with window.crypto.getRandomValues().
+Function: Generates three 32-bit unsigned integers and maps them modulo 6 to determine the resulting animals (Deer, Gourd, Chicken, Fish, Crab, Shrimp). This ensures the roll is unpredictable and fair.
+2. Integration Changes
+File: page.tsx
+
+Dynamic Import: Loaded DiceShaker with ssr: false to ensure WebGL context compatibility.
+Game Flow Refactor:
+Old Flow: Clicking "Roll" immediately calculated results and updated the UI.
+New Flow: Clicking "Shake" now sets a shakeTrigger state. This starts the 3D animation. The logic waits for the onRollComplete callback from the 3D component (after the reveal animation) before dispatching the result to Firestore or settling the local game.
+UI Update: Inserted the DiceShaker canvas prominently above the betting grid.
+3. Summary of Files
+File Path	Status	Description
+src/components/bau-cua/DiceShaker.tsx	Created	Main 3D component, scene setup, and animation logic.
+src/components/bau-cua/useShakeAudio.ts	Created	Audio synthesizer hook.
+src/lib/secure-roll.ts	Created	Crypto RNG utility.
+page.tsx	Modified	Integrated 3D shaker, refactored game loop to wait for animation.
+package.json	Modified	Added three, @react-three/fiber, @react-three/drei.
+The build verified cleanly with no errors. You can now test the 3D experience by navigating to the Bau Cua page and starting a game.

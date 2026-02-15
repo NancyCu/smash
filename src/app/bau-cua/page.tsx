@@ -205,6 +205,7 @@ export default function BauCuaPage() {
 
     // 3D Shaker State
     const [shakeTrigger, setShakeTrigger] = useState(0);
+    const [shakeType, setShakeType] = useState<1 | 2>(1);
     const [shakerActive, setShakerActive] = useState(false);
 
     // --- DERIVED STATE ---
@@ -409,13 +410,14 @@ export default function BauCuaPage() {
 
     // --- GAME FLOW LOGIC ---
 
-    const handleRollClick = async () => {
+    const handleRollClick = async (type: 1 | 2 = 1) => {
         if (isLive && !isHost) return; // Clients can't roll
 
         // If local game:
         if (!isLive) {
             if (Object.keys(bets).length === 0) return;
             // Trigger the 3D shaker instead of instantly showing result
+            setShakeType(type);
             setShakerActive(true);
             setShakeTrigger(prev => prev + 1);
             return;
@@ -423,6 +425,7 @@ export default function BauCuaPage() {
 
         // If HOST: Lock bets for everyone, then trigger shaker
         await updateSessionStatus('ROLLING');
+        setShakeType(type);
         setShakerActive(true);
         setShakeTrigger(prev => prev + 1);
     };
@@ -773,28 +776,49 @@ export default function BauCuaPage() {
                             <div className="mb-4">
                                 <DiceShaker
                                     trigger={shakeTrigger}
+                                    shakeType={shakeType}
                                     onRollComplete={handleDiceResult}
                                     disabled={currentStatus === 'RESULT'}
                                     className="border border-white/10 shadow-2xl"
                                 />
-                                {/* Shake button (below canvas, only during BETTING) */}
+                                {/* Shake buttons (below canvas, only during BETTING) */}
                                 {currentStatus === 'BETTING' && (!isLive || isHost) && (
-                                    <button
-                                        onClick={handleRollClick}
-                                        disabled={(Object.keys(bets).length === 0 && !isLive) || shakerActive}
-                                        className={`
-                                            mt-3 w-full py-4 rounded-2xl font-black text-xl uppercase tracking-widest
-                                            shadow-lg flex items-center justify-center gap-2 transition-all
-                                            ${(Object.keys(bets).length > 0 || (isLive && isHost)) && !shakerActive
-                                                ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.02]'
-                                                : 'bg-white/10 text-white/30 cursor-not-allowed'}
-                                        `}
-                                    >
-                                        {shakerActive ? (
-                                            <><RefreshCw className="w-5 h-5 animate-spin" /> Shaking…</>
-                                        ) : (
-                                            <>🎲 SHAKE ({timeLeft}s)</>)}
-                                    </button>
+                                    <div className="mt-3 grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => handleRollClick(1)}
+                                            disabled={(Object.keys(bets).length === 0 && !isLive) || shakerActive}
+                                            className={`
+                                                py-4 rounded-xl font-black text-lg uppercase tracking-widest
+                                                shadow-lg flex items-center justify-center gap-2 transition-all
+                                                ${(Object.keys(bets).length > 0 || (isLive && isHost)) && !shakerActive
+                                                    ? 'bg-gradient-to-r from-pink-600 to-purple-600 animate-gradient text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:scale-[1.02]'
+                                                    : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                            `}
+                                        >
+                                            {shakerActive ? (
+                                                <RefreshCw className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                                <>🎲 Shake 1</>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={() => handleRollClick(2)}
+                                            disabled={(Object.keys(bets).length === 0 && !isLive) || shakerActive}
+                                            className={`
+                                                py-4 rounded-xl font-black text-lg uppercase tracking-widest
+                                                shadow-lg flex items-center justify-center gap-2 transition-all
+                                                ${(Object.keys(bets).length > 0 || (isLive && isHost)) && !shakerActive
+                                                    ? 'bg-gradient-to-r from-purple-600 to-cyan-600 animate-gradient text-white shadow-[0_0_15px_rgba(8,145,178,0.4)] hover:scale-[1.02]'
+                                                    : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                            `}
+                                        >
+                                            {shakerActive ? (
+                                                <RefreshCw className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                                <>🎲 Shake 2</>
+                                            )}
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                             {/* ROLLING OVERLAY (CLIENTS ONLY) */}
@@ -960,23 +984,39 @@ export default function BauCuaPage() {
 
                                     {/* ROLL / LOCK / READY */}
                                     {(!isLive || isHost) ? (
-                                        <button
-                                            onClick={handleRollClick}
-                                            disabled={Object.keys(bets).length === 0 && !isLive}
-                                            className={`
-                                            flex-1 h-full rounded-2xl font-black text-2xl md:text-3xl uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
-                                            ${(Object.keys(bets).length > 0 || (isLive && isHost))
-                                                    ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.02]'
-                                                    : 'bg-white/10 text-white/30 cursor-not-allowed'}
-                                        `}
-                                        >
-                                            <div className="flex flex-col items-center leading-none">
-                                                <span>{isLive ? (isHost ? (currentStatus === 'ROLLING' ? 'REVEAL WINNERS' : 'READY') : 'READY') : 'ROLL'}</span>
-                                                {currentStatus === 'BETTING' && (
-                                                    <span className="text-[10px] md:text-xs opacity-70 font-mono mt-1">{timeLeft}s</span>
-                                                )}
-                                            </div>
-                                        </button>
+                                        <div className="flex-1 flex gap-2 h-full">
+                                            <button
+                                                onClick={() => handleRollClick(1)}
+                                                disabled={(Object.keys(bets).length === 0 && !isLive)}
+                                                className={`
+                                                flex-1 h-full rounded-2xl font-black text-xl uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                                ${(Object.keys(bets).length > 0 || (isLive && isHost))
+                                                        ? 'bg-gradient-to-r from-pink-500 to-purple-500 animate-gradient text-white shadow-[0_0_15px_rgba(236,72,153,0.5)] hover:scale-[1.02]'
+                                                        : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                            `}
+                                            >
+                                                <div className="flex flex-col items-center leading-none">
+                                                    <span>S1</span>
+                                                    {currentStatus === 'BETTING' && (
+                                                        <span className="text-[10px] opacity-70 font-mono mt-1">{timeLeft}s</span>
+                                                    )}
+                                                </div>
+                                            </button>
+                                            <button
+                                                onClick={() => handleRollClick(2)}
+                                                disabled={(Object.keys(bets).length === 0 && !isLive)}
+                                                className={`
+                                                flex-1 h-full rounded-2xl font-black text-xl uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                                ${(Object.keys(bets).length > 0 || (isLive && isHost))
+                                                        ? 'bg-gradient-to-r from-purple-500 to-cyan-500 animate-gradient text-white shadow-[0_0_15px_rgba(8,145,178,0.5)] hover:scale-[1.02]'
+                                                        : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                            `}
+                                            >
+                                                <div className="flex flex-col items-center leading-none">
+                                                    <span>S2</span>
+                                                </div>
+                                            </button>
+                                        </div>
                                     ) : (
                                         // CLIENT VIEW: Just a Timer Display
                                         <div className="flex-1 h-full rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-white/50">
@@ -1147,19 +1187,32 @@ export default function BauCuaPage() {
 
                         {/* ROLL / READY (Mobile) */}
                         {(!isLive || isHost) ? (
-                            <button
-                                onClick={handleRollClick}
-                                disabled={Object.keys(bets).length === 0 && !isLive}
-                                className={`
-                                flex-1 h-12 rounded-xl font-black text-lg uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
-                                ${(Object.keys(bets).length > 0 || (isLive && isHost))
-                                        ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-pink-500/20'
-                                        : 'bg-white/10 text-white/30 cursor-not-allowed'}
-                            `}
-                            >
-                                {isLive ? 'READY' : 'ROLL'}
-                                <span className="ml-2 text-xs opacity-50 font-mono">({timeLeft}s)</span>
-                            </button>
+                            <div className="flex-1 flex gap-2 h-12">
+                                <button
+                                    onClick={() => handleRollClick(1)}
+                                    disabled={Object.keys(bets).length === 0 && !isLive}
+                                    className={`
+                                        flex-1 h-full rounded-xl font-black text-sm uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                        ${(Object.keys(bets).length > 0 || (isLive && isHost))
+                                            ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-pink-500/20'
+                                            : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                    `}
+                                >
+                                    S1 ({timeLeft}s)
+                                </button>
+                                <button
+                                    onClick={() => handleRollClick(2)}
+                                    disabled={Object.keys(bets).length === 0 && !isLive}
+                                    className={`
+                                        flex-1 h-full rounded-xl font-black text-sm uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                        ${(Object.keys(bets).length > 0 || (isLive && isHost))
+                                            ? 'bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-cyan-500/20'
+                                            : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                    `}
+                                >
+                                    S2
+                                </button>
+                            </div>
                         ) : (
                             <div className="flex-1 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 font-mono text-sm">
                                 Starting in <span className="text-white font-bold ml-2">{timeLeft}s</span>

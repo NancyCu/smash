@@ -1,41 +1,40 @@
-/**
- * useShakeAudio – Web Audio API synthesiser for the Bau Cua shaker.
- *
- * Generates three sounds entirely in-code (no external audio files):
- *   1. Shaking  – band-passed white noise loop (rattling dice in a bowl)
- *   2. Chime    – layered sine-wave harmonics with smooth decay (reveal)
- *   3. Thud     – low-frequency transient (bowl hitting plate)
- */
 "use client";
 
 import { useRef, useCallback, useEffect } from "react";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Create a buffer of white noise (1 second, mono). */
-function createNoiseBuffer(ctx: AudioContext): AudioBuffer {
-  const length = ctx.sampleRate; // 1s
-  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < length; i++) {
-    data[i] = Math.random() * 2 - 1;
-  }
-  return buffer;
-}
 
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
 export function useShakeAudio() {
-  const ctxRef = useRef<AudioContext | null>(null);
-  const noiseRef = useRef<AudioBuffer | null>(null);
-  const shakeSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const shakeGainRef = useRef<GainNode | null>(null);
+  const shake1Ref = useRef<HTMLAudioElement | null>(null);
+  const shake2Ref = useRef<HTMLAudioElement | null>(null);
+  const chimeRef = useRef<HTMLAudioElement | null>(null);
+  const thudRef = useRef<HTMLAudioElement | null>(null);
 
-  // Lazy-init AudioContext (must be triggered by user gesture on mobile)
+  useEffect(() => {
+    // Preload audio
+    shake1Ref.current = new Audio("/sounds/Shake_1.m4a");
+    shake2Ref.current = new Audio("/sounds/Shake_2.m4a");
+
+    // We can keep synthesized chime/thud or replace them. 
+    // The prompt only mentioned changing the shake sound. 
+    // But since we are here, let's just keep the synthesized ones as fallbacks 
+    // or use the original synthesized code for thud/chime if the user didn't provide files for those.
+    // The prompt says "I want to change the sound that you have now for the shaking".
+    // So we will keep thud and chime as synthesized or maybe just silence them if the shake audio includes everything?
+    // "Shake one and then shake two... the dealer can push any button... animation to be more slowly like you're picking up the entire plate and shaking it once, twice, and third."
+    // Usually these clips might have the "thud" at the end? 
+    // Let's assume the shake files are just the shaking sound. 
+    // I'll stick to the plan: modify to play shake 1 or 2.
+
+    // Re-implementing simplified synthesized Thud/Chime for consistency if needed, 
+    // but the file-based approach is cleaner for the main shakes.
+  }, []);
+
+  const ctxRef = useRef<AudioContext | null>(null);
+
+  // Lazy-init AudioContext for Thud/Chime (legacy/backup)
   const getCtx = useCallback(() => {
     if (!ctxRef.current) {
       ctxRef.current = new AudioContext();
@@ -46,52 +45,32 @@ export function useShakeAudio() {
     return ctxRef.current;
   }, []);
 
+
   // ------------------------------- Shake -----------------------------------
 
-  /** Start the looped "dice rattling" noise. */
-  const startShake = useCallback(() => {
-    const ctx = getCtx();
-
-    // Create noise buffer once
-    if (!noiseRef.current) {
-      noiseRef.current = createNoiseBuffer(ctx);
+  /** Play one of the two shake sounds. */
+  const startShake = useCallback((type: 1 | 2 = 1) => {
+    const audio = type === 1 ? shake1Ref.current : shake2Ref.current;
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(e => console.warn("Audio play failed", e));
     }
+  }, []);
 
-    // Source
-    const src = ctx.createBufferSource();
-    src.buffer = noiseRef.current;
-    src.loop = true;
-
-    // Band-pass filter to sound like clatter (1200-3400 Hz)
-    const bp = ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 2200;
-    bp.Q.value = 1.4;
-
-    // Gain (volume)
-    const gain = ctx.createGain();
-    gain.gain.value = 0.35;
-
-    src.connect(bp).connect(gain).connect(ctx.destination);
-    src.start();
-
-    shakeSourceRef.current = src;
-    shakeGainRef.current = gain;
-  }, [getCtx]);
-
-  /** Stop the shaking noise with a quick fade-out. */
+  /** Stop the shaking noise (fade out or cut). */
   const stopShake = useCallback(() => {
-    const ctx = ctxRef.current;
-    const gain = shakeGainRef.current;
-    const src = shakeSourceRef.current;
-    if (!ctx || !gain || !src) return;
-
-    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
-    setTimeout(() => {
-      try { src.stop(); } catch { /* already stopped */ }
-      shakeSourceRef.current = null;
-      shakeGainRef.current = null;
-    }, 200);
+    // For file based, we might just let it finish or pause it?
+    // The user said "Shake one and then shake two... each time it calls a random function to shake shake shake... animation to be more slowly... picking up the entire plate and shaking it once, twice, and third."
+    // The audio probably matches the "once, twice, third" length. 
+    // If we stop it abruptly it might sound bad. 
+    // But the original code had a stopShake. 
+    // Let's pause and reset.
+    [shake1Ref.current, shake2Ref.current].forEach(a => {
+      if (a) {
+        a.pause();
+        a.currentTime = 0;
+      }
+    });
   }, []);
 
   // ------------------------------- Thud ------------------------------------
@@ -99,7 +78,6 @@ export function useShakeAudio() {
   /** One-shot "bowl hits plate" low thud. */
   const playThud = useCallback(() => {
     const ctx = getCtx();
-
     const osc = ctx.createOscillator();
     osc.type = "sine";
     osc.frequency.setValueAtTime(80, ctx.currentTime);
@@ -119,8 +97,6 @@ export function useShakeAudio() {
   /** One-shot "celestial success" chime. */
   const playChime = useCallback(() => {
     const ctx = getCtx();
-
-    // Three harmonious tones
     const freqs = [523.25, 659.25, 783.99]; // C5, E5, G5
 
     freqs.forEach((freq, i) => {
@@ -140,13 +116,13 @@ export function useShakeAudio() {
     });
   }, [getCtx]);
 
-  // Cleanup on unmount
+  // Cleanup
   useEffect(() => {
     return () => {
-      try { shakeSourceRef.current?.stop(); } catch { /* noop */ }
       try { ctxRef.current?.close(); } catch { /* noop */ }
     };
   }, []);
 
   return { startShake, stopShake, playThud, playChime };
 }
+
