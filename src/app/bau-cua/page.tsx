@@ -20,7 +20,11 @@ import {
     updateSessionStatus,
     setSessionHost,
     endLiveGame,
-    getGameSession
+    getGameSession,
+    type PlayerBet,
+    updateBet,
+    subscribeToBets,
+    clearAllBets
 } from '@/lib/bau-cua-service';
 import { indicesToAnimalIds } from '@/lib/secure-roll';
 import { useAuth } from '@/context/AuthContext';
@@ -57,7 +61,8 @@ const AnimalCard = ({
     isWinner,
     isHostSelecting,
     selectionCount = 0,
-    matchCount = 0
+    matchCount = 0,
+    allBets = []
 }: {
     animal: typeof ANIMALS[0],
     betAmount: number,
@@ -67,10 +72,29 @@ const AnimalCard = ({
     isHostSelecting?: boolean,
     selectionCount?: number
     matchCount?: number
+    allBets?: PlayerBet[] // All global bets for visualization
 }) => {
     // Status Logic
     const isLoser = disabled && !isWinner && !isHostSelecting; // Result phase, not winner
     const winAmount = betAmount * matchCount;
+
+    // Filter bets for THIS animal from other players
+    const otherPlayerBets = allBets?.filter(pb => pb.bets && pb.bets[animal.id] > 0) || [];
+
+    // Helper to generate a consistent "Glassy" color from a string (name)
+    const getGlassyStyle = (str: string) => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        // Generate HSL
+        const h = Math.abs(hash % 360);
+        return {
+            background: `hsla(${h}, 70%, 50%, 0.3)`,
+            borderColor: `hsla(${h}, 70%, 60%, 0.5)`,
+            color: `hsla(${h}, 100%, 90%, 1)`
+        };
+    };
 
     return (
         <motion.button
@@ -92,6 +116,47 @@ const AnimalCard = ({
         ${selectionCount > 0 ? 'opacity-100 ring-2 ring-white scale-110' : ''}
       `}
         >
+            {/* MATCH MULTIPLIER (x2, x3) */}
+            {matchCount > 1 && isWinner && (
+                <div className="absolute -top-2 -right-2 z-30 bg-red-600 text-white font-black text-xl md:text-2xl px-3 py-1 rounded-full border-2 border-white shadow-[0_0_20px_rgba(220,38,38,0.8)] animate-bounce">
+                    x{matchCount}
+                </div>
+            )}
+
+            {/* OTHER PLAYER BETS (Glassy Chips) */}
+            {/* Show only if NOT disabled (Betting phase) OR if it is Result phase */}
+            {/* Actually, show always to build hype */}
+            <div className="absolute inset-0 z-20 pointer-events-none p-4">
+                {/* Distribute them randomly or in a grid? Random is more "fun/messy" */}
+                {otherPlayerBets.map((pb, i) => {
+                    const style = getGlassyStyle(pb.playerName || pb.playerId);
+                    // deterministic random position based on player ID + animal ID
+                    const pseudoRandom = (id: string) => {
+                        let h = 0;
+                        for (let j = 0; j < id.length; j++) h = Math.imul(31, h) + id.charCodeAt(j) | 0;
+                        return (h / 2147483647); // -1 to 1? no 0 to 1 approx
+                    };
+                    const randX = (Math.abs(pseudoRandom(pb.playerId + animal.id)) % 0.6) + 0.2; // 20% to 80%
+                    const randY = (Math.abs(pseudoRandom(pb.playerId + animal.id + 'y')) % 0.6) + 0.2;
+
+                    return (
+                        <div
+                            key={pb.playerId}
+                            className="absolute flex flex-col items-center justify-center rounded-lg border backdrop-blur-md shadow-sm px-1.5 py-0.5 transform -translate-x-1/2 -translate-y-1/2 hover:scale-150 transition-transform duration-300 z-20"
+                            style={{
+                                left: `${randX * 100}%`,
+                                top: `${randY * 100}%`,
+                                ...style,
+                                fontSize: '0.6rem' // Small text
+                            }}
+                        >
+                            <span className="font-bold leading-none">{pb.playerName.slice(0, 6)}..</span>
+                            <span className="font-mono opacity-90 leading-none">${pb.bets[animal.id]}</span>
+                        </div>
+                    )
+                })}
+            </div>
+
             {/* COLOR BACKGROUND - Separated for Grayscale control */}
             <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${animal.color} backdrop-blur-md transition-all duration-300 ${isLoser ? 'grayscale opacity-40' : ''}`} />
 
@@ -190,6 +255,7 @@ export default function BauCuaPage() {
     const [showIdentityModal, setShowIdentityModal] = useState(false);
     const [activePlayers, setActivePlayers] = useState<Player[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [allBets, setAllBets] = useState<PlayerBet[]>([]); // New: Global bets state
     const [userInputName, setUserInputName] = useState("");
 
     // Live Session State
@@ -207,6 +273,9 @@ export default function BauCuaPage() {
     const [shakeTrigger, setShakeTrigger] = useState(0);
     const [shakeType, setShakeType] = useState<1 | 2>(1);
     const [shakerActive, setShakerActive] = useState(false);
+    const [canReveal, setCanReveal] = useState(false); // Can we show Open/Luck buttons?
+    const [luckShakeCount, setLuckShakeCount] = useState(0);
+    const [isBowlOpen, setIsBowlOpen] = useState(true); // Open by default or after result
 
     // --- DERIVED STATE ---
     const isLive = session?.isActive ?? false;
@@ -313,12 +382,38 @@ export default function BauCuaPage() {
             }
         });
 
+        // Subscribe to real-time bets
+        const unsubBets = subscribeToBets((globalBets) => {
+            // Filter out MY bets if I want? Or just keep all.
+            // We want to see others mainly. But keeping all is fine for logic simplicity.
+            // Actually, `bets` state is my LOCAL bet source of truth for placing bets.
+            // `allBets` is for visualization.
+            // We can filter out current user from allBets if we want to avoid double rendering my own bet if I added logic for that, 
+            // but current AnimalCard design separates "My Bet" (center) from "Other Bets" (tags).
+            // So let's just exclude myself from `allBets` used for visualization.
+            const others = globalBets.filter(b => b.playerId !== playerId);
+            setAllBets(others);
+        });
+
         return () => {
             unsubPlayers();
             unsubTx();
             unsubSession();
+            unsubBets();
         };
-    }, []);
+    }, [playerId]); // Re-sub if playerId changes (for filtering)
+
+    // Sync Local Bets to Firestore (Debounced)
+    useEffect(() => {
+        if (!playerId || !playerName) return;
+
+        // Sync whenever `bets` changes
+        const timeout = setTimeout(() => {
+            updateBet(playerId, playerName, bets);
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timeout);
+    }, [bets, playerId, playerName]);
 
     // 3. React to Result from Session (Client Side Win Calculation)
     // 3. React to Result from Session (Client Side Win Calculation)
@@ -413,21 +508,60 @@ export default function BauCuaPage() {
     const handleRollClick = async (type: 1 | 2 = 1) => {
         if (isLive && !isHost) return; // Clients can't roll
 
+        // Validate Luck Shake Count
+        if (type === 2 && luckShakeCount >= 3) return;
+
+        const isStartShake = type === 1;
+
         // If local game:
         if (!isLive) {
-            if (Object.keys(bets).length === 0) return;
-            // Trigger the 3D shaker instead of instantly showing result
+            if (isStartShake && Object.keys(bets).length === 0) return;
+
             setShakeType(type);
             setShakerActive(true);
+            setIsBowlOpen(false); // Close bowl to hide result of re-roll
+
+            if (isStartShake) {
+                setLuckShakeCount(0);
+            } else {
+                setLuckShakeCount(prev => prev + 1);
+            }
+
             setShakeTrigger(prev => prev + 1);
+            // We do NOT change status to RESULT yet. We wait for Open.
+            if (isStartShake) setLocalGameState('RESULT'); // Actually we might need a ROLLING state purely for local?
+            // Local game state flow is tricky. 'BETTING' -> 'ROLLING/SHAKING' -> 'RESULT'.
+            // Let's use 'ROLLING' as the intermediate state where buttons are locked but result not shown.
+            // But `localGameState` only has BETTING | RESULT | WIN.
+            // Let's assume 'RESULT' means "Revealed".
+            // We need a way to say "Shaking/Hidden". 
+            // `shakerActive` helps, but `isBowlOpen` is key.
+            // If `isBowlOpen` is false, we are effectively in "Hidden" state.
+
             return;
         }
 
         // If HOST: Lock bets for everyone, then trigger shaker
-        await updateSessionStatus('ROLLING');
+        if (isStartShake) {
+            await updateSessionStatus('ROLLING');
+            setLuckShakeCount(0);
+        } else {
+            setLuckShakeCount(prev => prev + 1);
+        }
+
         setShakeType(type);
         setShakerActive(true);
+        setIsBowlOpen(false);
         setShakeTrigger(prev => prev + 1);
+    };
+
+    const handleOpenClick = () => {
+        setIsBowlOpen(true);
+        // The DiceShaker will see isOpen=true and trigger `onRollComplete` after animation.
+    };
+
+    const handleShakeEnd = () => {
+        setCanReveal(true);
     };
 
     /** Called by DiceShaker when the bowl is fully lifted and dice revealed. */
@@ -602,21 +736,25 @@ export default function BauCuaPage() {
     };
 
     const newGame = async () => {
-        if (isLive && isHost) {
-            await updateSessionStatus('BETTING', []);
-            setBets({});
-            setResult([]);
-            setLastWin(0);
-        } else if (!isLive) {
+        if (isLive) {
+            if (isHost) {
+                await updateSessionStatus('BETTING', []);
+                await clearAllBets(); // Clear global bets
+                setBets({});
+                setResult([]);
+                setLastWin(0);
+            } else {
+                // Client side - just clear local view
+                setBets({});
+                setResult([]);
+                setLastWin(0);
+            }
+        } else {
+            // Local Mode
             setBets({});
             setResult([]);
             setLastWin(0);
             setLocalGameState('BETTING');
-        } else {
-            // Client clicking Play Again
-            // Just reset their local view state, wait for host
-            setBets({});
-            setLastWin(0);
         }
     };
 
@@ -778,46 +916,64 @@ export default function BauCuaPage() {
                                     trigger={shakeTrigger}
                                     shakeType={shakeType}
                                     onRollComplete={handleDiceResult}
+                                    onShakeEnd={handleShakeEnd}
+                                    onBowlTap={handleOpenClick}
                                     disabled={currentStatus === 'RESULT'}
+                                    isOpen={isBowlOpen}
                                     className="border border-white/10 shadow-2xl"
                                 />
-                                {/* Shake buttons (below canvas, only during BETTING) */}
-                                {currentStatus === 'BETTING' && (!isLive || isHost) && (
+                                {/* Shake buttons (below canvas, only during BETTING or ROLLING-Hidden) */}
+                                {(!isLive || isHost) && (
                                     <div className="mt-3 grid grid-cols-2 gap-3">
-                                        <button
-                                            onClick={() => handleRollClick(1)}
-                                            disabled={(Object.keys(bets).length === 0 && !isLive) || shakerActive}
-                                            className={`
-                                                py-4 rounded-xl font-black text-lg uppercase tracking-widest
+                                        {/* Start Shake Button */}
+                                        {currentStatus === 'BETTING' && (
+                                            <button
+                                                onClick={() => handleRollClick(1)}
+                                                disabled={(Object.keys(bets).length === 0 && !isLive) || shakerActive}
+                                                className={`
+                                                col-span-2 py-4 rounded-xl font-black text-lg uppercase tracking-widest
                                                 shadow-lg flex items-center justify-center gap-2 transition-all
                                                 ${(Object.keys(bets).length > 0 || (isLive && isHost)) && !shakerActive
-                                                    ? 'bg-gradient-to-r from-pink-600 to-purple-600 animate-gradient text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:scale-[1.02]'
-                                                    : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 animate-gradient text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] hover:scale-[1.02]'
+                                                        : 'bg-white/10 text-white/30 cursor-not-allowed'}
                                             `}
-                                        >
-                                            {shakerActive ? (
-                                                <RefreshCw className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                                <>🎲 Shake 1</>
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={() => handleRollClick(2)}
-                                            disabled={(Object.keys(bets).length === 0 && !isLive) || shakerActive}
-                                            className={`
+                                            >
+                                                {shakerActive ? (
+                                                    <RefreshCw className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                    <>🎲 Start Shake</>
+                                                )}
+                                            </button>
+                                        )}
+
+                                        {/* Luck Shake & Open Buttons (Only when Hidden/Rolling AND shaking finished) */}
+                                        {(!isBowlOpen && canReveal) && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleRollClick(2)}
+                                                    disabled={luckShakeCount >= 2 || !canReveal}
+                                                    className={`
                                                 py-4 rounded-xl font-black text-lg uppercase tracking-widest
                                                 shadow-lg flex items-center justify-center gap-2 transition-all
-                                                ${(Object.keys(bets).length > 0 || (isLive && isHost)) && !shakerActive
-                                                    ? 'bg-gradient-to-r from-purple-600 to-cyan-600 animate-gradient text-white shadow-[0_0_15px_rgba(8,145,178,0.4)] hover:scale-[1.02]'
-                                                    : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                                ${luckShakeCount < 2 && canReveal
+                                                            ? 'bg-gradient-to-r from-purple-600 to-cyan-600 animate-gradient text-white shadow-[0_0_15px_rgba(8,145,178,0.4)] hover:scale-[1.02]'
+                                                            : 'bg-white/10 text-white/30 cursor-not-allowed'}
                                             `}
-                                        >
-                                            {shakerActive ? (
-                                                <RefreshCw className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                                <>🎲 Shake 2</>
-                                            )}
-                                        </button>
+                                                >
+                                                    🍀 Luck ({2 - luckShakeCount})
+                                                </button>
+                                                <button
+                                                    onClick={handleOpenClick}
+                                                    className={`
+                                                py-4 rounded-xl font-black text-lg uppercase tracking-widest
+                                                shadow-lg flex items-center justify-center gap-2 transition-all
+                                                bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-[1.02] animate-pulse
+                                            `}
+                                                >
+                                                    ✨ TAP TO OPEN
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -872,6 +1028,7 @@ export default function BauCuaPage() {
                                             isHostSelecting={isHostSelecting}
                                             selectionCount={selectionCount}
                                             matchCount={matchCount}
+                                            allBets={allBets} // Pass global bets
                                         />
                                     )
                                 })}
@@ -985,37 +1142,31 @@ export default function BauCuaPage() {
                                     {/* ROLL / LOCK / READY */}
                                     {(!isLive || isHost) ? (
                                         <div className="flex-1 flex gap-2 h-full">
-                                            <button
-                                                onClick={() => handleRollClick(1)}
-                                                disabled={(Object.keys(bets).length === 0 && !isLive)}
-                                                className={`
-                                                flex-1 h-full rounded-2xl font-black text-xl uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
-                                                ${(Object.keys(bets).length > 0 || (isLive && isHost))
-                                                        ? 'bg-gradient-to-r from-pink-500 to-purple-500 animate-gradient text-white shadow-[0_0_15px_rgba(236,72,153,0.5)] hover:scale-[1.02]'
-                                                        : 'bg-white/10 text-white/30 cursor-not-allowed'}
-                                            `}
-                                            >
-                                                <div className="flex flex-col items-center leading-none">
-                                                    <span>S1</span>
-                                                    {currentStatus === 'BETTING' && (
+                                            {/* We only show buttons here if NOT in the special Hidden/Rolling state. 
+                                                If Hidden/Rolling, the controls are under the shaker.
+                                                Actually, let's keep consistent. Use this space for redundant controls or status.
+                                            */}
+                                            {currentStatus === 'BETTING' ? (
+                                                <button
+                                                    onClick={() => handleRollClick(1)}
+                                                    disabled={(Object.keys(bets).length === 0 && !isLive)}
+                                                    className={`
+                                                    flex-1 h-full rounded-2xl font-black text-xl uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                                    ${(Object.keys(bets).length > 0 || (isLive && isHost))
+                                                            ? 'bg-gradient-to-r from-pink-500 to-purple-500 animate-gradient text-white shadow-[0_0_15px_rgba(236,72,153,0.5)] hover:scale-[1.02]'
+                                                            : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                                `}
+                                                >
+                                                    <div className="flex flex-col items-center leading-none">
+                                                        <span>Start Shake</span>
                                                         <span className="text-[10px] opacity-70 font-mono mt-1">{timeLeft}s</span>
-                                                    )}
+                                                    </div>
+                                                </button>
+                                            ) : (
+                                                <div className={`flex-1 flex items-center justify-center font-mono ${canReveal ? 'text-green-400 font-bold animate-pulse' : 'text-white/50'}`}>
+                                                    {isBowlOpen ? 'Round Finished' : (canReveal ? 'TAP BOWL TO OPEN' : 'Shaking…')}
                                                 </div>
-                                            </button>
-                                            <button
-                                                onClick={() => handleRollClick(2)}
-                                                disabled={(Object.keys(bets).length === 0 && !isLive)}
-                                                className={`
-                                                flex-1 h-full rounded-2xl font-black text-xl uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
-                                                ${(Object.keys(bets).length > 0 || (isLive && isHost))
-                                                        ? 'bg-gradient-to-r from-purple-500 to-cyan-500 animate-gradient text-white shadow-[0_0_15px_rgba(8,145,178,0.5)] hover:scale-[1.02]'
-                                                        : 'bg-white/10 text-white/30 cursor-not-allowed'}
-                                            `}
-                                            >
-                                                <div className="flex flex-col items-center leading-none">
-                                                    <span>S2</span>
-                                                </div>
-                                            </button>
+                                            )}
                                         </div>
                                     ) : (
                                         // CLIENT VIEW: Just a Timer Display
@@ -1188,30 +1339,47 @@ export default function BauCuaPage() {
                         {/* ROLL / READY (Mobile) */}
                         {(!isLive || isHost) ? (
                             <div className="flex-1 flex gap-2 h-12">
-                                <button
-                                    onClick={() => handleRollClick(1)}
-                                    disabled={Object.keys(bets).length === 0 && !isLive}
-                                    className={`
-                                        flex-1 h-full rounded-xl font-black text-sm uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
-                                        ${(Object.keys(bets).length > 0 || (isLive && isHost))
-                                            ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-pink-500/20'
-                                            : 'bg-white/10 text-white/30 cursor-not-allowed'}
-                                    `}
-                                >
-                                    S1 ({timeLeft}s)
-                                </button>
-                                <button
-                                    onClick={() => handleRollClick(2)}
-                                    disabled={Object.keys(bets).length === 0 && !isLive}
-                                    className={`
-                                        flex-1 h-full rounded-xl font-black text-sm uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
-                                        ${(Object.keys(bets).length > 0 || (isLive && isHost))
-                                            ? 'bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-cyan-500/20'
-                                            : 'bg-white/10 text-white/30 cursor-not-allowed'}
-                                    `}
-                                >
-                                    S2
-                                </button>
+                                {currentStatus === 'BETTING' ? (
+                                    <>
+                                        <button
+                                            onClick={() => handleRollClick(1)}
+                                            disabled={Object.keys(bets).length === 0 && !isLive}
+                                            className={`
+                                                flex-1 h-full rounded-xl font-black text-sm uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                                ${(Object.keys(bets).length > 0 || (isLive && isHost))
+                                                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-pink-500/20'
+                                                    : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                            `}
+                                        >
+                                            S1 ({timeLeft}s)
+                                        </button>
+                                        <button
+                                            onClick={() => handleRollClick(2)}
+                                            disabled={Object.keys(bets).length === 0 && !isLive}
+                                            className={`
+                                                flex-1 h-full rounded-xl font-black text-sm uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                                ${(Object.keys(bets).length > 0 || (isLive && isHost))
+                                                    ? 'bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-cyan-500/20'
+                                                    : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                            `}
+                                        >
+                                            S2 ({luckShakeCount})
+                                        </button>
+                                    </>
+                                ) : (
+                                    <div className="flex-1 flex items-center justify-center text-white/50">
+                                        {isBowlOpen ? (
+                                            <button
+                                                onClick={handleOpenClick}
+                                                className="w-full h-full bg-green-600 hover:bg-green-500 rounded-xl font-bold uppercase tracking-wider text-sm transition text-white shadow-lg"
+                                            >
+                                                Open Bowl
+                                            </button>
+                                        ) : (
+                                            'Shaking…'
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="flex-1 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 font-mono text-sm">

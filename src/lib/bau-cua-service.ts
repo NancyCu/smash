@@ -48,10 +48,18 @@ export interface GameSession {
     historyId: string; // ID to group transactions for archiving
 }
 
+export interface PlayerBet {
+    playerId: string;
+    playerName: string;
+    bets: Record<string, number>; // { deer: 10, crab: 50... }
+    updatedAt: any;
+}
+
 // --- CONSTANTS ---
 const PLAYERS_COL = "bau_cua_players";
 const TRANSACTIONS_COL = "bau_cua_transactions";
 const SESSION_COL = "bau_cua_session";
+const BETS_COL = "bau_cua_bets"; // New collection for real-time bets
 const SESSION_DOC_ID = "live_game";
 
 // --- SERVICE FUNCTIONS ---
@@ -252,4 +260,46 @@ export const subscribeToHistory = (callback: (history: any[]) => void) => {
         const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         callback(history);
     });
+};
+
+// --- BETTING SYNC ---
+
+/**
+ * Updates a player's current bets in the shared collection.
+ */
+export const updateBet = async (playerId: string, playerName: string, bets: Record<string, number>) => {
+    // If bets are empty, we can either delete the doc or set to empty. keeping doc is fine.
+    await setDoc(doc(db, BETS_COL, playerId), {
+        playerId,
+        playerName,
+        bets,
+        updatedAt: serverTimestamp()
+    });
+};
+
+/**
+ * Subscribes to ALL active bets for the current round.
+ */
+export const subscribeToBets = (callback: (bets: PlayerBet[]) => void) => {
+    // Listen to the whole collection. It should be small (just active players).
+    // In a real app we might filter by sessionId, but we only have one live game.
+    const q = query(collection(db, BETS_COL));
+    return onSnapshot(q, (snap) => {
+        const bets = snap.docs.map(d => d.data() as PlayerBet);
+        callback(bets);
+    });
+};
+
+/**
+ * Clears all bets (Host Action).
+ * This should be called when starting a new round.
+ */
+export const clearAllBets = async () => {
+    // Get all bet docs and delete them
+    const snap = await getDocs(collection(db, BETS_COL));
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => {
+        batch.delete(d.ref);
+    });
+    await batch.commit();
 };

@@ -24,8 +24,9 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
+  Suspense,
 } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { secureRoll } from "@/lib/secure-roll";
@@ -80,57 +81,57 @@ const DICE_POSITIONS: [number, number, number][] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Texture generation (canvas-based – no external files needed)
+// Texture generation (canvas-based)
 // ---------------------------------------------------------------------------
 
-/** Render a single die face: black circle background with centred emoji. */
-function renderFaceCanvas(emoji: string, label: string): HTMLCanvasElement {
-  const size = 256;
+/** Render a single die face: image fills the entire face, clean and clear. */
+function renderFaceCanvas(image: HTMLImageElement, label: string): HTMLCanvasElement {
+  const size = 512; // Higher res for clarity
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d")!;
 
-  // Background
-  ctx.fillStyle = "#111111";
+  // Deep red background that shows through any transparent parts
+  ctx.fillStyle = "#8B0000";
   ctx.fillRect(0, 0, size, size);
 
-  // Circular mask with gradient
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = size * 0.44;
+  // Draw the image to fill the ENTIRE face, edge-to-edge
+  // Use object-fit "cover" logic: scale to fill, crop overflow
+  const imgW = image.naturalWidth || image.width;
+  const imgH = image.naturalHeight || image.height;
+  const scale = Math.max(size / imgW, size / imgH);
+  const drawW = imgW * scale;
+  const drawH = imgH * scale;
+  const drawX = (size - drawW) / 2;
+  const drawY = (size - drawH) / 2;
 
-  const grad = ctx.createRadialGradient(cx, cy * 0.8, 0, cx, cy, r);
-  grad.addColorStop(0, "#222222");
-  grad.addColorStop(1, "#0a0a0a");
+  // Ensure high quality smoothing
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = grad;
-  ctx.fill();
+  ctx.drawImage(image, drawX, drawY, drawW, drawH);
 
-  // Subtle ring
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  // NO VIGNETTE - "Clear as day" per user request. 
+  // Just the raw image filling the face.
 
-  // Emoji
-  ctx.font = `${size * 0.45}px serif`;
+  // Label at bottom with text shadow for readability
+  // Move it slightly up so it's not cut off
+  ctx.font = `bold ${size * 0.12}px sans-serif`; // Slightly larger text
+  ctx.fillStyle = "rgba(255,255,255,1.0)";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(emoji, cx, cy - 4);
-
-  // Label
-  ctx.font = `bold ${size * 0.08}px sans-serif`;
-  ctx.fillStyle = "rgba(255,255,255,0.5)";
-  ctx.fillText(label, cx, cy + r * 0.7);
+  ctx.shadowColor = "rgba(0,0,0,1.0)";
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetY = 2;
+  ctx.fillText(label, size / 2, size * 0.88);
 
   return canvas;
 }
 
-function buildFaceTextures(): THREE.CanvasTexture[] {
-  return ANIMAL_EMOJI.map((emoji, i) => {
-    const canvas = renderFaceCanvas(emoji, ANIMAL_LABEL[i]);
+function buildFaceTextures(images: HTMLImageElement[]): THREE.CanvasTexture[] {
+  return images.map((img, i) => {
+    const canvas = renderFaceCanvas(img, ANIMAL_LABEL[i]);
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
@@ -161,8 +162,10 @@ function Plate() {
  */
 function Bowl({
   liftProgress,
+  onTap,
 }: {
   liftProgress: number; // 0 = closed, 1 = fully lifted
+  onTap?: () => void;
 }) {
   const ref = useRef<THREE.Mesh>(null!);
 
@@ -178,7 +181,16 @@ function Bowl({
   });
 
   return (
-    <mesh ref={ref} castShadow>
+    <mesh
+      ref={ref}
+      castShadow
+      onClick={(e) => {
+        e.stopPropagation();
+        onTap?.();
+      }}
+      onPointerOver={() => document.body.style.cursor = 'pointer'}
+      onPointerOut={() => document.body.style.cursor = 'default'}
+    >
       {/* Top hemisphere, opening faces down */}
       <sphereGeometry args={[1.7, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
       <meshStandardMaterial
@@ -191,6 +203,7 @@ function Bowl({
   );
 }
 
+/** A single die (cube with 6-face textures). */
 /** A single die (cube with 6-face textures). */
 function Die({
   index,
@@ -205,6 +218,7 @@ function Die({
 }) {
   const ref = useRef<THREE.Mesh>(null!);
   const targetRotRef = useRef(new THREE.Euler());
+  const cockedRotRef = useRef(new THREE.Euler());
 
   // 6 materials, one per face
   const materials = useMemo(
@@ -213,18 +227,27 @@ function Die({
         (tex) =>
           new THREE.MeshStandardMaterial({
             map: tex,
-            roughness: 0.65,
-            metalness: 0.05,
+            roughness: 0.4, // Smoother for glossy look
+            metalness: 0.0,
           }),
       ),
     [faceTextures],
   );
 
-  // Snap target rotation when entering ROLLED
+  // Calculate rotations when result changes
   useEffect(() => {
     if (state === "ROLLED" || state === "REVEALED") {
       const [rx, ry, rz] = RESULT_ROTATIONS[resultIndex];
+      // Final flat rotation
       targetRotRef.current.set(rx, ry + Y_OFFSETS[index], rz);
+
+      // "Cocked" rotation: The final rotation PLUS some random annoying tilt
+      const tiltAmt = (Math.random() > 0.5 ? 1 : -1) * (Math.PI * 0.15 + Math.random() * 0.1);
+      cockedRotRef.current.set(
+        rx + (Math.random() - 0.5) * 0.5,
+        ry + Y_OFFSETS[index] + (Math.random() - 0.5) * 1.0,
+        rz + tiltAmt
+      );
     }
   }, [state, resultIndex, index]);
 
@@ -234,53 +257,42 @@ function Die({
     const pos = DICE_POSITIONS[index];
 
     if (state === "SHAKING") {
-      // Random jitter INSIDE the bowl (relative to plate)
-      // Since the whole group moves, we just need small local rattle
+      // ERRATIC SHAKE: High frequency, larger amplitude
       ref.current.position.set(
-        pos[0] + (Math.random() - 0.5) * 0.1,
-        pos[1] + (Math.random() - 0.5) * 0.1,
-        pos[2] + (Math.random() - 0.5) * 0.1,
+        pos[0] + (Math.random() - 0.5) * 0.4,
+        pos[1] + (Math.random() - 0.5) * 0.4,
+        pos[2] + (Math.random() - 0.5) * 0.4,
       );
-      ref.current.rotation.x += (Math.random() - 0.5) * 0.8;
-      ref.current.rotation.y += (Math.random() - 0.5) * 0.8;
-      ref.current.rotation.z += (Math.random() - 0.5) * 0.8;
-    } else if (state === "ROLLED" || state === "REVEALED") {
-      // Smoothly interpolate to target rotation
-      const speed = 12 * delta;
-      ref.current.rotation.x = THREE.MathUtils.lerp(
-        ref.current.rotation.x,
-        targetRotRef.current.x,
-        speed,
-      );
-      ref.current.rotation.y = THREE.MathUtils.lerp(
-        ref.current.rotation.y,
-        targetRotRef.current.y,
-        speed,
-      );
-      ref.current.rotation.z = THREE.MathUtils.lerp(
-        ref.current.rotation.z,
-        targetRotRef.current.z,
-        speed,
-      );
+      // Wild rotation
+      ref.current.rotation.x += (Math.random() - 0.5) * 2.0;
+      ref.current.rotation.y += (Math.random() - 0.5) * 2.0;
+      ref.current.rotation.z += (Math.random() - 0.5) * 2.0;
+
+    } else if (state === "ROLLED") {
+      // "Settled" inside the bowl but COCKED/TILTED
+      // Move quickly to the cocked position
+      const speed = 15 * delta;
+      ref.current.rotation.x = THREE.MathUtils.lerp(ref.current.rotation.x, cockedRotRef.current.x, speed);
+      ref.current.rotation.y = THREE.MathUtils.lerp(ref.current.rotation.y, cockedRotRef.current.y, speed);
+      ref.current.rotation.z = THREE.MathUtils.lerp(ref.current.rotation.z, cockedRotRef.current.z, speed);
       ref.current.position.set(pos[0], pos[1], pos[2]);
+
+    } else if (state === "REVEALED") {
+      // REVEAL ANIMATION:
+      // Slowly smooth-lerp from the "cocked" position to the flat position.
+      const speed = 4 * delta; // Slower settle
+      ref.current.rotation.x = THREE.MathUtils.lerp(ref.current.rotation.x, targetRotRef.current.x, speed);
+      ref.current.rotation.y = THREE.MathUtils.lerp(ref.current.rotation.y, targetRotRef.current.y, speed);
+      ref.current.rotation.z = THREE.MathUtils.lerp(ref.current.rotation.z, targetRotRef.current.z, speed);
+
+      ref.current.position.set(pos[0], pos[1], pos[2]);
+
     } else {
       // IDLE – rest position, upright
       ref.current.position.set(pos[0], pos[1], pos[2]);
-      ref.current.rotation.x = THREE.MathUtils.lerp(
-        ref.current.rotation.x,
-        0,
-        4 * delta,
-      );
-      ref.current.rotation.y = THREE.MathUtils.lerp(
-        ref.current.rotation.y,
-        Y_OFFSETS[index],
-        4 * delta,
-      );
-      ref.current.rotation.z = THREE.MathUtils.lerp(
-        ref.current.rotation.z,
-        0,
-        4 * delta,
-      );
+      ref.current.rotation.x = THREE.MathUtils.lerp(ref.current.rotation.x, 0, 4 * delta);
+      ref.current.rotation.y = THREE.MathUtils.lerp(ref.current.rotation.y, Y_OFFSETS[index], 4 * delta);
+      ref.current.rotation.z = THREE.MathUtils.lerp(ref.current.rotation.z, 0, 4 * delta);
     }
   });
 
@@ -299,12 +311,18 @@ function Scene({
   trigger,
   shakeType,
   onRollComplete,
+  onShakeEnd,
+  onBowlTap,
   disabled,
+  isOpen,
 }: {
   trigger: number;
   shakeType: 1 | 2;
   onRollComplete?: (results: number[]) => void;
+  onShakeEnd?: () => void;
+  onBowlTap?: () => void;
   disabled?: boolean;
+  isOpen?: boolean;
 }) {
   const [state, setState] = useState<ShakerState>("IDLE");
   const [results, setResults] = useState<[number, number, number]>([2, 4, 0]);
@@ -316,8 +334,18 @@ function Scene({
 
   const { startShake, stopShake, playThud, playChime } = useShakeAudio();
 
-  // Build face textures once
-  const faceTextures = useMemo(() => buildFaceTextures(), []);
+  // Load user-provided images (order matches ANIMALS array)
+  const images = useLoader(THREE.ImageLoader, [
+    "/bau-cua/NAI.png",    // 0 Deer
+    "/bau-cua/BAU.png",    // 1 Gourd
+    "/bau-cua/GA.png",     // 2 Chicken
+    "/bau-cua/CA.png",     // 3 Fish
+    "/bau-cua/CUA.png",    // 4 Crab
+    "/bau-cua/TOM.png",    // 5 Shrimp
+  ]) as HTMLImageElement[];
+
+  // Build face textures once images are loaded
+  const faceTextures = useMemo(() => buildFaceTextures(images), [images]);
 
   // Watch trigger changes to start a new shake
   useEffect(() => {
@@ -383,13 +411,21 @@ function Scene({
           groupRef.current.rotation.set(0, 0, 0);
         }
         playThud();
+        playThud();
         setState("ROLLED");
+        onShakeEnd?.();
       }
     } else if (state === "ROLLED") {
-      if (clockRef.current >= ROLL_PAUSE) {
+      // Wait for isOpen logic
+      if (isOpen) {
+        if (clockRef.current >= ROLL_PAUSE) {
+          clockRef.current = 0;
+          setState("REVEALED");
+          playChime();
+        }
+      } else {
+        // Reset clock so we don't prematurely reveal
         clockRef.current = 0;
-        setState("REVEALED");
-        playChime();
       }
     } else if (state === "REVEALED") {
       // Ease-out lift
@@ -428,7 +464,7 @@ function Scene({
       {/* Group the whole assembly for the "pickup" animation */}
       <group ref={groupRef}>
         <Plate />
-        <Bowl liftProgress={liftRef.current} />
+        <Bowl liftProgress={liftRef.current} onTap={onBowlTap} />
         {([0, 1, 2] as const).map((i) => (
           <Die
             key={i}
@@ -454,8 +490,14 @@ export interface DiceShakerProps {
   shakeType?: 1 | 2;
   /** Called with [n, n, n] (0-5) once the bowl is fully lifted. */
   onRollComplete?: (results: number[]) => void;
+  /** Called when shaking animation finishes (but bowl is still closed). */
+  onShakeEnd?: () => void;
+  /** Called when user clicks the bowl. */
+  onBowlTap?: () => void;
   /** Prevent new shakes. */
   disabled?: boolean;
+  /** Whether the bowl is open/lifted. */
+  isOpen?: boolean;
   /** Optional extra Tailwind classes on the wrapper div. */
   className?: string;
 }
@@ -464,7 +506,10 @@ export default function DiceShaker({
   trigger,
   shakeType = 1,
   onRollComplete,
+  onShakeEnd,
+  onBowlTap,
   disabled,
+  isOpen = true,
   className = "",
 }: DiceShakerProps) {
   return (
@@ -481,12 +526,17 @@ export default function DiceShaker({
         dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: true }}
       >
-        <Scene
-          trigger={trigger}
-          shakeType={shakeType}
-          onRollComplete={onRollComplete}
-          disabled={disabled}
-        />
+        <Suspense fallback={null}>
+          <Scene
+            trigger={trigger}
+            shakeType={shakeType}
+            onRollComplete={onRollComplete}
+            onShakeEnd={onShakeEnd}
+            onBowlTap={onBowlTap}
+            disabled={disabled}
+            isOpen={isOpen}
+          />
+        </Suspense>
       </Canvas>
     </div>
   );
