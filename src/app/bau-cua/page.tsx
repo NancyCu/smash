@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, RotateCcw, Coins, Trophy, Info, Plus, Check, Settings, Shield, UserCheck, Lock, Play, StopCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
@@ -21,7 +22,14 @@ import {
     endLiveGame,
     getGameSession
 } from '@/lib/bau-cua-service';
+import { indicesToAnimalIds } from '@/lib/secure-roll';
 import { useAuth } from '@/context/AuthContext';
+
+// Dynamic import – R3F Canvas must be client-only (no SSR)
+const DiceShaker = dynamic(
+    () => import('@/components/bau-cua/DiceShaker'),
+    { ssr: false }
+);
 
 // --- CONFIGURATION ---
 const VENMO_USERNAME = "your_username";
@@ -194,6 +202,10 @@ export default function BauCuaPage() {
     // Timer State
     const [timeLeft, setTimeLeft] = useState(45);
     const [elapsedTime, setElapsedTime] = useState(0);
+
+    // 3D Shaker State
+    const [shakeTrigger, setShakeTrigger] = useState(0);
+    const [shakerActive, setShakerActive] = useState(false);
 
     // --- DERIVED STATE ---
     const isLive = session?.isActive ?? false;
@@ -403,14 +415,71 @@ export default function BauCuaPage() {
         // If local game:
         if (!isLive) {
             if (Object.keys(bets).length === 0) return;
-            setLocalGameState('RESULT');
-            setResult([]);
+            // Trigger the 3D shaker instead of instantly showing result
+            setShakerActive(true);
+            setShakeTrigger(prev => prev + 1);
             return;
         }
 
-        // If HOST:
-        // Lock bets for everyone
+        // If HOST: Lock bets for everyone, then trigger shaker
         await updateSessionStatus('ROLLING');
+        setShakerActive(true);
+        setShakeTrigger(prev => prev + 1);
+    };
+
+    /** Called by DiceShaker when the bowl is fully lifted and dice revealed. */
+    const handleDiceResult = async (indices: number[]) => {
+        const animalIds = indicesToAnimalIds(indices as [number, number, number]);
+        const animalArr = Array.from(animalIds); // string[]
+
+        setResult(animalArr);
+        setShakerActive(false);
+
+        if (isLive && isHost) {
+            // Publish result to all clients via Firestore
+            await updateSessionStatus('RESULT', animalArr);
+            // Settle host's own bets
+            confirmResult();
+        } else if (!isLive) {
+            // Solo / local mode — settle immediately
+            setLocalGameState('RESULT');
+            // confirmResult uses the `result` state, but we just set it.
+            // We'll call settlement inline so it uses the fresh animalArr:
+            settleLocalRound(animalArr);
+        }
+    };
+
+    /** Inline settlement for local (solo) mode so we can pass fresh result. */
+    const settleLocalRound = async (freshResult: string[]) => {
+        let totalWinnings = 0;
+        let totalBetReturn = 0;
+        let totalBetAmount = 0;
+
+        Object.entries(bets).forEach(([animalId, betAmount]) => {
+            totalBetAmount += betAmount;
+            const matches = freshResult.filter(r => r === animalId).length;
+            if (matches > 0) {
+                totalBetReturn += betAmount;
+                totalWinnings += betAmount * matches;
+            }
+        });
+
+        const payout = totalBetReturn + totalWinnings;
+        const profit = payout - totalBetAmount;
+
+        setBalance(prev => prev + payout);
+        setLastWin(totalWinnings);
+        setLocalGameState('WIN');
+
+        if (playerId && totalBetAmount > 0) {
+            if (profit > 0) {
+                await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`);
+                await updatePlayerStats(playerId, profit, true, false);
+            } else if (profit <= 0) {
+                await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result');
+                await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
+            }
+        }
     };
 
     // For Host inputting result
@@ -696,10 +765,38 @@ export default function BauCuaPage() {
             <div className="no-print flex-1 w-full mx-auto flex flex-col md:flex-row gap-6 p-4 md:p-8 relative z-10 mb-32 overflow-y-auto">
 
                 {/* --- LEFT: BOARD (Desktop: expands, Mobile: Full) --- */}
-                {/* --- LEFT: BOARD (Desktop: expands, Mobile: Full) --- */}
                 <div className="flex-1 min-h-0">
                     {(currentStatus === 'BETTING' || currentStatus === 'ROLLING' || currentStatus === 'RESULT') ? (
                         <div className="relative h-full flex flex-col justify-center">
+
+                            {/* === 3D DICE SHAKER === */}
+                            <div className="mb-4">
+                                <DiceShaker
+                                    trigger={shakeTrigger}
+                                    onRollComplete={handleDiceResult}
+                                    disabled={currentStatus === 'RESULT'}
+                                    className="border border-white/10 shadow-2xl"
+                                />
+                                {/* Shake button (below canvas, only during BETTING) */}
+                                {currentStatus === 'BETTING' && (!isLive || isHost) && (
+                                    <button
+                                        onClick={handleRollClick}
+                                        disabled={(Object.keys(bets).length === 0 && !isLive) || shakerActive}
+                                        className={`
+                                            mt-3 w-full py-4 rounded-2xl font-black text-xl uppercase tracking-widest
+                                            shadow-lg flex items-center justify-center gap-2 transition-all
+                                            ${(Object.keys(bets).length > 0 || (isLive && isHost)) && !shakerActive
+                                                ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-[1.02]'
+                                                : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                        `}
+                                    >
+                                        {shakerActive ? (
+                                            <><RefreshCw className="w-5 h-5 animate-spin" /> Shaking…</>
+                                        ) : (
+                                            <>🎲 SHAKE ({timeLeft}s)</>)}
+                                    </button>
+                                )}
+                            </div>
                             {/* ROLLING OVERLAY (CLIENTS ONLY) */}
                             {currentStatus === 'ROLLING' && !isHost && (
                                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-3xl animate-in fade-in text-center p-4">
