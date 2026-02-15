@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import CreateGameForm from '@/components/CreateGameForm';
 import { ArrowLeft } from 'lucide-react';
-import Image from 'next/image';
 
 export default function CreatePage() {
   const { user } = useAuth();
