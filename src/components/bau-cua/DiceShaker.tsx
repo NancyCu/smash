@@ -142,23 +142,251 @@ function buildFaceTextures(images: HTMLImageElement[]): THREE.CanvasTexture[] {
 // Sub-components (live inside <Canvas>)
 // ---------------------------------------------------------------------------
 
-/** The flat plate / platter the bowl sits on. */
+// ---------------------------------------------------------------------------
+// Procedural Chinese Porcelain Textures (Canvas2D)
+// ---------------------------------------------------------------------------
+
+/** Draw a Greek key / meander border strip on a canvas context. */
+function drawGreekKey(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number,
+  keyColor: string, bgColor: string
+) {
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = keyColor;
+  const unit = h * 0.22;
+  const count = Math.floor(w / (unit * 4));
+  const totalW = count * unit * 4;
+  const startX = x + (w - totalW) / 2;
+  for (let i = 0; i < count; i++) {
+    const bx = startX + i * unit * 4;
+    // Simplified key pattern
+    ctx.fillRect(bx, y + unit * 0.5, unit * 3, unit);
+    ctx.fillRect(bx + unit * 2, y + unit * 0.5, unit, unit * 3);
+    ctx.fillRect(bx + unit, y + unit * 2.5, unit * 2, unit);
+    ctx.fillRect(bx + unit, y + unit * 1.5, unit, unit * 1.5);
+  }
+}
+
+/** Draw a simple chrysanthemum flower at (cx, cy). */
+function drawFlower(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  const petalCount = 8;
+  for (let i = 0; i < petalCount; i++) {
+    const angle = (i / petalCount) * Math.PI * 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    ctx.beginPath();
+    ctx.ellipse(0, -r * 0.55, r * 0.28, r * 0.55, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fill();
+    ctx.restore();
+  }
+  // Center
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.22, 0, Math.PI * 2);
+  ctx.fillStyle = '#C7944A';
+  ctx.fill();
+}
+
+/** Draw scrollwork vines in a region. */
+function drawScrollwork(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number, count: number) {
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.3;
+    const dist = radius * (0.2 + Math.random() * 0.6);
+    const sx = cx + Math.cos(angle) * dist;
+    const sy = cy + Math.sin(angle) * dist;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 4 + Math.random() * 8, 0, Math.PI * (1 + Math.random()));
+    ctx.stroke();
+  }
+}
+
+/** Create the plate texture (circular, top-down view). */
+function createPlateTexture(): THREE.CanvasTexture {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const cx = size / 2, cy = size / 2;
+
+  // White outer rim
+  ctx.beginPath();
+  ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+  ctx.fillStyle = '#F5F0E8';
+  ctx.fill();
+
+  // Yellow Greek key ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.44, 0, Math.PI * 2);
+  ctx.fillStyle = '#D4A017';
+  ctx.fill();
+
+  // Dark inner ring (for key pattern illusion)
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.42, 0, Math.PI * 2);
+  ctx.fillStyle = '#1A1A5C';
+  ctx.fill();
+
+  // Greek key ring pattern (simplified radial squares)
+  ctx.fillStyle = '#D4A017';
+  const keyCount = 24;
+  for (let i = 0; i < keyCount; i++) {
+    const angle = (i / keyCount) * Math.PI * 2;
+    const kx = cx + Math.cos(angle) * size * 0.43;
+    const ky = cy + Math.sin(angle) * size * 0.43;
+    ctx.save();
+    ctx.translate(kx, ky);
+    ctx.rotate(angle);
+    ctx.fillRect(-6, -4, 12, 8);
+    ctx.restore();
+  }
+
+  // Red center
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.39, 0, Math.PI * 2);
+  ctx.fillStyle = '#B91C1C';
+  ctx.fill();
+
+  // Scrollwork
+  drawScrollwork(ctx, cx, cy, size * 0.35, 60);
+
+  // Flowers
+  const flowerPositions = [
+    [cx, cy - size * 0.18],
+    [cx + size * 0.16, cy + size * 0.1],
+    [cx - size * 0.16, cy + size * 0.1],
+    [cx + size * 0.08, cy - size * 0.08],
+    [cx - size * 0.12, cy - size * 0.05],
+  ];
+  flowerPositions.forEach(([fx, fy]) => drawFlower(ctx, fx, fy, size * 0.055));
+
+  // White medallions with characters
+  const chars = ['萬', '福', '壽', '禄'];
+  const medalR = size * 0.05;
+  const medalDist = size * 0.22;
+  chars.forEach((ch, i) => {
+    const a = (i / chars.length) * Math.PI * 2 - Math.PI / 2;
+    const mx = cx + Math.cos(a) * medalDist;
+    const my = cy + Math.sin(a) * medalDist;
+    ctx.beginPath();
+    ctx.arc(mx, my, medalR, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFF8F0';
+    ctx.fill();
+    ctx.fillStyle = '#8B1A1A';
+    ctx.font = `bold ${medalR * 1.2}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(ch, mx, my);
+  });
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/** Create the bowl wrap texture (rectangular, wraps around hemisphere). */
+function createBowlTexture(): THREE.CanvasTexture {
+  const w = 1024, h = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  // Base red
+  ctx.fillStyle = '#B91C1C';
+  ctx.fillRect(0, 0, w, h);
+
+  // Top: white rim band
+  ctx.fillStyle = '#F5F0E8';
+  ctx.fillRect(0, 0, w, h * 0.06);
+
+  // Greek key border below rim
+  drawGreekKey(ctx, 0, h * 0.06, w, h * 0.1, '#D4A017', '#1A1A5C');
+
+  // Scrollwork across the body
+  for (let i = 0; i < 120; i++) {
+    const sx = Math.random() * w;
+    const sy = h * 0.2 + Math.random() * h * 0.7;
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 3 + Math.random() * 8, 0, Math.PI * (1 + Math.random()));
+    ctx.stroke();
+  }
+
+  // Flowers scattered across
+  const fCount = 10;
+  for (let i = 0; i < fCount; i++) {
+    const fx = (i / fCount) * w + w * 0.05;
+    const fy = h * 0.35 + Math.sin(i * 1.7) * h * 0.2;
+    drawFlower(ctx, fx, fy, 18);
+  }
+
+  // Medallions across
+  const mChars = ['萬', '福', '壽', '禄'];
+  mChars.forEach((ch, i) => {
+    const mx = (i + 0.5) * (w / mChars.length);
+    const my = h * 0.55;
+    ctx.beginPath();
+    ctx.arc(mx, my, 20, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFF8F0';
+    ctx.fill();
+    ctx.fillStyle = '#8B1A1A';
+    ctx.font = 'bold 22px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(ch, mx, my);
+  });
+
+  // Bottom band / base rim
+  ctx.fillStyle = '#F5F0E8';
+  ctx.fillRect(0, h * 0.94, w, h * 0.06);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  return tex;
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components (live inside <Canvas>)
+// ---------------------------------------------------------------------------
+
+/** The flat plate / platter the bowl sits on – Chinese red porcelain. */
 function Plate() {
+  const texture = useMemo(() => createPlateTexture(), []);
   return (
-    <mesh position={[0, -0.08, 0]} receiveShadow>
-      <cylinderGeometry args={[2.2, 2.3, 0.16, 48]} />
-      <meshStandardMaterial
-        color="#5C3A1E"
-        roughness={0.35}
-        metalness={0.1}
-      />
-    </mesh>
+    <group>
+      {/* Main plate disc */}
+      <mesh position={[0, -0.06, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[2.3, 64]} />
+        <meshStandardMaterial
+          map={texture}
+          roughness={0.2}
+          metalness={0.15}
+        />
+      </mesh>
+      {/* Thin rim ring (gives plate depth) */}
+      <mesh position={[0, -0.08, 0]} receiveShadow>
+        <cylinderGeometry args={[2.3, 2.35, 0.12, 48]} />
+        <meshStandardMaterial
+          color="#F5F0E8"
+          roughness={0.2}
+          metalness={0.1}
+        />
+      </mesh>
+    </group>
   );
 }
 
 /**
- * The ceramic bowl (inverted dome). Its Y position is animated upwards
- * during REVEALED state.
+ * The ceramic bowl (inverted dome) – Chinese red porcelain with patterns.
+ * Its Y position is animated upwards during REVEALED state.
  */
 function Bowl({
   liftProgress,
@@ -168,6 +396,7 @@ function Bowl({
   onTap?: () => void;
 }) {
   const ref = useRef<THREE.Mesh>(null!);
+  const texture = useMemo(() => createBowlTexture(), []);
 
   useFrame(() => {
     if (!ref.current) return;
@@ -194,9 +423,9 @@ function Bowl({
       {/* Top hemisphere, opening faces down */}
       <sphereGeometry args={[1.7, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
       <meshStandardMaterial
-        color="#F0EBE0"
+        map={texture}
         roughness={0.18}
-        metalness={0.35}
+        metalness={0.3}
         side={THREE.DoubleSide}
       />
     </mesh>
