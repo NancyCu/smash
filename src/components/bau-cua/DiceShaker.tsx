@@ -235,19 +235,39 @@ function Die({
   );
 
   // Calculate rotations when result changes
+  // IMPORTANT: We use quaternion math to separate the "which face is on top"
+  // rotation from the "aesthetic Y-spin" rotation. If we naively add Y_OFFSET
+  // to the Euler Y component, the XYZ rotation order causes the wrong face
+  // to end up on top.
   useEffect(() => {
     if (state === "ROLLED" || state === "REVEALED") {
       const [rx, ry, rz] = RESULT_ROTATIONS[resultIndex];
-      // Final flat rotation
-      targetRotRef.current.set(rx, ry + Y_OFFSETS[index], rz);
 
-      // "Cocked" rotation: The final rotation PLUS some random annoying tilt
-      const tiltAmt = (Math.random() > 0.5 ? 1 : -1) * (Math.PI * 0.15 + Math.random() * 0.1);
-      cockedRotRef.current.set(
-        rx + (Math.random() - 0.5) * 0.5,
-        ry + Y_OFFSETS[index] + (Math.random() - 0.5) * 1.0,
-        rz + tiltAmt
+      // Step 1: Quaternion for "put the correct face on top"
+      const faceQuat = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(rx, ry, rz, 'XYZ')
       );
+      // Step 2: Quaternion for aesthetic Y-axis spin (so dice don't all face same way)
+      const ySpinQuat = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0),
+        Y_OFFSETS[index]
+      );
+      // Combine: apply face rotation first, then spin around world Y
+      const finalQuat = ySpinQuat.multiply(faceQuat);
+      targetRotRef.current.setFromQuaternion(finalQuat);
+
+      // "Cocked" rotation: final rotation + small random tilt for suspense
+      const tiltAmt = (Math.random() > 0.5 ? 1 : -1) * (Math.PI * 0.15 + Math.random() * 0.1);
+      const tiltQuat = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(
+          (Math.random() - 0.5) * 0.5,
+          (Math.random() - 0.5) * 1.0,
+          tiltAmt,
+          'XYZ'
+        )
+      );
+      const cockedQuat = finalQuat.clone().premultiply(tiltQuat);
+      cockedRotRef.current.setFromQuaternion(cockedQuat);
     }
   }, [state, resultIndex, index]);
 
