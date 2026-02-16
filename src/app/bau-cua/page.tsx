@@ -62,6 +62,7 @@ const AnimalCard = ({
     onBet,
     disabled,
     isWinner,
+    showResult = false,
     selectionCount = 0,
     matchCount = 0,
     allBets = []
@@ -71,12 +72,13 @@ const AnimalCard = ({
     onBet: () => void,
     disabled: boolean,
     isWinner?: boolean,
+    showResult?: boolean,
     selectionCount?: number
     matchCount?: number
     allBets?: PlayerBet[] // All global bets for visualization
 }) => {
-    // Status Logic
-    const isLoser = disabled && !isWinner; // Result phase, not winner
+    // Status Logic — only show loser styling when results are revealed
+    const isLoser = showResult && !isWinner;
     const winAmount = betAmount * matchCount;
 
     // Filter bets for THIS animal from other players
@@ -195,8 +197,8 @@ const AnimalCard = ({
                 <span className="mt-0.5 text-[9px] md:text-[10px] xl:text-xs font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
             </div>
 
-            {/* RESULT INDICATORS (Floating on top, FULL COLOR) */}
-            {disabled && (
+            {/* RESULT INDICATORS — only show after dice are revealed */}
+            {showResult && (
                 <>
                     {/* WIN PROFIT */}
                     {isWinner && betAmount > 0 && (
@@ -1129,6 +1131,7 @@ export default function BauCuaPage() {
                                                 (currentStatus === 'RESULT')
                                             }
                                             isWinner={currentStatus === 'RESULT' && (session?.result?.includes(animal.id) || result.includes(animal.id))}
+                                            showResult={currentStatus === 'RESULT'}
                                             matchCount={matchCount}
                                             allBets={allBets}
                                         />
