@@ -53,6 +53,7 @@ export interface GameSession {
     soundCount: number; // Incremented each time a sound emote is triggered
     soundType: string; // 'troioi' | 'chetme'
     soundBy: string; // Who triggered the sound
+    roundStartTime?: number; // Server-side timestamp for timer sync
 }
 
 export interface PlayerBet {
@@ -179,17 +180,17 @@ export const initGameSession = async () => {
         bowlOpen: true,
         soundCount: 0,
         soundType: '',
-        soundBy: ''
+        soundBy: '',
+        roundStartTime: Date.now()
     };
     await setDoc(ref, initialSession);
 };
 
-export const updateSessionStatus = async (status: GameSession['status'], result: string[] = []) => {
+export const updateSessionStatus = async (status: GameSession['status'], result: string[] = [], startTime?: number) => {
     const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
-    await updateDoc(ref, {
-        status,
-        result
-    });
+    const updates: any = { status, result };
+    if (startTime) updates.roundStartTime = startTime;
+    await updateDoc(ref, updates);
 };
 
 export const triggerShake = async (type: 1 | 2, rollIndices: number[]) => {

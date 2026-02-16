@@ -342,30 +342,41 @@ export default function BauCuaPage() {
             setElapsedTime(t => t + 1);
 
             if (currentStatus === 'BETTING') {
-                setTimeLeft(prev => {
-                    if (prev <= 1) {
-                        // Auto-trigger
-                        // We need to call handleRollClick() here, but we can't easily call it inside effect 
-                        // if it depends on state that might be stale, OR we just trigger it via a separate effect dependency.
-                        // Better: Set a trigger flag or just allow the effect to run logic.
-                        // But `handleRollClick` is async.
-
-                        // We'll let the effect below handle the trigger
-                        return 0;
-                    }
-                    return prev - 1;
-                });
+                // If live game, sync with server time
+                if (isLive && session?.roundStartTime) {
+                    const elapsed = Math.floor((Date.now() - session.roundStartTime) / 1000);
+                    const remaining = Math.max(0, 45 - elapsed); // 45s betting time
+                    setTimeLeft(remaining);
+                } else {
+                    // Local fallback
+                    setTimeLeft(prev => {
+                        if (prev <= 1) return 0;
+                        return prev - 1;
+                    });
+                }
             }
         }, 1000);
         return () => clearInterval(interval);
-    }, [currentStatus]);
+    }, [currentStatus, isLive, session?.roundStartTime]);
 
     // Auto-Roll Trigger
     useEffect(() => {
         if (currentStatus === 'BETTING' && timeLeft === 0) {
             handleRollClick();
         }
+        if (currentStatus === 'BETTING' && timeLeft === 0) {
+            handleRollClick();
+        }
     }, [timeLeft, currentStatus]);
+
+    // Host Recovery Effect
+    // Ensures that if a host refreshes during ROLLING state, they get their controls back.
+    useEffect(() => {
+        if (isLive && isHost && session?.status === 'ROLLING' && session?.bowlOpen === false) {
+            // Only set if not already set to avoid loops/renders (though react handles strict equality)
+            setCanReveal(true);
+        }
+    }, [isLive, isHost, session?.status, session?.bowlOpen]);
 
     // Format Timer
     const formatTime = (seconds: number) => {
@@ -436,6 +447,10 @@ export default function BauCuaPage() {
                 setCanReveal(false);
                 setIsBowlOpen(true);
             }
+
+            // === HOST RECOVERY ===
+            // Moved to a dedicated useEffect for better reliability
+            // (See "Host Recovery Effect" below)
 
             // === SOUND EMOTE SYNC ===
             if (s.soundCount !== undefined && s.soundCount !== null) {
@@ -841,7 +856,7 @@ export default function BauCuaPage() {
     const newGame = async () => {
         if (isLive) {
             if (isHost) {
-                await updateSessionStatus('BETTING', []);
+                await updateSessionStatus('BETTING', [], Date.now());
                 await clearAllBets(); // Clear global bets
                 // Reset bowl to open for new round
                 await openBowl();
