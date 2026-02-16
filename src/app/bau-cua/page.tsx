@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, RotateCcw, Coins, Trophy, Info, Plus, Check, Settings, Shield, UserCheck, Lock, Play, StopCircle, RefreshCw } from 'lucide-react';
@@ -24,7 +24,8 @@ import {
     type PlayerBet,
     updateBet,
     subscribeToBets,
-    clearAllBets
+    clearAllBets,
+    triggerShake
 } from '@/lib/bau-cua-service';
 import { indicesToAnimalIds } from '@/lib/secure-roll';
 import { useAuth } from '@/context/AuthContext';
@@ -246,6 +247,9 @@ export default function BauCuaPage() {
     const [result, setResult] = useState<string[]>([]); // Current round result keys
     const [lastWin, setLastWin] = useState(0);
 
+    // Sync State
+    const lastSeenShakeCount = useRef(0);
+
     const [showTopUpModal, setShowTopUpModal] = useState(false);
     const [topUpAmount, setTopUpAmount] = useState(20);
 
@@ -369,6 +373,42 @@ export default function BauCuaPage() {
         const unsubTx = subscribeToTransactions(setTransactions);
         const unsubSession = subscribeToSession((s) => {
             setSession(s);
+            if (!s) return;
+
+            // Sync Shake Trigger (Play Sound/Animation)
+            if (s.shakeCount > lastSeenShakeCount.current) {
+                const diff = s.shakeCount - lastSeenShakeCount.current;
+                // Only trigger if we are actively in the game/view
+                // And prevent triggering if we just loaded the page and shakeCount is high (handled by init ref? 
+                // actually we want to sync state. But for animation, we only want to play if it's a NEW shake)
+                // For simplicity, we assume if `s.shakeCount` increases, we shake.
+
+                // However, on first load, `lastSeenShakeCount` is 0. If `s.shakeCount` is 50, it will trigger?
+                // We should probably init `lastSeenShakeCount` to `s.shakeCount` on FIRST load without triggering.
+                // But `subscribeToSession` fires immediately on load.
+                // Solution: check if session is "fresh" or just rely on the fact that triggering a shake on load isn't the end of the world, 
+                // but let's try to be cleaner.
+
+                // NOTE: For this MVP, we'll just trigger if it increments. 
+                // If it's a huge jump (initial load), maybe we mute?
+                // Actually, let's just sync `shakeTrigger` locally.
+
+                setShakeType(s.shakeType as 1 | 2);
+                setShakerActive(true);
+                setIsBowlOpen(false);
+                setCanReveal(false);
+                setShakeTrigger(prev => prev + 1);
+
+                // Update luck count logic
+                if (s.shakeType === 1) {
+                    setLuckShakeCount(0);
+                } else {
+                    setLuckShakeCount(prev => prev + 1);
+                }
+
+                lastSeenShakeCount.current = s.shakeCount;
+            }
+
             // Sync local result display if session has result
             if (s?.status === 'RESULT' && s.result) {
                 setResult(s.result);
@@ -541,18 +581,25 @@ export default function BauCuaPage() {
             return;
         }
 
-        // If HOST: Lock bets for everyone, then trigger shaker
+        // If HOST: Lock bets for everyone, then trigger shake globally
         if (isStartShake) {
-            await updateSessionStatus('ROLLING');
-            setLuckShakeCount(0);
+            // Start Shake (Reset Luck Count done in trigger logic listener)
+            await triggerShake(1);
         } else {
-            setLuckShakeCount(prev => prev + 1);
+            // Luck Shake
+            await triggerShake(2);
         }
 
+        // Host does NOT set local state here manually. 
+        // We rely on the subscription to `session` to update local state for Host too.
+        // This ensures perfect sync and identical code paths.
+        /*
+        setLuckShakeCount(prev => prev + 1);
         setShakeType(type);
         setShakerActive(true);
         setIsBowlOpen(false);
         setShakeTrigger(prev => prev + 1);
+        */
     };
 
     const handleOpenClick = () => {

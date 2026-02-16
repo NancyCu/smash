@@ -46,6 +46,8 @@ export interface GameSession {
     timerEnd: any; // Timestamp
     result: string[]; // [deer, gourd, crab]
     historyId: string; // ID to group transactions for archiving
+    shakeCount: number; // Incremented to trigger shakes
+    shakeType: 1 | 2; // 1 = Normal, 2 = Luck
 }
 
 export interface PlayerBet {
@@ -61,6 +63,10 @@ const TRANSACTIONS_COL = "bau_cua_transactions";
 const SESSION_COL = "bau_cua_session";
 const BETS_COL = "bau_cua_bets"; // New collection for real-time bets
 const SESSION_DOC_ID = "live_game";
+
+const generateHistoryId = () => {
+    return 'history_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+};
 
 // --- SERVICE FUNCTIONS ---
 
@@ -161,14 +167,28 @@ export const initGameSession = async () => {
         status: 'BETTING',
         timerEnd: null,
         result: [],
-        historyId: crypto.randomUUID()
+        historyId: generateHistoryId(),
+        shakeCount: 0,
+        shakeType: 1
     };
     await setDoc(ref, initialSession);
 };
 
 export const updateSessionStatus = async (status: GameSession['status'], result: string[] = []) => {
     const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
-    await updateDoc(ref, { status, result });
+    await updateDoc(ref, {
+        status,
+        result
+    });
+};
+
+export const triggerShake = async (type: 1 | 2) => {
+    const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
+    await updateDoc(ref, {
+        status: 'ROLLING', // Ensure we are in rolling state
+        shakeCount: increment(1),
+        shakeType: type
+    });
 };
 
 export const setSessionHost = async (hostId: string, hostName: string) => {
