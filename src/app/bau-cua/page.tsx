@@ -26,7 +26,8 @@ import {
     subscribeToBets,
     clearAllBets,
     triggerShake,
-    openBowl
+    openBowl,
+    triggerSound
 } from '@/lib/bau-cua-service';
 import { indicesToAnimalIds, secureRoll } from '@/lib/secure-roll';
 import { useAuth } from '@/context/AuthContext';
@@ -280,6 +281,11 @@ export default function BauCuaPage() {
     const lastSeenShakeCount = useRef(-1); // -1 = not initialized yet (skip first-load trigger)
     const [syncedRollIndices, setSyncedRollIndices] = useState<[number, number, number] | undefined>(undefined);
 
+    // Sound Emote State
+    const lastSeenSoundCount = useRef(-1);
+    const [troiOiUsed, setTroiOiUsed] = useState(false);
+    const [chetMeUsed, setChetMeUsed] = useState(false);
+
     // --- DERIVED STATE ---
     const isLive = session?.isActive ?? false;
     const isHost = isLive && session?.hostId === playerId;
@@ -419,6 +425,31 @@ export default function BauCuaPage() {
             if (s?.status === 'BETTING') {
                 if (s.result?.length === 0) {
                     setResult([]); // Clear board for new round
+                }
+                // Reset sound emote usage for new round
+                setTroiOiUsed(false);
+                setChetMeUsed(false);
+            }
+
+            // === SOUND EMOTE SYNC ===
+            if (s.soundCount !== undefined && s.soundCount !== null) {
+                if (lastSeenSoundCount.current === -1) {
+                    lastSeenSoundCount.current = s.soundCount;
+                } else if (s.soundCount > lastSeenSoundCount.current) {
+                    lastSeenSoundCount.current = s.soundCount;
+                    // Play the sound via Web Speech API
+                    const phrase = s.soundType === 'troioi' ? 'Trời ơi!' : 'Chết mẹ!';
+                    try {
+                        const utterance = new SpeechSynthesisUtterance(phrase);
+                        utterance.lang = 'vi-VN';
+                        utterance.rate = 1.1;
+                        utterance.pitch = 1.3;
+                        utterance.volume = 1;
+                        speechSynthesis.cancel(); // Cancel any in-progress speech
+                        speechSynthesis.speak(utterance);
+                    } catch (e) {
+                        console.warn('SpeechSynthesis not supported', e);
+                    }
                 }
             }
         });
@@ -1030,6 +1061,46 @@ export default function BauCuaPage() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* === SOUND EMOTE BUTTONS === */}
+                            {isLive && (
+                                <div className="flex items-center justify-center gap-3 mb-3">
+                                    <button
+                                        onClick={async () => {
+                                            if (troiOiUsed) return;
+                                            setTroiOiUsed(true);
+                                            await triggerSound('troioi', playerName);
+                                        }}
+                                        disabled={troiOiUsed}
+                                        className={`
+                                            flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-sm
+                                            border transition-all duration-200
+                                            ${troiOiUsed
+                                                ? 'bg-white/5 border-white/10 text-white/30 cursor-not-allowed'
+                                                : 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-500/40 text-yellow-300 hover:scale-105 hover:shadow-[0_0_15px_rgba(234,179,8,0.3)] active:scale-95'}
+                                        `}
+                                    >
+                                        <span className="text-lg">😱</span> Trời ơi!
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (chetMeUsed) return;
+                                            setChetMeUsed(true);
+                                            await triggerSound('chetme', playerName);
+                                        }}
+                                        disabled={chetMeUsed}
+                                        className={`
+                                            flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-sm
+                                            border transition-all duration-200
+                                            ${chetMeUsed
+                                                ? 'bg-white/5 border-white/10 text-white/30 cursor-not-allowed'
+                                                : 'bg-gradient-to-r from-red-500/20 to-pink-500/20 border-red-500/40 text-red-300 hover:scale-105 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] active:scale-95'}
+                                        `}
+                                    >
+                                        <span className="text-lg">💀</span> Chết mẹ!
+                                    </button>
+                                </div>
+                            )}
 
 
                             {/* RESULT OVERLAY REMOVED - Results shown on board */}

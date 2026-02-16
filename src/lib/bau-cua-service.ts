@@ -50,6 +50,9 @@ export interface GameSession {
     shakeType: 1 | 2; // 1 = Normal, 2 = Luck
     rollIndices: number[]; // Pre-rolled dice indices from Host
     bowlOpen: boolean; // Whether the bowl is lifted
+    soundCount: number; // Incremented each time a sound emote is triggered
+    soundType: string; // 'troioi' | 'chetme'
+    soundBy: string; // Who triggered the sound
 }
 
 export interface PlayerBet {
@@ -173,7 +176,10 @@ export const initGameSession = async () => {
         shakeCount: 0,
         shakeType: 1,
         rollIndices: [],
-        bowlOpen: true
+        bowlOpen: true,
+        soundCount: 0,
+        soundType: '',
+        soundBy: ''
     };
     await setDoc(ref, initialSession);
 };
@@ -201,6 +207,16 @@ export const triggerShake = async (type: 1 | 2, rollIndices: number[]) => {
 export const openBowl = async () => {
     const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
     await updateDoc(ref, { bowlOpen: true });
+};
+
+/** Any player triggers a sound emote for ALL players */
+export const triggerSound = async (soundType: string, playerName: string) => {
+    const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
+    await updateDoc(ref, {
+        soundCount: increment(1),
+        soundType,
+        soundBy: playerName
+    });
 };
 
 export const setSessionHost = async (hostId: string, hostName: string) => {
