@@ -61,7 +61,6 @@ const AnimalCard = ({
     onBet,
     disabled,
     isWinner,
-    isHostSelecting,
     selectionCount = 0,
     matchCount = 0,
     allBets = []
@@ -71,13 +70,12 @@ const AnimalCard = ({
     onBet: () => void,
     disabled: boolean,
     isWinner?: boolean,
-    isHostSelecting?: boolean,
     selectionCount?: number
     matchCount?: number
     allBets?: PlayerBet[] // All global bets for visualization
 }) => {
     // Status Logic
-    const isLoser = disabled && !isWinner && !isHostSelecting; // Result phase, not winner
+    const isLoser = disabled && !isWinner; // Result phase, not winner
     const winAmount = betAmount * matchCount;
 
     // Filter bets for THIS animal from other players
@@ -114,7 +112,6 @@ const AnimalCard = ({
         group
         bg-black/20
         ${!disabled ? 'hover:scale-105 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]' : ''}
-        ${isHostSelecting && selectionCount === 0 ? 'opacity-30 blur-[1px]' : ''}
         ${selectionCount > 0 ? 'opacity-100 ring-2 ring-white scale-110' : ''}
       `}
         >
@@ -172,9 +169,9 @@ const AnimalCard = ({
                 </div>
             )}
 
-            {/* BET BADGE (Top Right) - Hide when Disabled (Result Phase) */}
+            {/* BET BADGE (Top Right) - Always visible when bet placed */}
             <AnimatePresence>
-                {betAmount > 0 && !disabled && (
+                {betAmount > 0 && (
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
@@ -198,7 +195,7 @@ const AnimalCard = ({
             </div>
 
             {/* RESULT INDICATORS (Floating on top, FULL COLOR) */}
-            {disabled && !isHostSelecting && (
+            {disabled && (
                 <>
                     {/* WIN PROFIT */}
                     {isWinner && betAmount > 0 && (
@@ -1033,23 +1030,7 @@ export default function BauCuaPage() {
                                     </div>
                                 )}
                             </div>
-                            {/* ROLLING OVERLAY (CLIENTS ONLY) */}
-                            {currentStatus === 'ROLLING' && !isHost && (
-                                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-3xl animate-in fade-in text-center p-4">
-                                    <RefreshCw className="w-20 h-20 text-cyan-400 animate-spin mb-4" />
-                                    <h2 className="text-3xl font-black text-white tracking-widest animate-pulse uppercase">Host is selecting winners</h2>
-                                    <p className="text-white/50 text-lg mt-3 font-mono">Waiting for results...</p>
-                                </div>
-                            )}
 
-                            {/* HOST SELECTION INSTRUCTION (HOST ONLY - ROLLING) */}
-                            {currentStatus === 'ROLLING' && isHost && (
-                                <div className="text-center mb-4 animate-pulse">
-                                    <span className="text-yellow-400 font-bold uppercase tracking-widest text-lg drop-shadow-md border border-yellow-400/30 px-4 py-2 rounded-full bg-black/40">
-                                        Tap 3 Dice Results
-                                    </span>
-                                </div>
-                            )}
 
                             {/* RESULT OVERLAY REMOVED - Results shown on board */}
 
@@ -1057,9 +1038,6 @@ export default function BauCuaPage() {
                             {/* Mobile: Use h-full and content-center to keep it centered and packed. gap-2 to save space. */}
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-6 lg:gap-8 max-w-md md:max-w-none mx-auto w-full h-full md:h-auto content-center md:content-start">
                                 {ANIMALS.map(animal => {
-                                    const isHostSelecting = isHost && currentStatus === 'ROLLING';
-                                    const isSelectedByHost = isHostSelecting && result.includes(animal.id);
-                                    const selectionCount = isHostSelecting ? result.filter(r => r === animal.id).length : 0;
                                     const matchCount = (isLive && session?.result && session.result.length > 0) ? session.result.filter(r => r === animal.id).length : result.filter(r => r === animal.id).length;
                                     const betAmount = bets[animal.id] || 0;
 
@@ -1068,23 +1046,15 @@ export default function BauCuaPage() {
                                             key={animal.id}
                                             animal={animal}
                                             betAmount={betAmount}
-                                            onBet={() => {
-                                                if (isHostSelecting) {
-                                                    if (result.length < 3) addResultItem(animal.id);
-                                                } else {
-                                                    placeBet(animal.id);
-                                                }
-                                            }}
+                                            onBet={() => placeBet(animal.id)}
                                             disabled={
                                                 (currentStatus === 'BETTING' && balance < selectedChip) ||
-                                                (currentStatus === 'ROLLING' && !isHost) ||
+                                                (currentStatus === 'ROLLING') ||
                                                 (currentStatus === 'RESULT')
                                             }
                                             isWinner={currentStatus === 'RESULT' && (session?.result?.includes(animal.id) || result.includes(animal.id))}
-                                            isHostSelecting={isHostSelecting}
-                                            selectionCount={selectionCount}
                                             matchCount={matchCount}
-                                            allBets={allBets} // Pass global bets
+                                            allBets={allBets}
                                         />
                                     )
                                 })}
