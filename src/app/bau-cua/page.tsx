@@ -1518,29 +1518,35 @@ export default function BauCuaPage() {
                     </div>
                 )}
 
-                {/* STATE: HOST ROLLING (Review) */}
-                {isHost && currentStatus === 'ROLLING' && (
+                {/* STATE: ROLLING (Host + non-host) */}
+                {currentStatus === 'ROLLING' && (
                     <div className="flex items-center gap-3">
-                        <div className="flex gap-1">
-                            {result.map((id, i) => (
-                                <button key={i} onClick={() => removeResultItem(i)} className="text-3xl hover:scale-90 transition">
-                                    {ANIMALS.find(a => a.id === id)?.emoji}
+                        {(!isLive || isHost) && !isBowlOpen && canReveal ? (
+                            <>
+                                <button
+                                    onClick={() => handleRollClick(2)}
+                                    disabled={luckShakeCount >= 2}
+                                    className={`
+                                        flex-1 h-12 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
+                                        ${luckShakeCount < 2
+                                            ? 'bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-cyan-500/20'
+                                            : 'bg-white/10 text-white/30 cursor-not-allowed'}
+                                    `}
+                                >
+                                    🍀 Luck ({2 - luckShakeCount})
                                 </button>
-                            ))}
-                            {Array.from({ length: 3 - result.length }).map((_, i) => (
-                                <div key={i} className="w-9 h-9 rounded-full border border-white/20 border-dashed" />
-                            ))}
-                        </div>
-                        <button onClick={resetResultInput} className="px-4 py-2 rounded-lg bg-white/10 text-xs font-bold uppercase">Reset</button>
-                        <button
-                            onClick={confirmResult}
-                            disabled={result.length !== 3}
-                            className={`flex-1 h-12 rounded-xl font-bold uppercase tracking-wider text-sm transition-all
-                                ${result.length === 3 ? 'bg-green-500 text-white shadow-lg' : 'bg-white/10 text-white/30'}
-                            `}
-                        >
-                            Submit
-                        </button>
+                                <button
+                                    onClick={handleOpenClick}
+                                    className="flex-1 h-12 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg flex items-center justify-center transition-all bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-green-500/20 animate-pulse"
+                                >
+                                    ✨ Open
+                                </button>
+                            </>
+                        ) : (
+                            <div className="flex-1 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 font-mono text-sm animate-pulse">
+                                {shakerActive ? 'Shaking…' : 'Waiting for dice…'}
+                            </div>
+                        )}
                     </div>
                 )}
 
