@@ -1,5 +1,5 @@
 This is a comprehensive summary of the "Lipid Lotto" project design and logic. Use this as your "master blueprint" to port the features into your existing codebase (the smash repo).
-1. The Core Concept: "Lipid Lotto"
+1. The Core Concept: "Lipid Lotto" 
 The Bet: A single Over/Under bet on a total cholesterol result (Target: 385 mg/dL).
 The Theme: "Clinical Neon" / Asian Parent Edition. High-stakes sports betting aesthetic mixed with medical humor and Vietnamese cultural memes.
 The Tone: Funny, graphic, and stressful.
