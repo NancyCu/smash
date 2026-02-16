@@ -25,9 +25,10 @@ import {
     updateBet,
     subscribeToBets,
     clearAllBets,
-    triggerShake
+    triggerShake,
+    openBowl
 } from '@/lib/bau-cua-service';
-import { indicesToAnimalIds } from '@/lib/secure-roll';
+import { indicesToAnimalIds, secureRoll } from '@/lib/secure-roll';
 import { useAuth } from '@/context/AuthContext';
 
 // Dynamic import – R3F Canvas must be client-only (no SSR)
@@ -247,8 +248,7 @@ export default function BauCuaPage() {
     const [result, setResult] = useState<string[]>([]); // Current round result keys
     const [lastWin, setLastWin] = useState(0);
 
-    // Sync State
-    const lastSeenShakeCount = useRef(0);
+
 
     const [showTopUpModal, setShowTopUpModal] = useState(false);
     const [topUpAmount, setTopUpAmount] = useState(20);
@@ -280,6 +280,8 @@ export default function BauCuaPage() {
     const [canReveal, setCanReveal] = useState(false); // Can we show Open/Luck buttons?
     const [luckShakeCount, setLuckShakeCount] = useState(0);
     const [isBowlOpen, setIsBowlOpen] = useState(true); // Open by default or after result
+    const lastSeenShakeCount = useRef(-1); // -1 = not initialized yet (skip first-load trigger)
+    const [syncedRollIndices, setSyncedRollIndices] = useState<[number, number, number] | undefined>(undefined);
 
     // --- DERIVED STATE ---
     const isLive = session?.isActive ?? false;
@@ -375,38 +377,40 @@ export default function BauCuaPage() {
             setSession(s);
             if (!s) return;
 
-            // Sync Shake Trigger (Play Sound/Animation)
-            if (s.shakeCount > lastSeenShakeCount.current) {
-                const diff = s.shakeCount - lastSeenShakeCount.current;
-                // Only trigger if we are actively in the game/view
-                // And prevent triggering if we just loaded the page and shakeCount is high (handled by init ref? 
-                // actually we want to sync state. But for animation, we only want to play if it's a NEW shake)
-                // For simplicity, we assume if `s.shakeCount` increases, we shake.
+            // === SHAKE SYNC: Detect new shakes from Firestore ===
+            if (s.shakeCount !== undefined && s.shakeCount !== null) {
+                if (lastSeenShakeCount.current === -1) {
+                    // First load — just record the current count, don't trigger animation
+                    lastSeenShakeCount.current = s.shakeCount;
+                } else if (s.shakeCount > lastSeenShakeCount.current) {
+                    // A NEW shake happened! Trigger animation + sound for EVERYONE
+                    lastSeenShakeCount.current = s.shakeCount;
 
-                // However, on first load, `lastSeenShakeCount` is 0. If `s.shakeCount` is 50, it will trigger?
-                // We should probably init `lastSeenShakeCount` to `s.shakeCount` on FIRST load without triggering.
-                // But `subscribeToSession` fires immediately on load.
-                // Solution: check if session is "fresh" or just rely on the fact that triggering a shake on load isn't the end of the world, 
-                // but let's try to be cleaner.
+                    // Store the Host's pre-rolled dice indices for visual sync
+                    if (s.rollIndices && s.rollIndices.length === 3) {
+                        setSyncedRollIndices(s.rollIndices as [number, number, number]);
+                    }
 
-                // NOTE: For this MVP, we'll just trigger if it increments. 
-                // If it's a huge jump (initial load), maybe we mute?
-                // Actually, let's just sync `shakeTrigger` locally.
+                    setShakeType(s.shakeType as 1 | 2);
+                    setShakerActive(true);
+                    setIsBowlOpen(false);
+                    setCanReveal(false);
+                    setShakeTrigger(prev => prev + 1);
 
-                setShakeType(s.shakeType as 1 | 2);
-                setShakerActive(true);
-                setIsBowlOpen(false);
-                setCanReveal(false);
-                setShakeTrigger(prev => prev + 1);
-
-                // Update luck count logic
-                if (s.shakeType === 1) {
-                    setLuckShakeCount(0);
-                } else {
-                    setLuckShakeCount(prev => prev + 1);
+                    // Update luck count
+                    if (s.shakeType === 1) {
+                        setLuckShakeCount(0);
+                    } else {
+                        setLuckShakeCount(prev => prev + 1);
+                    }
                 }
+            }
 
-                lastSeenShakeCount.current = s.shakeCount;
+            // === BOWL SYNC: Detect bowl open from Firestore ===
+            if (s.bowlOpen === true) {
+                setIsBowlOpen(true);
+            } else if (s.bowlOpen === false) {
+                setIsBowlOpen(false);
             }
 
             // Sync local result display if session has result
@@ -581,13 +585,12 @@ export default function BauCuaPage() {
             return;
         }
 
-        // If HOST: Lock bets for everyone, then trigger shake globally
+        // If HOST: Pre-roll dice & broadcast shake to ALL players
+        const roll = secureRoll(); // Generate dice result on Host
         if (isStartShake) {
-            // Start Shake (Reset Luck Count done in trigger logic listener)
-            await triggerShake(1);
+            await triggerShake(1, roll);
         } else {
-            // Luck Shake
-            await triggerShake(2);
+            await triggerShake(2, roll);
         }
 
         // Host does NOT set local state here manually. 
@@ -602,8 +605,13 @@ export default function BauCuaPage() {
         */
     };
 
-    const handleOpenClick = () => {
-        setIsBowlOpen(true);
+    const handleOpenClick = async () => {
+        if (isLive) {
+            // Sync bowl open across ALL clients
+            await openBowl();
+        } else {
+            setIsBowlOpen(true);
+        }
         // The DiceShaker will see isOpen=true and trigger `onRollComplete` after animation.
     };
 
@@ -967,6 +975,7 @@ export default function BauCuaPage() {
                                     onBowlTap={handleOpenClick}
                                     disabled={currentStatus === 'RESULT'}
                                     isOpen={isBowlOpen}
+                                    forcedResult={isLive ? syncedRollIndices : undefined}
                                     className="border border-white/10 shadow-2xl"
                                 />
                                 {/* Shake buttons (below canvas, only during BETTING or ROLLING-Hidden) */}

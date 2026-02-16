@@ -48,6 +48,8 @@ export interface GameSession {
     historyId: string; // ID to group transactions for archiving
     shakeCount: number; // Incremented to trigger shakes
     shakeType: 1 | 2; // 1 = Normal, 2 = Luck
+    rollIndices: number[]; // Pre-rolled dice indices from Host
+    bowlOpen: boolean; // Whether the bowl is lifted
 }
 
 export interface PlayerBet {
@@ -169,7 +171,9 @@ export const initGameSession = async () => {
         result: [],
         historyId: generateHistoryId(),
         shakeCount: 0,
-        shakeType: 1
+        shakeType: 1,
+        rollIndices: [],
+        bowlOpen: true
     };
     await setDoc(ref, initialSession);
 };
@@ -182,13 +186,21 @@ export const updateSessionStatus = async (status: GameSession['status'], result:
     });
 };
 
-export const triggerShake = async (type: 1 | 2) => {
+export const triggerShake = async (type: 1 | 2, rollIndices: number[]) => {
     const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
     await updateDoc(ref, {
-        status: 'ROLLING', // Ensure we are in rolling state
+        status: 'ROLLING',
         shakeCount: increment(1),
-        shakeType: type
+        shakeType: type,
+        rollIndices,
+        bowlOpen: false
     });
+};
+
+/** Host opens the bowl for ALL players */
+export const openBowl = async () => {
+    const ref = doc(db, SESSION_COL, SESSION_DOC_ID);
+    await updateDoc(ref, { bowlOpen: true });
 };
 
 export const setSessionHost = async (hostId: string, hostName: string) => {

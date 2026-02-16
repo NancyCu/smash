@@ -335,6 +335,7 @@ function Scene({
   onBowlTap,
   disabled,
   isOpen,
+  forcedResult,
 }: {
   trigger: number;
   shakeType: 1 | 2;
@@ -343,6 +344,7 @@ function Scene({
   onBowlTap?: () => void;
   disabled?: boolean;
   isOpen?: boolean;
+  forcedResult?: [number, number, number];
 }) {
   const [state, setState] = useState<ShakerState>("IDLE");
   const [results, setResults] = useState<[number, number, number]>([2, 4, 0]);
@@ -423,7 +425,8 @@ function Scene({
       if (clockRef.current >= SHAKE_DURATION) {
         // Transition → ROLLED
         stopShake();
-        const roll = secureRoll();
+        // Use forcedResult if provided (multiplayer sync), otherwise local secureRoll
+        const roll = forcedResult || secureRoll();
         setResults(roll);
         clockRef.current = 0;
         if (groupRef.current) {
@@ -518,6 +521,8 @@ export interface DiceShakerProps {
   disabled?: boolean;
   /** Whether the bowl is open/lifted. */
   isOpen?: boolean;
+  /** Pre-determined dice result from the Host (for multiplayer sync). */
+  forcedResult?: [number, number, number];
   /** Optional extra Tailwind classes on the wrapper div. */
   className?: string;
 }
@@ -530,6 +535,7 @@ export default function DiceShaker({
   onBowlTap,
   disabled,
   isOpen = true,
+  forcedResult,
   className = "",
 }: DiceShakerProps) {
   return (
@@ -555,6 +561,7 @@ export default function DiceShaker({
             onBowlTap={onBowlTap}
             disabled={disabled}
             isOpen={isOpen}
+            forcedResult={forcedResult}
           />
         </Suspense>
       </Canvas>
