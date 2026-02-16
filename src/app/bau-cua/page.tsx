@@ -429,6 +429,10 @@ export default function BauCuaPage() {
                 // Reset sound emote usage for new round
                 setTroiOiUsed(false);
                 setChetMeUsed(false);
+                // Reset shaker state for new round
+                setShakerActive(false);
+                setCanReveal(false);
+                setIsBowlOpen(true);
             }
 
             // === SOUND EMOTE SYNC ===
@@ -819,9 +823,14 @@ export default function BauCuaPage() {
             if (isHost) {
                 await updateSessionStatus('BETTING', []);
                 await clearAllBets(); // Clear global bets
+                // Reset bowl to open for new round
+                await openBowl();
                 setBets({});
                 setResult([]);
                 setLastWin(0);
+                setShakerActive(false);
+                setCanReveal(false);
+                setIsBowlOpen(true);
             } else {
                 // Client side - just clear local view
                 setBets({});
