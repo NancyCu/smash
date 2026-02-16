@@ -193,8 +193,8 @@ const AnimalCard = ({
 
             {/* CONTENT (Emoji/Name) - Grayscale if loser */}
             <div className={`relative z-10 flex flex-col items-center transition-all ${isLoser ? 'grayscale opacity-50' : ''}`}>
-                <span className="text-6xl md:text-6xl xl:text-8xl drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
-                <span className="mt-0.5 text-[9px] md:text-[10px] xl:text-xs font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
+                <span className="text-5xl md:text-[clamp(3rem,5vw,6rem)] drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
+                <span className="mt-0.5 text-[9px] md:text-[clamp(9px,0.7vw,13px)] font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
             </div>
 
             {/* RESULT INDICATORS — only show after dice are revealed */}
@@ -993,7 +993,7 @@ export default function BauCuaPage() {
             </div>
 
             {/* MAIN GAME AREA - RESPONSIVE LAYOUT */}
-            <div className="no-print flex-1 w-full mx-auto flex flex-col md:flex-row gap-6 p-4 md:p-8 relative z-10 mb-32 overflow-y-auto">
+            <div className="no-print flex-1 w-full mx-auto flex flex-col md:flex-row gap-4 md:gap-[2vw] p-4 md:px-[2vw] md:py-4 relative z-10 mb-32 md:mb-4 overflow-y-auto">
 
                 {/* --- LEFT: BOARD (Desktop: expands, Mobile: Full) --- */}
                 <div className="flex-1 min-h-0">
@@ -1001,7 +1001,7 @@ export default function BauCuaPage() {
                         <div className="relative h-full flex flex-col justify-center">
 
                             {/* === 3D DICE SHAKER === */}
-                            <div className="mb-4">
+                            <div className="mb-2 md:mb-[1vw]">
                                 <DiceShaker
                                     trigger={shakeTrigger}
                                     shakeType={shakeType}
@@ -1114,7 +1114,7 @@ export default function BauCuaPage() {
 
                             {/* GRID - RESPONSIVE (2 cols mobile, 3 cols desktop) */}
                             {/* Mobile: Use h-full and content-center to keep it centered and packed. gap-2 to save space. */}
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-6 lg:gap-8 max-w-md md:max-w-none mx-auto w-full h-full md:h-auto content-center md:content-start">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-[clamp(0.5rem,1.5vw,2rem)] max-w-md md:max-w-none mx-auto w-full h-full md:h-auto content-center md:content-start">
                                 {ANIMALS.map(animal => {
                                     const matchCount = (isLive && session?.result && session.result.length > 0) ? session.result.filter(r => r === animal.id).length : result.filter(r => r === animal.id).length;
                                     const betAmount = bets[animal.id] || 0;
@@ -1144,7 +1144,7 @@ export default function BauCuaPage() {
 
                 {/* --- RIGHT: CONTROLS & PLAYERS (Desktop: Fixed Width Sidebar, Mobile: Bottom Sticky) --- */}
                 {/* Desktop: Sticky column, split into Top (Controls) and Bottom (Players) */}
-                <div className="flex-1 md:flex-none md:w-80 lg:w-96 md:sticky md:top-24 md:h-[calc(100dvh-8rem)] flex flex-col gap-6">
+                <div className="flex-1 md:flex-none md:w-[clamp(18rem,22vw,24rem)] md:sticky md:top-20 md:h-[calc(100dvh-6rem)] flex flex-col gap-4">
                     {/* DESKTOP CONTROLS (Hidden on Mobile) */}
                     <div className="hidden md:flex bg-[#151725]/90 backdrop-blur-xl p-4 md:p-6 rounded-3xl border border-white/10 shadow-2xl flex-col gap-4 md:gap-6">
 

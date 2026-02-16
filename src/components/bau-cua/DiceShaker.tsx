@@ -540,7 +540,7 @@ export default function DiceShaker({
 }: DiceShakerProps) {
   return (
     <div
-      className={`relative w-full aspect-[4/3] max-h-[340px] md:max-h-[400px] rounded-2xl overflow-hidden ${className}`}
+      className={`relative w-full aspect-[4/3] max-h-[340px] md:max-h-[45vh] rounded-2xl overflow-hidden ${className}`}
       style={{
         background:
           "radial-gradient(ellipse at 50% 120%, #1a1428 0%, #0B0C15 70%)",
