@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, RotateCcw, Coins, Trophy, Info, Plus, Check, Settings, Shield, UserCheck, Lock, Play, StopCircle, RefreshCw } from 'lucide-react';
@@ -193,8 +193,8 @@ const AnimalCard = ({
 
             {/* CONTENT (Emoji/Name) - Grayscale if loser */}
             <div className={`relative z-10 flex flex-col items-center transition-all ${isLoser ? 'grayscale opacity-50' : ''}`}>
-                <span className="text-5xl md:text-[clamp(3rem,5vw,6rem)] drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
-                <span className="mt-0.5 text-[9px] md:text-[clamp(9px,0.7vw,13px)] font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
+                <span className="text-5xl md:text-[clamp(4rem,7vw,9rem)] drop-shadow-2xl filter transform transition-transform group-hover:scale-110">{animal.emoji}</span>
+                <span className="mt-0.5 text-[9px] md:text-[clamp(10px,0.9vw,16px)] font-bold uppercase tracking-widest text-white/80 text-shadow-sm leading-tight">{animal.name}</span>
             </div>
 
             {/* RESULT INDICATORS — only show after dice are revealed */}
@@ -557,10 +557,34 @@ export default function BauCuaPage() {
         }
     };
 
+    // --- CHIP SOUND (Web Audio API) ---
+    const playChipSound = useCallback(() => {
+        try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const duration = 0.08;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1800, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + duration);
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + duration);
+            osc.onended = () => ctx.close();
+        } catch (e) {
+            // Audio not supported
+        }
+    }, []);
+
     const placeBet = (animalId: string) => {
         // Only allow betting if status is BETTING
         if (currentStatus !== 'BETTING') return;
         if (balance < selectedChip) return;
+
+        playChipSound();
 
         setBets(prev => ({
             ...prev,
