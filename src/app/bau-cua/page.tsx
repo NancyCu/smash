@@ -437,18 +437,14 @@ export default function BauCuaPage() {
                     lastSeenSoundCount.current = s.soundCount;
                 } else if (s.soundCount > lastSeenSoundCount.current) {
                     lastSeenSoundCount.current = s.soundCount;
-                    // Play the sound via Web Speech API
-                    const phrase = s.soundType === 'troioi' ? 'Trời ơi!' : 'Chết mẹ!';
+                    // Play the actual sound file
+                    const src = s.soundType === 'troioi' ? '/bau-cua/troioi.m4a' : '/bau-cua/chet.m4a';
                     try {
-                        const utterance = new SpeechSynthesisUtterance(phrase);
-                        utterance.lang = 'vi-VN';
-                        utterance.rate = 1.1;
-                        utterance.pitch = 1.3;
-                        utterance.volume = 1;
-                        speechSynthesis.cancel(); // Cancel any in-progress speech
-                        speechSynthesis.speak(utterance);
+                        const audio = new Audio(src);
+                        audio.volume = 1;
+                        audio.play().catch(e => console.warn('Audio play failed:', e));
                     } catch (e) {
-                        console.warn('SpeechSynthesis not supported', e);
+                        console.warn('Audio not supported', e);
                     }
                 }
             }
