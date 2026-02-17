@@ -547,16 +547,30 @@ export default function BauCuaPage() {
         if (session?.status === 'RESULT' && session.result?.length === 3) {
             const resultString = session.result.join(',');
 
-            // Prevent double-processing the same result ID/string locally
+            // Prevent double-processing the same result ID/string locally within the same session instance
             if (runOnceRef.current === resultString) return;
+
+            // --- DUPLICATE PAYOUT FIX ---
+            // Check if we already processed this specific round (by timestamp) in a previous session (e.g. before refresh)
+            const lastProcessedTime = localStorage.getItem('bauCua_lastProcessedRoundTime');
+            const currentRoundTime = session.roundStartTime?.toString();
+
+            if (currentRoundTime && lastProcessedTime === currentRoundTime) {
+                console.log("Skipping duplicate payout for round:", currentRoundTime);
+                // We still need to mark it as "seen" for this instance to prevent re-running if status changes?? 
+                // Actually runOnceRef handles the in-memory dedup. 
+                // We just return here to avoid the audio/money logic.
+                runOnceRef.current = resultString;
+                return;
+            }
+
+            // It's a new round! Mark it processed.
+            if (currentRoundTime) {
+                localStorage.setItem('bauCua_lastProcessedRoundTime', currentRoundTime);
+            }
             runOnceRef.current = resultString;
 
-            // Simple check to see if we already processed this exact result ID
-            // Simple check to see if we already processed this exact result ID
-            // For now, we use a session-level ID if available, OR just rely on local state to block duplicate payouts.
-            // But simplified for this "MVP":
             // Run settle ONLY if we have bets.
-
             if (Object.keys(bets).length > 0) {
                 // Calculate Win/Loss for Audio Trigger
                 let totalBet = 0;
@@ -579,7 +593,7 @@ export default function BauCuaPage() {
                 settleClientRound();
             }
         }
-    }, [session?.status, session?.result, isLive, runOnceRef.current]); // Added ref to avoid double-trigger if STRICT MODE is on
+    }, [session?.status, session?.result, isLive, session?.roundStartTime]);
 
     // Helper: UUID
     const generateUUID = () => {
