@@ -375,11 +375,14 @@ export default function BauCuaPage() {
     // Host Recovery Effect
     // Ensures that if a host refreshes during ROLLING state, they get their controls back.
     useEffect(() => {
-        if (isLive && isHost && session?.status === 'ROLLING' && session?.bowlOpen === false) {
-            // Only set if not already set to avoid loops/renders (though react handles strict equality)
-            setCanReveal(true);
+        if (isLive && isHost && session?.status === 'ROLLING') {
+            // If the shaker isn't currently animating (which implies we loaded into this state or finished)
+            // We ensure canReveal is true so the buttons appear.
+            if (!shakerActive) {
+                setCanReveal(true);
+            }
         }
-    }, [isLive, isHost, session?.status, session?.bowlOpen]);
+    }, [isLive, isHost, session?.status, shakerActive]);
 
     // Format Timer
     const formatTime = (seconds: number) => {
