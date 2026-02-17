@@ -837,7 +837,7 @@ export default function DiceShaker({
     >
       <Canvas
         shadows
-        camera={{ position: [0, 5.5, 5.5], fov: 38 }}
+        camera={{ position: [0, 7, 7], fov: 45 }}
         dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: true }}
       >
