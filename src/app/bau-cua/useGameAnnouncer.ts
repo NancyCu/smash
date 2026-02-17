@@ -25,7 +25,7 @@ const ANIMAL_MAP: Record<string, string> = {
 
 export const useGameAnnouncer = () => {
     const [queue, setQueue] = useState<{ url: string; text: string }[]>([]);
-    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentIndex, setCurrentIndex] = useState(-1); // -1 means idle
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const [activeBubble, setActiveBubble] = useState<{ id: number; text: string; user: string; isExiting: boolean } | null>(null);
 
@@ -33,7 +33,7 @@ export const useGameAnnouncer = () => {
         setActiveBubble(null);
     }, []);
 
-    // Initializer: Takes roll result -> Queues Audio + Text items
+    // Initializer: Takes roll result -> Sets Queue and Starts
     const announceResult = useCallback((result: string[]) => {
         if (!result || result.length === 0) return;
 
@@ -47,7 +47,7 @@ export const useGameAnnouncer = () => {
         // 2. Sort by count DESC
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
 
-        // 3. Map to Queue Items (Audio + Transcript)
+        // 3. Map to Queue Items
         const VIET_NAMES: Record<string, string> = {
             'bau': 'Bầu', 'cua': 'Cua', 'tom': 'Tôm', 'ca': 'Cá', 'nai': 'Nai', 'ga': 'Gà'
         };
@@ -64,22 +64,20 @@ export const useGameAnnouncer = () => {
             };
         });
 
-        console.log('[Announcer] Queueing:', newItems);
+        console.log('[Announcer] Starting Sequence:', newItems);
         setQueue(newItems);
-
+        setCurrentIndex(0); // Start at 0
+        setActiveBubble(null); // Clear any existing
     }, []);
 
-    // Sequencer: Plays the queue
-    const playNext = useCallback(() => {
-        if (queue.length === 0) {
-            setIsPlaying(false);
+    // Sequencer Effect
+    useEffect(() => {
+        // If index is invalid or queue empty, do nothing
+        if (currentIndex < 0 || currentIndex >= queue.length) {
             return;
         }
 
-        const currentItem = queue[0];
-        const remaining = queue.slice(1);
-
-        setIsPlaying(true);
+        const currentItem = queue[currentIndex];
 
         // --- 1. SET BUBBLE (Enter) ---
         setActiveBubble({
@@ -90,49 +88,63 @@ export const useGameAnnouncer = () => {
         });
 
         // --- 2. PLAY AUDIO ---
+        // Safety: Stop previous
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current = null;
         }
 
         const audio = new Audio(currentItem.url);
+        audio.playbackRate = 1.25; // Speed up speech
         audioRef.current = audio;
 
-        // On End: Trigger Bubble Exit -> Wait -> Play Next
-        audio.onended = () => {
+        // Handler for finishing this step
+        const handleStepComplete = () => {
             // Trigger exit animation
             setActiveBubble(prev => prev ? { ...prev, isExiting: true } : null);
 
-            // Wait for exit animation (approx 0.5s - 1s) before processing next
-            // fast float fade is 1.5s but we can be snappier
+            // Wait for exit, then advance index
             setTimeout(() => {
-                setQueue(remaining);
-                setIsPlaying(false); // loop will pick up next
-            }, 1000);
+                setCurrentIndex(prev => prev + 1);
+            }, 600); // Faster transition (was 1000)
         };
 
+        audio.onended = handleStepComplete;
         audio.onerror = (e) => {
             console.error('[Announcer] Error playing:', currentItem.url, e);
-            setQueue(remaining);
-            setIsPlaying(false);
+            handleStepComplete(); // Skip if error
         };
 
-        audio.play().catch(e => {
-            console.warn('[Announcer] Playback interrupted:', e);
-            setQueue(remaining);
-            setIsPlaying(false);
-        });
-
-    }, [queue]);
-
-    useEffect(() => {
-        if (queue.length > 0 && !isPlaying) {
-            const timer = setTimeout(() => {
-                playNext();
-            }, 100); // slight buffer
-            return () => clearTimeout(timer);
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(e => {
+                console.warn('[Announcer] Playback blocked/interrupted:', e);
+                // If blocked, we might want to auto-skip after a delay, or just stop?
+                // For game continuity, skipping is better.
+                setTimeout(handleStepComplete, 1500);
+            });
         }
-    }, [queue, isPlaying, playNext]);
+
+        return () => {
+            // Cleanup: If effect re-runs (unlikely unless queue/index changes), stop audio?
+            // Actually, we want it to finish. But strictly, effects should clean up.
+            // If we unmount, stop audio.
+            if (audioRef.current && !audioRef.current.ended) {
+                // audioRef.current.pause(); // Optional: keeps playing in bg?
+            }
+        };
+
+    }, [currentIndex, queue]);
+
+    // Reset when queue finishes
+    useEffect(() => {
+        if (currentIndex >= queue.length && queue.length > 0) {
+            console.log('[Announcer] Sequence Complete');
+            setQueue([]);
+            setCurrentIndex(-1);
+            setActiveBubble(null);
+        }
+    }, [currentIndex, queue.length]);
 
     return { announceResult, activeBubble, clearBubble };
 };
