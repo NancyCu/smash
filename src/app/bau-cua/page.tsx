@@ -33,6 +33,7 @@ import {
 import { indicesToAnimalIds, secureRoll } from '@/lib/secure-roll';
 import { useAuth } from '@/context/AuthContext';
 import { useVoiceLines } from './useVoiceLines';
+import { useGameAnnouncer } from './useGameAnnouncer';
 
 // Dynamic import – R3F Canvas must be client-only (no SSR)
 const DiceShaker = dynamic(
@@ -237,6 +238,7 @@ const AnimalCard = ({
 
 export default function BauCuaPage() {
     const { user } = useAuth();
+    const { announceResult } = useGameAnnouncer();
 
     // --- STATE ---
     const [balance, setBalance] = useState(0);
@@ -713,6 +715,10 @@ export default function BauCuaPage() {
 
         setResult(animalArr);
         setShakerActive(false);
+
+        // --- ANNOUNCER ---
+        // Announce the result locally for everyone when revealed
+        announceResult(animalArr);
 
         if (isLive && isHost) {
             // Publish result to all clients via Firestore
