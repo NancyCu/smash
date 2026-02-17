@@ -27,7 +27,8 @@ import {
     clearAllBets,
     triggerShake,
     openBowl,
-    triggerSound
+    triggerSound,
+    setPlayerBalance
 } from '@/lib/bau-cua-service';
 import { indicesToAnimalIds, secureRoll } from '@/lib/secure-roll';
 import { useAuth } from '@/context/AuthContext';
@@ -495,16 +496,19 @@ export default function BauCuaPage() {
     }, [playerId]); // Re-sub if playerId changes (for filtering)
 
     // Sync Local Bets to Firestore (Debounced)
+    // Sync Local Bets & BALANCE to Firestore (Debounced)
     useEffect(() => {
         if (!playerId || !playerName) return;
 
         // Sync whenever `bets` changes
         const timeout = setTimeout(() => {
             updateBet(playerId, playerName, bets);
+            // Also sync balance immediately so the list updates
+            setPlayerBalance(playerId, balance);
         }, 300); // 300ms debounce
 
         return () => clearTimeout(timeout);
-    }, [bets, playerId, playerName]);
+    }, [bets, balance, playerId, playerName]);
 
     // 3. React to Result from Session (Client Side Win Calculation)
     // 3. React to Result from Session (Client Side Win Calculation)
@@ -600,22 +604,12 @@ export default function BauCuaPage() {
     };
 
     // --- CHIP SOUND (Web Audio API) ---
+    // --- CHIP SOUND (Web Audio API) ---
     const playChipSound = useCallback(() => {
         try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const duration = 0.08;
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(1800, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + duration);
-            gain.gain.setValueAtTime(0.15, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + duration);
-            osc.onended = () => ctx.close();
+            const audio = new Audio('/sounds/money.m4a');
+            audio.volume = 0.6; // Not too loud
+            audio.play().catch(e => console.warn('Audio play failed', e));
         } catch (e) {
             // Audio not supported
         }
