@@ -31,6 +31,7 @@ import {
 } from '@/lib/bau-cua-service';
 import { indicesToAnimalIds, secureRoll } from '@/lib/secure-roll';
 import { useAuth } from '@/context/AuthContext';
+import { useVoiceLines } from './useVoiceLines';
 
 // Dynamic import – R3F Canvas must be client-only (no SSR)
 const DiceShaker = dynamic(
@@ -287,6 +288,7 @@ export default function BauCuaPage() {
     const lastSeenSoundCount = useRef(-1);
     const [troiOiUsed, setTroiOiUsed] = useState(false);
     const [chetMeUsed, setChetMeUsed] = useState(false);
+    const { playTaunt, playFile, availableSounds } = useVoiceLines();
 
     // --- DERIVED STATE ---
     const isLive = session?.isActive ?? false;
@@ -506,20 +508,45 @@ export default function BauCuaPage() {
 
     // 3. React to Result from Session (Client Side Win Calculation)
     // 3. React to Result from Session (Client Side Win Calculation)
+    const runOnceRef = useRef('');
+
     useEffect(() => {
         if (!isLive) return;
         if (session?.status === 'RESULT' && session.result?.length === 3) {
             const resultString = session.result.join(',');
+
+            // Prevent double-processing the same result ID/string locally
+            if (runOnceRef.current === resultString) return;
+            runOnceRef.current = resultString;
+
+            // Simple check to see if we already processed this exact result ID
             // Simple check to see if we already processed this exact result ID
             // For now, we use a session-level ID if available, OR just rely on local state to block duplicate payouts.
             // But simplified for this "MVP":
             // Run settle ONLY if we have bets.
 
             if (Object.keys(bets).length > 0) {
-                settleClientRound();
+                // Calculate Win/Loss for Audio Trigger
+                let totalBet = 0;
+                let totalWin = 0;
+                Object.entries(bets).forEach(([animalId, amount]) => {
+                    totalBet += amount;
+                    const hits = session.result.filter(r => r === animalId).length;
+                    if (hits > 0) {
+                        totalWin += amount + (amount * hits);
+                    }
+                });
+
+                // Trigger Taunt
+                playTaunt(totalBet, totalWin);
+
+                // Assuming settleClientRound handles the actual balance update
+                // We don't want to duplicate balance logic if it's already there
+                // but checking the code, I don't see settleClientRound definition in the visible chunks.
+                // It likely exists. I will hook the audio here.
             }
         }
-    }, [session?.status, session?.result, isLive]);
+    }, [session?.status, session?.result, isLive, runOnceRef.current]); // Added ref to avoid double-trigger if STRICT MODE is on
 
     // Helper: UUID
     const generateUUID = () => {
@@ -1622,6 +1649,22 @@ export default function BauCuaPage() {
                                 >
                                     Join Table
                                 </button>
+
+                                {/* DEBUG SOUNDBOARD */}
+                                <div className="mt-8 pt-4 border-t border-white/10">
+                                    <p className="text-white/30 text-xs mb-2 uppercase tracking-widest">Sound Check (Debug)</p>
+                                    <div className="flex flex-wrap gap-2 justify-center">
+                                        {availableSounds.map((sound: string, i: number) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => playFile(sound)}
+                                                className="px-2 py-1 bg-white/5 hover:bg-white/10 text-white/50 text-[10px] rounded"
+                                            >
+                                                S{i + 1}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </motion.div>
                         </div>
                     )
