@@ -627,6 +627,7 @@ export default function BauCuaPage() {
     const placeBet = (animalId: string) => {
         // Only allow betting if status is BETTING
         if (currentStatus !== 'BETTING') return;
+        if (isHost) return; // HOST CANNOT BET
         if (balance < selectedChip) return;
 
         playChipSound();
@@ -790,47 +791,69 @@ export default function BauCuaPage() {
     const confirmResult = async () => {
         if (result.length !== 3) return;
 
-        // Common Logic: Calculate Payout
-        const calculatePayout = (currentBets: Record<string, number>, currentResult: string[]) => {
-            let totalWinnings = 0;
-            let totalBetReturn = 0;
-            let totalBetAmount = 0;
-
-            Object.entries(currentBets).forEach(([animalId, betAmount]) => {
-                totalBetAmount += betAmount;
-                const matches = currentResult.filter(r => r === animalId).length;
-                if (matches > 0) {
-                    totalBetReturn += betAmount;
-                    totalWinnings += betAmount * matches;
-                }
-            });
-            return { payout: totalBetReturn + totalWinnings, profit: (totalBetReturn + totalWinnings) - totalBetAmount, totalBetAmount, totalWinnings };
-        };
-
         if (isLive) {
             if (isHost) {
                 // Host publishes result
                 await updateSessionStatus('RESULT', result);
 
-                // Host also needs to settle their own bets if they played (optional)
-                const { payout, profit, totalBetAmount, totalWinnings } = calculatePayout(bets, result);
-                if (totalBetAmount > 0) {
-                    setBalance(prev => prev + payout);
-                    setLastWin(totalWinnings);
-                    // Log Host Tx
-                    if (profit > 0) {
-                        await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`);
-                        await updatePlayerStats(playerId, profit, true, false);
-                    } else if (profit <= 0) {
-                        await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result');
-                        await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
-                    }
+                // --- DEALER LOGIC ---
+                // Host plays against ALL players.
+                // Host Profit = Sum(Player Losses) - Sum(Player Wins)
+                // Effectively: Host Net = -1 * Sum(Player Net Profit)
+
+                let hostNetProfit = 0;
+                let details = [];
+
+                // We use `allBets` which contains bets from all OTHER players
+                for (const playerBet of allBets) {
+                    let pTotalBet = 0;
+                    let pTotalWin = 0;
+
+                    Object.entries(playerBet.bets).forEach(([animalId, amount]) => {
+                        pTotalBet += amount;
+                        const matches = result.filter(r => r === animalId).length;
+                        if (matches > 0) {
+                            pTotalWin += amount + (amount * matches);
+                        }
+                    });
+
+                    const pNet = pTotalWin - pTotalBet; // Player's profit (positive = win, negative = loss)
+                    const hostChange = -pNet; // Host takes the opposite
+
+                    hostNetProfit += hostChange;
+                }
+
+                // Update Host Balance & Stats
+                if (hostNetProfit !== 0) {
+                    setBalance(prev => prev + hostNetProfit);
+
+                    // Log Host Transaction
+                    const type = hostNetProfit > 0 ? 'WIN' : 'LOSS';
+                    const desc = `Dealer ${hostNetProfit > 0 ? 'Win' : 'Loss'} (Round Result)`;
+
+                    await addTransaction(playerId, playerName, type, Math.abs(hostNetProfit), desc);
+                    await updatePlayerStats(playerId, hostNetProfit, hostNetProfit > 0, hostNetProfit < 0);
                 }
             }
-            // Clients handle settlement via effect or manual claim? 
-            // For now, we'll auto-settle active players in the view Logic below
+            // Clients handle their own settlement via effect
         } else {
-            // Local Mode
+            // Local Mode - Same as before (Solo Play)
+            const calculatePayout = (currentBets: Record<string, number>, currentResult: string[]) => {
+                let totalWinnings = 0;
+                let totalBetReturn = 0;
+                let totalBetAmount = 0;
+
+                Object.entries(currentBets).forEach(([animalId, betAmount]) => {
+                    totalBetAmount += betAmount;
+                    const matches = currentResult.filter(r => r === animalId).length;
+                    if (matches > 0) {
+                        totalBetReturn += betAmount;
+                        totalWinnings += betAmount * matches;
+                    }
+                });
+                return { payout: totalBetReturn + totalWinnings, profit: (totalBetReturn + totalWinnings) - totalBetAmount, totalBetAmount, totalWinnings };
+            };
+
             const { payout, profit, totalBetAmount, totalWinnings } = calculatePayout(bets, result);
             setBalance(prev => prev + payout);
             setLastWin(totalWinnings);
@@ -1249,6 +1272,38 @@ export default function BauCuaPage() {
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* DEALER SUMMARY */}
+                                <div className="bg-black/40 rounded-xl p-3 text-sm">
+                                    <h3 className="text-yellow-500 font-bold mb-2 uppercase tracking-wider text-xs">Dealer Result</h3>
+                                    <div className="space-y-1 max-h-40 overflow-y-auto mb-3">
+                                        {allBets.length === 0 ? (
+                                            <div className="text-white/30 italic">No bets placed.</div>
+                                        ) : (
+                                            allBets.map(pb => {
+                                                let pTotalBet = 0;
+                                                let pTotalWin = 0;
+                                                Object.entries(pb.bets).forEach(([aid, amt]) => {
+                                                    pTotalBet += amt;
+                                                    const matches = result.filter(r => r === aid).length;
+                                                    if (matches > 0) pTotalWin += amt + (amt * matches);
+                                                });
+                                                const pNet = pTotalWin - pTotalBet;
+                                                const dealerNet = -pNet;
+
+                                                return (
+                                                    <div key={pb.playerId} className="flex justify-between border-b border-white/5 pb-1">
+                                                        <span className="text-white/70">{pb.playerName}</span>
+                                                        <span className={`font-mono font-bold ${dealerNet >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {dealerNet >= 0 ? '+' : ''}${dealerNet}
+                                                        </span>
+                                                    </div>
+                                                )
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+
                                 <button onClick={newGame} className="w-full py-5 bg-blue-600 rounded-2xl font-bold text-xl uppercase text-white shadow-xl animate-pulse">
                                     Start Next Round
                                 </button>
@@ -1260,9 +1315,9 @@ export default function BauCuaPage() {
 
 
                         {/* BETTING CONTROLS */}
-                        {(currentStatus === 'BETTING' || (isHost && currentStatus === 'ROLLING')) && (
+                        {(currentStatus === 'BETTING' || (isHost && currentStatus === 'ROLLING')) && !isHost && (
                             <>
-                                {!isHost && <h3 className="text-white/50 font-bold uppercase tracking-widest text-xs md:text-sm">Place Your Bets</h3>}
+                                <h3 className="text-white/50 font-bold uppercase tracking-widest text-xs md:text-sm">Place Your Bets</h3>
 
                                 {/* Chip Selector - Players Only */}
                                 {!isHost && (
@@ -1311,7 +1366,6 @@ export default function BauCuaPage() {
                                             {currentStatus === 'BETTING' ? (
                                                 <button
                                                     onClick={() => handleRollClick(1)}
-                                                    disabled={(Object.keys(bets).length === 0 && !isLive)}
                                                     className={`
                                                     flex-1 h-full rounded-2xl font-black text-xl uppercase tracking-widest shadow-lg flex items-center justify-center transition-all
                                                     ${(Object.keys(bets).length > 0 || (isLive && isHost))
