@@ -851,13 +851,14 @@ export default function BauCuaPage() {
 
                 // Update Host Balance & Stats
                 if (hostNetProfit !== 0) {
+                    const newHostBalance = balance + hostNetProfit; // Calculate explicitly for log
                     setBalance(prev => prev + hostNetProfit);
 
                     // Log Host Transaction
                     const type = hostNetProfit > 0 ? 'WIN' : 'LOSS';
                     const desc = `Dealer ${hostNetProfit > 0 ? 'Win' : 'Loss'} (Round Result)`;
 
-                    await addTransaction(playerId, playerName, type, Math.abs(hostNetProfit), desc);
+                    await addTransaction(playerId, playerName, type, Math.abs(hostNetProfit), desc, newHostBalance, session?.historyId);
                     await updatePlayerStats(playerId, hostNetProfit, hostNetProfit > 0, hostNetProfit < 0);
                 }
             }
@@ -886,11 +887,12 @@ export default function BauCuaPage() {
             setLocalGameState('WIN');
 
             if (playerId && totalBetAmount > 0) {
+                const newBal = balance + payout; // balance state update is async, so calculate here
                 if (profit > 0) {
-                    await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`);
+                    await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`, newBal);
                     await updatePlayerStats(playerId, profit, true, false);
                 } else if (profit <= 0) {
-                    await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result');
+                    await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result', newBal);
                     await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
                 }
             }
@@ -920,15 +922,18 @@ export default function BauCuaPage() {
         const profit = payout - totalBetAmount;
 
         if (totalBetAmount > 0) {
+            const newBal = balance + payout; // Calc strictly based on current 'balance' prop or state? 
+            // In settleClientRound, 'balance' is from state.
+
             setBalance(prev => prev + payout);
             setLastWin(totalWinnings);
 
             // Log
             if (profit > 0) {
-                await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`);
+                await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`, newBal, session?.historyId);
                 await updatePlayerStats(playerId, profit, true, false);
             } else if (profit <= 0) {
-                await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result');
+                await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result', newBal, session?.historyId);
                 await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
             }
         }
@@ -1492,6 +1497,9 @@ export default function BauCuaPage() {
                                 <Link href="/bau-cua/history" className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold uppercase tracking-wider text-sm transition text-white">
                                     View Game History
                                 </Link>
+                                <Link href="/bau-cua/ledger" className="px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl font-bold uppercase tracking-wider text-sm transition text-white/70">
+                                    Transactions
+                                </Link>
                             </div>
                         )}
                     </div>
@@ -1562,6 +1570,9 @@ export default function BauCuaPage() {
                         <p className="text-white/40 text-sm text-center">No active game.</p>
                         <Link href="/bau-cua/history" className="w-full py-4 bg-white/5 rounded-xl flex items-center justify-center font-bold text-white uppercase tracking-wider hover:bg-white/10 transition">
                             View Past Games
+                        </Link>
+                        <Link href="/bau-cua/ledger" className="w-full py-4 bg-white/5 rounded-xl flex items-center justify-center font-bold text-white/70 uppercase tracking-wider hover:bg-white/10 transition">
+                            Transaction Ledger
                         </Link>
                     </div>
                 )}

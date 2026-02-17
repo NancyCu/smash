@@ -36,6 +36,8 @@ export interface Transaction {
     amount: number;
     description: string;
     timestamp: any;
+    newBalance?: number;
+    sessionId?: string;
 }
 
 export interface GameSession {
@@ -144,7 +146,9 @@ export const addTransaction = async (
     playerName: string,
     type: Transaction['type'],
     amount: number,
-    description: string
+    description: string,
+    newBalance?: number,
+    sessionId?: string
 ) => {
     await addDoc(collection(db, TRANSACTIONS_COL), {
         playerId,
@@ -152,7 +156,9 @@ export const addTransaction = async (
         type,
         amount,
         description,
-        timestamp: serverTimestamp()
+        timestamp: serverTimestamp(),
+        ...(newBalance !== undefined && { newBalance }),
+        ...(sessionId && { sessionId })
     });
 };
 
