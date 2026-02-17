@@ -689,26 +689,26 @@ function Scene({
       // Lift phase
       let y = 0;
       if (progress < 0.1) {
-        y = THREE.MathUtils.lerp(0, 1.5, progress / 0.1);
+        y = THREE.MathUtils.lerp(0, 0.5, progress / 0.1);
       } else if (progress > 0.9) {
-        y = THREE.MathUtils.lerp(1.5, 0, (progress - 0.9) / 0.1);
+        y = THREE.MathUtils.lerp(0.5, 0, (progress - 0.9) / 0.1);
       } else {
-        y = 1.5;
+        y = 0.5;
         // Add the "shake" on top of the lift
         // 3 distinct shakes. 
         // Sin wave with frequency matched to give 3 peaks in remaining time (0.1 to 0.9 = 0.8 total time? No, need more time)
         // Let's use specific sin waves.
         const shakeContent = (progress - 0.1) / 0.8; // 0 to 1 during the hold phase
         // 3 full sine waves: 3 * 2PI
-        const shakeY = Math.sin(shakeContent * Math.PI * 6) * 0.3;
+        const shakeY = Math.sin(shakeContent * Math.PI * 6) * 0.05;
         y += shakeY;
       }
 
       if (groupRef.current) {
         groupRef.current.position.y = y;
         // Add some rotation shake
-        groupRef.current.rotation.z = Math.sin(clockRef.current * 15) * 0.05;
-        groupRef.current.rotation.x = Math.cos(clockRef.current * 12) * 0.05;
+        groupRef.current.rotation.z = Math.sin(clockRef.current * 15) * 0.02;
+        groupRef.current.rotation.x = Math.cos(clockRef.current * 12) * 0.02;
       }
 
       if (clockRef.current >= SHAKE_DURATION) {
@@ -837,7 +837,7 @@ export default function DiceShaker({
     >
       <Canvas
         shadows
-        camera={{ position: [0, 7, 7], fov: 45 }}
+        camera={{ position: [0, 5, 5], fov: 45 }}
         dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: true }}
       >
