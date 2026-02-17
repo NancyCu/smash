@@ -919,6 +919,20 @@ export default function BauCuaPage() {
     };
 
     const assignHost = async (targetId: string, targetName: string) => {
+        // 1. Calculate Total Table Bankroll (excluding the potential host)
+        const targetHost = activePlayers.find(p => p.id === targetId);
+        if (!targetHost) return;
+
+        const otherPlayers = activePlayers.filter(p => p.id !== targetId);
+        const totalTableBalance = otherPlayers.reduce((sum, p) => sum + p.balance, 0);
+
+        // 2. Check Rule: Host Balance >= Total Table Balance
+        if (targetHost.balance < totalTableBalance) {
+            const shortfall = totalTableBalance - targetHost.balance;
+            alert(`Host Requirement Not Met!\n\nThe Host needs a bankroll larger than the combined total of all other players ($${totalTableBalance.toLocaleString()}).\n\n${targetName} is short by $${shortfall.toLocaleString()}.\nPlease add funds before hosting.`);
+            return;
+        }
+
         await setSessionHost(targetId, targetName);
         setShowHostPicker(false);
         setShowAdminMenu(false);
