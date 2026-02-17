@@ -240,7 +240,7 @@ const AnimalCard = ({
 
 export default function BauCuaPage() {
     const { user } = useAuth();
-    const { announceResult, activeBubble, clearBubble } = useGameAnnouncer();
+    const { announceResult, activeBubble, clearBubble, triggerEmote } = useGameAnnouncer();
 
     // --- STATE ---
     const [balance, setBalance] = useState(0);
@@ -491,6 +491,10 @@ export default function BauCuaPage() {
                         const audio = new Audio(src);
                         audio.volume = 1;
                         audio.play().catch(e => console.warn('Audio play failed:', e));
+
+                        // Show Bubble
+                        triggerEmote(s.soundType, s.soundBy || 'Player');
+
                     } catch (e) {
                         console.warn('Audio not supported', e);
                     }
@@ -743,8 +747,8 @@ export default function BauCuaPage() {
         if (isLive && isHost) {
             // Publish result to all clients via Firestore
             await updateSessionStatus('RESULT', animalArr);
-            // Settle host's own bets
-            confirmResult();
+            // Settle host's own bets (and dealer logic) using FRESH result
+            confirmResult(animalArr);
         } else if (!isLive) {
             // Solo / local mode — settle immediately
             setLocalGameState('RESULT');
@@ -803,13 +807,19 @@ export default function BauCuaPage() {
     }
     const resetResultInput = () => setResult([]);
 
-    const confirmResult = async () => {
-        if (result.length !== 3) return;
+    const confirmResult = async (resultOverride?: string[]) => {
+        const currentResult = resultOverride || result;
+        if (currentResult.length !== 3) return;
 
         if (isLive) {
             if (isHost) {
-                // Host publishes result
-                await updateSessionStatus('RESULT', result);
+                // Host publishes result (only if not already done? usually done before calling this? 
+                // actually handleDiceResult calls updateSessionStatus first. 
+                // But confirmResult ALSO calls it? Let's check handleDiceResult.
+                // handleDiceResult calls updateSessionStatus THEN confirmResult.
+                // So confirmResult shouldn't strictly need to call it again, but it does.
+                // We should use currentResult here too to be safe.
+                await updateSessionStatus('RESULT', currentResult);
 
                 // --- DEALER LOGIC ---
                 // Host plays against ALL players.
@@ -826,7 +836,7 @@ export default function BauCuaPage() {
 
                     Object.entries(playerBet.bets).forEach(([animalId, amount]) => {
                         pTotalBet += amount;
-                        const matches = result.filter(r => r === animalId).length;
+                        const matches = currentResult.filter(r => r === animalId).length;
                         if (matches > 0) {
                             pTotalWin += amount + (amount * matches);
                         }

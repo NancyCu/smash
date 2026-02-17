@@ -146,5 +146,38 @@ export const useGameAnnouncer = () => {
         }
     }, [currentIndex, queue.length]);
 
-    return { announceResult, activeBubble, clearBubble };
+    // Immediate Emote Trigger (Interrups/Overlays)
+    const triggerEmote = useCallback((soundKey: string, user: string) => {
+        // Stop any current sequencer to focus on the emote? 
+        // Or just overwrite the bubble? 
+        // Let's overwrite the bubble. If audio is playing, it keeps playing (funny chaos).
+        // But we want the text to match the emote.
+
+        const EMOTE_TEXT: Record<string, string> = {
+            'troioi': 'Trời ơi!',
+            'chetme': 'Chết mẹ!'
+        };
+
+        const text = EMOTE_TEXT[soundKey] || '...';
+
+        setActiveBubble({
+            id: Date.now(),
+            text,
+            user,
+            isExiting: false
+        });
+
+        // Auto-dismiss emote bubble after 3s
+        setTimeout(() => {
+            setActiveBubble(prev => {
+                // Only dismiss if it's still THIS emote (simple check by text, or just let it fly)
+                // If the sequencer started something else, we don't want to kill it.
+                // But for simplicity, we just trigger exit.
+                return prev && prev.text === text ? { ...prev, isExiting: true } : prev;
+            });
+        }, 3000);
+
+    }, []);
+
+    return { announceResult, activeBubble, clearBubble, triggerEmote };
 };
