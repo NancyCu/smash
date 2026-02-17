@@ -24,11 +24,16 @@ const ANIMAL_MAP: Record<string, string> = {
 };
 
 export const useGameAnnouncer = () => {
-    const [audioQueue, setAudioQueue] = useState<string[]>([]);
+    const [queue, setQueue] = useState<{ url: string; text: string }[]>([]);
     const [isPlaying, setIsPlaying] = useState(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const [activeBubble, setActiveBubble] = useState<{ id: number; text: string; user: string; isExiting: boolean } | null>(null);
 
-    // Initializer: Takes roll result (e.g. ['deer', 'deer', 'crab']) -> Queues audio
+    const clearBubble = useCallback(() => {
+        setActiveBubble(null);
+    }, []);
+
+    // Initializer: Takes roll result -> Queues Audio + Text items
     const announceResult = useCallback((result: string[]) => {
         if (!result || result.length === 0) return;
 
@@ -39,63 +44,95 @@ export const useGameAnnouncer = () => {
             counts[key] = (counts[key] || 0) + 1;
         });
 
-        // 2. Sort by count DESC (e.g. 2 Deer, 1 Crab -> Deer first)
+        // 2. Sort by count DESC
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
 
-        // 3. Map to file paths
-        const queue = sorted.map(([animal, count]) => `/sounds/${count}-${animal}.mp3`);
+        // 3. Map to Queue Items (Audio + Transcript)
+        const VIET_NAMES: Record<string, string> = {
+            'bau': 'Bầu', 'cua': 'Cua', 'tom': 'Tôm', 'ca': 'Cá', 'nai': 'Nai', 'ga': 'Gà'
+        };
+        const NUMBERS: Record<number, string> = { 1: 'Một', 2: 'Hai', 3: 'Ba' };
 
-        console.log('[Announcer] Queueing:', queue);
-        setAudioQueue(queue);
+        const newItems = sorted.map(([animalKey, count]) => {
+            const num = NUMBERS[count] || count.toString();
+            const classifier = animalKey === 'bau' ? 'trái' : 'con';
+            const name = VIET_NAMES[animalKey] || animalKey;
+
+            return {
+                url: `/sounds/${count}-${animalKey}.mp3`,
+                text: `${num} ${classifier} ${name}`
+            };
+        });
+
+        console.log('[Announcer] Queueing:', newItems);
+        setQueue(newItems);
+
     }, []);
 
     // Sequencer: Plays the queue
     const playNext = useCallback(() => {
-        if (audioQueue.length === 0) {
+        if (queue.length === 0) {
             setIsPlaying(false);
             return;
         }
 
-        const nextFile = audioQueue[0];
-        const remaining = audioQueue.slice(1);
+        const currentItem = queue[0];
+        const remaining = queue.slice(1);
 
         setIsPlaying(true);
 
+        // --- 1. SET BUBBLE (Enter) ---
+        setActiveBubble({
+            id: Date.now(),
+            text: currentItem.text,
+            user: 'Announcer',
+            isExiting: false
+        });
+
+        // --- 2. PLAY AUDIO ---
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current = null;
         }
 
-        const audio = new Audio(nextFile);
+        const audio = new Audio(currentItem.url);
         audioRef.current = audio;
 
+        // On End: Trigger Bubble Exit -> Wait -> Play Next
         audio.onended = () => {
-            setAudioQueue(remaining); // Trigger effect to play next
-            setIsPlaying(false); // Briefly false, effect will catch remainder
+            // Trigger exit animation
+            setActiveBubble(prev => prev ? { ...prev, isExiting: true } : null);
+
+            // Wait for exit animation (approx 0.5s - 1s) before processing next
+            // fast float fade is 1.5s but we can be snappier
+            setTimeout(() => {
+                setQueue(remaining);
+                setIsPlaying(false); // loop will pick up next
+            }, 1000);
         };
 
         audio.onerror = (e) => {
-            console.error('[Announcer] Error playing:', nextFile, e);
-            setAudioQueue(remaining);
+            console.error('[Announcer] Error playing:', currentItem.url, e);
+            setQueue(remaining);
             setIsPlaying(false);
         };
 
         audio.play().catch(e => {
             console.warn('[Announcer] Playback interrupted:', e);
-            setAudioQueue(remaining);
+            setQueue(remaining);
             setIsPlaying(false);
         });
 
-    }, [audioQueue]);
+    }, [queue]);
 
     useEffect(() => {
-        if (audioQueue.length > 0 && !isPlaying) {
+        if (queue.length > 0 && !isPlaying) {
             const timer = setTimeout(() => {
                 playNext();
-            }, 0);
+            }, 100); // slight buffer
             return () => clearTimeout(timer);
         }
-    }, [audioQueue, isPlaying, playNext]);
+    }, [queue, isPlaying, playNext]);
 
-    return { announceResult };
+    return { announceResult, activeBubble, clearBubble };
 };

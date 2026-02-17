@@ -41,6 +41,8 @@ const DiceShaker = dynamic(
     { ssr: false }
 );
 
+import { AnnouncerBubble } from '@/components/bau-cua/AnnouncerBubble';
+
 // --- CONFIGURATION ---
 const VENMO_USERNAME = "your_username";
 
@@ -238,10 +240,23 @@ const AnimalCard = ({
 
 export default function BauCuaPage() {
     const { user } = useAuth();
-    const { announceResult } = useGameAnnouncer();
+    const { announceResult, activeBubble, clearBubble } = useGameAnnouncer();
 
     // --- STATE ---
     const [balance, setBalance] = useState(0);
+    // Balance Delta Visuals
+    const prevBalance = useRef(balance);
+    const [balanceDelta, setBalanceDelta] = useState<{ amount: number; id: number } | null>(null);
+
+    useEffect(() => {
+        if (prevBalance.current !== balance) {
+            const diff = balance - prevBalance.current;
+            if (diff !== 0) {
+                setBalanceDelta({ amount: diff, id: Date.now() });
+            }
+            prevBalance.current = balance;
+        }
+    }, [balance]);
     const [bets, setBets] = useState<Record<string, number>>({});
     const [selectedChip, setSelectedChip] = useState(5);
 
@@ -1061,9 +1076,19 @@ export default function BauCuaPage() {
                     </h1>
 
                     <div className="flex items-center gap-2 mt-0.5">
-                        <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10">
+                        <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10 relative">
                             <Coins className="w-3 h-3 text-yellow-500" />
                             <span className="font-mono text-sm font-bold text-yellow-400 min-w-[3ch] text-right">${balance.toLocaleString()}</span>
+
+                            {/* Floating Delta */}
+                            {balanceDelta && (
+                                <div
+                                    key={balanceDelta.id}
+                                    className={`absolute -right-2 -top-6 font-black text-sm pointer-events-none animate-float-fade-fast ${balanceDelta.amount > 0 ? 'text-green-400' : 'text-red-500'}`}
+                                >
+                                    {balanceDelta.amount > 0 ? '+' : ''}{balanceDelta.amount}
+                                </div>
+                            )}
                         </div>
                         <button
                             onClick={handleAddMoneyClick}
@@ -1107,7 +1132,21 @@ export default function BauCuaPage() {
                     {(currentStatus === 'BETTING' || currentStatus === 'ROLLING' || currentStatus === 'RESULT') ? (
                         <div className="relative h-full flex flex-col justify-center">
 
-                            {/* === 3D DICE SHAKER === */}
+                            {/* === ANNOUNCER BUBBLE === */}
+                            {activeBubble && (
+                                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+                                    <AnnouncerBubble
+                                        text={activeBubble.text}
+                                        userName={activeBubble.user}
+                                        isExiting={activeBubble.isExiting}
+                                        onComplete={() => {
+                                            // handled by sequencer
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* === MAIN LAYOUT === */}
                             <div className="mb-2 md:mb-[1vw] min-h-[300px] flex flex-col justify-center">
                                 <React.Suspense fallback={
                                     <div className="w-full aspect-square md:aspect-video flex items-center justify-center bg-white/5 rounded-xl animate-pulse">
