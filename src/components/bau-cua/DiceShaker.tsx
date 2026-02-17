@@ -207,85 +207,116 @@ function drawScrollwork(ctx: CanvasRenderingContext2D, cx: number, cy: number, r
 
 /** Create the plate texture (circular, top-down view). */
 function createPlateTexture(): THREE.CanvasTexture {
-  const size = 512;
+  const size = 1024; // Increases resolution for sharper details
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d')!;
   const cx = size / 2, cy = size / 2;
 
-  // White outer rim
+  // 1. Base / Outer Rim (White Porcelain)
   ctx.beginPath();
   ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
-  ctx.fillStyle = '#F5F0E8';
+  ctx.fillStyle = '#FFFFFF';
   ctx.fill();
 
-  // Yellow Greek key ring
+  // 2. Yellow Band for Greek Key
+  // Outer radius ~0.48, Inner ~0.42
+  const outerR = size * 0.48;
+  const innerR = size * 0.42;
+
   ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.44, 0, Math.PI * 2);
-  ctx.fillStyle = '#D4A017';
+  ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFD700'; // Gold/Yellow
   ctx.fill();
 
-  // Dark inner ring (for key pattern illusion)
+  // Draw Greek Key Pattern in Blue/Red over the yellow band
+  ctx.save();
   ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.42, 0, Math.PI * 2);
-  ctx.fillStyle = '#1A1A5C';
-  ctx.fill();
+  ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+  ctx.clip(); // Clip inner hole so we don't overdraw center
+  // (Actually simpler to just draw the band then draw center over it)
+  ctx.restore();
 
-  // Greek key ring pattern (simplified radial squares)
-  ctx.fillStyle = '#D4A017';
-  const keyCount = 24;
+  // Draw simplified radial Greek Key elements
+  const keyCount = 36;
+  ctx.fillStyle = '#1A237E'; // Deep Blue key
   for (let i = 0; i < keyCount; i++) {
     const angle = (i / keyCount) * Math.PI * 2;
-    const kx = cx + Math.cos(angle) * size * 0.43;
-    const ky = cy + Math.sin(angle) * size * 0.43;
+    const r = (outerR + innerR) / 2;
     ctx.save();
-    ctx.translate(kx, ky);
+    ctx.translate(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
     ctx.rotate(angle);
-    ctx.fillRect(-6, -4, 12, 8);
+    // Draw a small "G" or square spiral shape
+    ctx.fillRect(-10, -10, 20, 4);
+    ctx.fillRect(-10, -10, 4, 20);
+    ctx.fillRect(-10, 6, 12, 4);
+    ctx.fillRect(2, -2, 4, 12);
     ctx.restore();
   }
 
-  // Red center
+  // 3. Center Background (Deep Pink/Red)
   ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.39, 0, Math.PI * 2);
-  ctx.fillStyle = '#B91C1C';
+  ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+  ctx.fillStyle = '#D91E36'; // Deep Pink/Red
   ctx.fill();
 
-  // Scrollwork
-  drawScrollwork(ctx, cx, cy, size * 0.35, 60);
+  // 4. White Curly Vines (Arabesque)
+  // We'll draw these all over the center area
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+  ctx.clip();
+  drawScrollwork(ctx, cx, cy, innerR * 0.9, 120); // Denser vines
+  ctx.restore();
 
-  // Flowers
+  // 5. Stylized Flowers
   const flowerPositions = [
-    [cx, cy - size * 0.18],
-    [cx + size * 0.16, cy + size * 0.1],
-    [cx - size * 0.16, cy + size * 0.1],
-    [cx + size * 0.08, cy - size * 0.08],
-    [cx - size * 0.12, cy - size * 0.05],
+    [cx, cy - size * 0.22],
+    [cx + size * 0.22, cy],
+    [cx, cy + size * 0.22],
+    [cx - size * 0.22, cy],
+    // Inner diagonals
+    [cx + size * 0.12, cy - size * 0.12],
+    [cx - size * 0.12, cy + size * 0.12],
+    [cx + size * 0.12, cy + size * 0.12],
+    [cx - size * 0.12, cy - size * 0.12],
   ];
-  flowerPositions.forEach(([fx, fy]) => drawFlower(ctx, fx, fy, size * 0.055));
+  flowerPositions.forEach(([fx, fy]) => drawFlower(ctx, fx, fy, size * 0.06));
 
-  // White medallions with characters
+  // 6. Medallions (White circles with Red text)
   const chars = ['萬', '福', '壽', '禄'];
-  const medalR = size * 0.05;
-  const medalDist = size * 0.22;
+  const medalR = size * 0.055;
+  const medalDist = size * 0.28; // Push them out a bit
   chars.forEach((ch, i) => {
-    const a = (i / chars.length) * Math.PI * 2 - Math.PI / 2;
+    // 4 positions: Top, Right, Bottom, Left? Or diagonals?
+    // Reference image shows them in a cross or square formation.
+    // Let's do diagonals for better spacing with flowers.
+    const a = (i / chars.length) * Math.PI * 2 + Math.PI / 4;
     const mx = cx + Math.cos(a) * medalDist;
     const my = cy + Math.sin(a) * medalDist;
+
+    // Circle
     ctx.beginPath();
     ctx.arc(mx, my, medalR, 0, Math.PI * 2);
-    ctx.fillStyle = '#FFF8F0';
+    ctx.fillStyle = '#FFFFFF';
     ctx.fill();
-    ctx.fillStyle = '#8B1A1A';
+    // Border
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#D91E36';
+    ctx.stroke();
+
+    // Text
+    ctx.fillStyle = '#B71C1C';
     ctx.font = `bold ${medalR * 1.2}px serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(ch, mx, my);
+    ctx.fillText(ch, mx, my + medalR * 0.1); // slight visual adjustment
   });
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4; // Sharp textures at angles
   return tex;
 }
 
@@ -297,59 +328,88 @@ function createBowlTexture(): THREE.CanvasTexture {
   canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  // Base red
-  ctx.fillStyle = '#B91C1C';
+  // 1. Base Material: White Porcelain
+  ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, w, h);
 
-  // Top: white rim band
-  ctx.fillStyle = '#F5F0E8';
-  ctx.fillRect(0, 0, w, h * 0.06);
+  // 2. The Decorative Band (Deep Pink/Red)
+  // Wrapping around the lower middle
+  const bandY = h * 0.35; // Start 35% down
+  const bandH = h * 0.50; // 50% height
+  ctx.fillStyle = '#D91E36';
+  ctx.fillRect(0, bandY, w, bandH);
 
-  // Greek key border below rim
-  drawGreekKey(ctx, 0, h * 0.06, w, h * 0.1, '#D4A017', '#1A1A5C');
+  // Add Gold borders to the band
+  ctx.fillStyle = '#FFD700';
+  ctx.fillRect(0, bandY, w, 6); // Top border
+  ctx.fillRect(0, bandY + bandH - 6, w, 6); // Bottom border
 
-  // Scrollwork across the body
-  for (let i = 0; i < 120; i++) {
-    const sx = Math.random() * w;
-    const sy = h * 0.2 + Math.random() * h * 0.7;
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-    ctx.lineWidth = 1;
+  // 3. Patterns Inside the Band
+  // We need to restrict drawing to the band area
+  const centerY = bandY + bandH / 2;
+
+  // Scrollwork Vines inside the band
+  // We'll draw them in a strip
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, bandY, w, bandH);
+  ctx.clip();
+
+  ctx.strokeStyle = '#FFFFFF'; // White vines on red
+  ctx.lineWidth = 1.5;
+  const vineCount = 150;
+  for (let i = 0; i < vineCount; i++) {
+    const x = Math.random() * w;
+    const y = bandY + Math.random() * bandH;
     ctx.beginPath();
-    ctx.arc(sx, sy, 3 + Math.random() * 8, 0, Math.PI * (1 + Math.random()));
+    // Curly shape (approximate with arc)
+    ctx.arc(x, y, 5 + Math.random() * 10, 0, Math.PI * (1 + Math.random()));
     ctx.stroke();
   }
+  ctx.restore();
 
-  // Flowers scattered across
-  const fCount = 10;
+  // Flowers inside the Band
+  const fCount = 8;
   for (let i = 0; i < fCount; i++) {
-    const fx = (i / fCount) * w + w * 0.05;
-    const fy = h * 0.35 + Math.sin(i * 1.7) * h * 0.2;
-    drawFlower(ctx, fx, fy, 18);
+    const fx = (i / fCount) * w + w / 16;
+    const fy = centerY + Math.sin(i * 2.5) * (bandH * 0.25);
+    drawFlower(ctx, fx, fy, 20); // White flowers
   }
 
-  // Medallions across
+  // Medallions inside the Band
   const mChars = ['萬', '福', '壽', '禄'];
-  mChars.forEach((ch, i) => {
-    const mx = (i + 0.5) * (w / mChars.length);
-    const my = h * 0.55;
+  const mCount = 4; // Repeat them twice -> 8 items? Or just 4 spaced.
+  // 4 items around 360 degrees covers 90deg each.
+  for (let i = 0; i < mCount; i++) {
+    const mx = (i + 0.5) * (w / mCount);
+    const my = centerY;
+    const ch = mChars[i % mChars.length];
+
     ctx.beginPath();
-    ctx.arc(mx, my, 20, 0, Math.PI * 2);
-    ctx.fillStyle = '#FFF8F0';
+    ctx.arc(mx, my, 28, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFFFFF';
     ctx.fill();
-    ctx.fillStyle = '#8B1A1A';
-    ctx.font = 'bold 22px serif';
+    ctx.strokeStyle = '#D91E36';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#B71C1C';
+    ctx.font = 'bold 30px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(ch, mx, my);
-  });
+    ctx.fillText(ch, mx, my + 2);
+  }
 
-  // Bottom band / base rim
-  ctx.fillStyle = '#F5F0E8';
-  ctx.fillRect(0, h * 0.94, w, h * 0.06);
+  // 4. Bottom Rim (Yellow & Blue Geometric)
+  const rimY = h * 0.92;
+  const rimH = h * 0.08;
+  drawGreekKey(ctx, 0, rimY, w, rimH, '#1A237E', '#FFD700'); // Blue key on Gold bg
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.anisotropy = 4;
   return tex;
 }
 
@@ -367,8 +427,8 @@ function Plate() {
         <circleGeometry args={[2.3, 64]} />
         <meshStandardMaterial
           map={texture}
-          roughness={0.2}
-          metalness={0.15}
+          roughness={0.15} // Glossy ceramic
+          metalness={0.1}
         />
       </mesh>
       {/* Thin rim ring (gives plate depth) */}
@@ -376,7 +436,7 @@ function Plate() {
         <cylinderGeometry args={[2.3, 2.35, 0.12, 48]} />
         <meshStandardMaterial
           color="#F5F0E8"
-          roughness={0.2}
+          roughness={0.15}
           metalness={0.1}
         />
       </mesh>
@@ -424,8 +484,8 @@ function Bowl({
       <sphereGeometry args={[1.7, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
       <meshStandardMaterial
         map={texture}
-        roughness={0.18}
-        metalness={0.3}
+        roughness={0.1} // Glossy ceramic
+        metalness={0.1} // Tiny bit of shine
         side={THREE.DoubleSide}
       />
     </mesh>
