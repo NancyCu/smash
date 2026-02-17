@@ -746,6 +746,9 @@ export default function BauCuaPage() {
             }
         });
 
+        // Trigger Audio Taunt/Celebration (Local Mode)
+        playTaunt(totalBetAmount, totalWinnings);
+
         const payout = totalBetReturn + totalWinnings;
         const profit = payout - totalBetAmount;
 

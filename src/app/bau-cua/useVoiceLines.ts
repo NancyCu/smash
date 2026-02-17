@@ -4,22 +4,22 @@ import { useCallback, useRef } from 'react';
 const SOUNDS = {
     // Level 1: "Net Loss" (You won some back, but still lost money)
     MILD_LOSS: [
-        '/sounds/sap-het-tien.mp3', // "Sap het tien roi"
-        '/sounds/chan-qua.mp3',      // "Chan qua"
-        '/sounds/nhanh-len.mp3',     // "Troi oi nhanh len"
+        '/sounds/chan-qua.m4a',      // "Chan qua"
     ],
-    // Level 2: "Big Loss" (You lost everything you bet)
+    // Level 2: "Big Loss" (Lost everything or > $10)
     BIG_LOSS: [
-        '/sounds/het-tien.mp3',      // "Het tien cuoi vo roi"
-        '/sounds/ban-mau.mp3',       // "Toi gio di ban mau roi"
-        '/sounds/chet-me.mp3',       // "Chet me xong tui roi"
-        '/sounds/aiya.mp3',          // "Aiya troi oi"
+        '/sounds/het-tien-cuoi-vo-roi.m4a',
+        '/sounds/het-tien-roi.m4a',
+        '/sounds/hong-het-tien-roi.m4a',
+        '/sounds/shit.m4a',
+        '/sounds/what-the-hell.m4a',
+        '/sounds/xong-female-voice.m4a',
+        '/sounds/xong-male-voice.m4a',
     ],
     // Level 3: "Streak" (Lost 2+ times in a row)
     STREAK_LOSS: [
-        '/sounds/thua-roi.mp3',      // "Thua roi ha"
-        '/sounds/den-qua.mp3',       // "Den qua di"
-        '/sounds/con-cai-nit.mp3'    // "Con cai nit"
+        '/sounds/sao-thua-hoai-vay.m4a', // "Sao thua hoai vay"
+        '/sounds/troi-oi-nhan-len.m4a',  // "Troi oi nhanh len"
     ]
 };
 
@@ -35,43 +35,44 @@ export const useVoiceLines = () => {
         }
         const audio = new Audio(path);
         audioRef.current = audio;
+        console.log(`[Audio] Playing: ${path}`);
         audio.play().catch(e => console.warn("Audio play error (interaction needed?):", e));
     }, []);
 
     const playTaunt = useCallback((bet: number, win: number) => {
-        // 1. If user didn't bet, do nothing
         if (bet === 0) return;
 
-        // 2. Logic for "Big Loss" (Lost everything)
+        // TOTAL LOSS (Lost everything)
         if (win === 0) {
             lossStreakRef.current += 1;
 
-            // Check Streak first
+            // Priority 1: Streak (2+ losses in a row)
             if (lossStreakRef.current >= 2) {
-                // Play Streak Sound
                 const idx = Math.floor(Math.random() * SOUNDS.STREAK_LOSS.length);
                 playFile(SOUNDS.STREAK_LOSS[idx]);
-            } else {
-                // Play Big Loss Sound
+                return;
+            }
+
+            // Priority 2: Big Bet Loss (>$10) OR just a normal total loss
+            // "If we bet a lot of money and we lose" -> Let's say > $10 is "a lot" for now, or just play Big Loss always on total loss.
+            if (bet >= 10 || true) { // Always play Big Loss on total loss for now (user requests: "lose one or two... losing streak... or bet a lot and lose")
                 const idx = Math.floor(Math.random() * SOUNDS.BIG_LOSS.length);
                 playFile(SOUNDS.BIG_LOSS[idx]);
             }
             return;
         }
 
-        // 3. Logic for "Net Loss" (Won less than bet)
+        // NET LOSS (Won something, but less than bet)
         if (win < bet) {
-            // Reset streak on any win (even partial)? Or keep it?
-            // Usually streak implies "Total Loss Streak". Let's reset if they get ANY money back.
-            lossStreakRef.current = 0;
+            lossStreakRef.current = 0; // Reset streak? Or keep it? Users usually stick to "Total Loss" for streaks.
 
-            // 70% chance to play sound (don't spam every single time)
-            if (Math.random() > 0.3) {
+            // 50% chance to complain
+            if (Math.random() > 0.5) {
                 const idx = Math.floor(Math.random() * SOUNDS.MILD_LOSS.length);
                 playFile(SOUNDS.MILD_LOSS[idx]);
             }
         } else {
-            // Winner or Break Even
+            // WIN or BREAK EVEN
             lossStreakRef.current = 0;
         }
     }, [playFile]);
