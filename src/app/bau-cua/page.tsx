@@ -570,12 +570,13 @@ export default function BauCuaPage() {
                 });
 
                 // Trigger Taunt
-                playTaunt(totalBet, totalWin);
+                playTaunt(totalBet, totalWin, (text) => {
+                    // Show bubble for the taunt
+                    triggerEmote('auto', playerName, text);
+                });
 
-                // Assuming settleClientRound handles the actual balance update
-                // We don't want to duplicate balance logic if it's already there
-                // but checking the code, I don't see settleClientRound definition in the visible chunks.
-                // It likely exists. I will hook the audio here.
+                // Settle the round (update balance)
+                settleClientRound();
             }
         }
     }, [session?.status, session?.result, isLive, runOnceRef.current]); // Added ref to avoid double-trigger if STRICT MODE is on

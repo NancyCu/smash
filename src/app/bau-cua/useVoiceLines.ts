@@ -1,25 +1,26 @@
 import { useCallback, useRef } from 'react';
 
 // SOUND CONFIGURATION
+// SOUND CONFIGURATION
 const SOUNDS = {
     // Level 1: "Net Loss" (You won some back, but still lost money)
     MILD_LOSS: [
-        '/sounds/chan-qua.m4a',      // "Chan qua"
+        { path: '/sounds/chan-qua.m4a', text: 'Chán quá...' },
     ],
     // Level 2: "Big Loss" (Lost everything or > $10)
     BIG_LOSS: [
-        '/sounds/het-tien-cuoi-vo-roi.m4a',
-        '/sounds/het-tien-roi.m4a',
-        '/sounds/hong-het-tien-roi.m4a',
-        '/sounds/shit.m4a',
-        '/sounds/what-the-hell.m4a',
-        '/sounds/xong-female-voice.m4a',
-        '/sounds/xong-male-voice.m4a',
+        { path: '/sounds/het-tien-cuoi-vo-roi.m4a', text: 'Hết tiền cưới vợ rồi!' },
+        { path: '/sounds/het-tien-roi.m4a', text: 'Hết tiền rồi...' },
+        { path: '/sounds/hong-het-tien-roi.m4a', text: 'Hông hết tiền rồi!' },
+        { path: '/sounds/shit.m4a', text: 'Shit!' },
+        { path: '/sounds/what-the-hell.m4a', text: 'What the hell?' },
+        { path: '/sounds/xong-female-voice.m4a', text: 'Xong!' },
+        { path: '/sounds/xong-male-voice.m4a', text: 'Xong phim!' },
     ],
     // Level 3: "Streak" (Lost 2+ times in a row)
     STREAK_LOSS: [
-        '/sounds/sao-thua-hoai-vay.m4a', // "Sao thua hoai vay"
-        '/sounds/troi-oi-nhan-len.m4a',  // "Troi oi nhanh len"
+        { path: '/sounds/sao-thua-hoai-vay.m4a', text: 'Sao thua hoài vậy??' },
+        { path: '/sounds/troi-oi-nhan-len.m4a', text: 'Trời ơi nhanh lên!' },
     ]
 };
 
@@ -39,8 +40,10 @@ export const useVoiceLines = () => {
         audio.play().catch(e => console.warn("Audio play error (interaction needed?):", e));
     }, []);
 
-    const playTaunt = useCallback((bet: number, win: number) => {
+    const playTaunt = useCallback((bet: number, win: number, onPlay?: (text: string) => void) => {
         if (bet === 0) return;
+
+        let selectedSound: { path: string, text: string } | null = null;
 
         // TOTAL LOSS (Lost everything)
         if (win === 0) {
@@ -49,41 +52,42 @@ export const useVoiceLines = () => {
             // Priority 1: Streak (2+ losses in a row)
             if (lossStreakRef.current >= 2) {
                 const idx = Math.floor(Math.random() * SOUNDS.STREAK_LOSS.length);
-                playFile(SOUNDS.STREAK_LOSS[idx]);
-                return;
+                selectedSound = SOUNDS.STREAK_LOSS[idx];
             }
-
             // Priority 2: Big Bet Loss (>$10) OR just a normal total loss
-            // "If we bet a lot of money and we lose" -> Let's say > $10 is "a lot" for now, or just play Big Loss always on total loss.
-            if (bet >= 10 || true) { // Always play Big Loss on total loss for now (user requests: "lose one or two... losing streak... or bet a lot and lose")
+            else {
                 const idx = Math.floor(Math.random() * SOUNDS.BIG_LOSS.length);
-                playFile(SOUNDS.BIG_LOSS[idx]);
+                selectedSound = SOUNDS.BIG_LOSS[idx];
             }
-            return;
         }
-
-        // NET LOSS (Won something, but less than bet)
-        if (win < bet) {
-            lossStreakRef.current = 0; // Reset streak? Or keep it? Users usually stick to "Total Loss" for streaks.
+        else if (win < bet) {
+            // NET LOSS (Won something, but less than bet)
+            lossStreakRef.current = 0;
 
             // 50% chance to complain
             if (Math.random() > 0.5) {
                 const idx = Math.floor(Math.random() * SOUNDS.MILD_LOSS.length);
-                playFile(SOUNDS.MILD_LOSS[idx]);
+                selectedSound = SOUNDS.MILD_LOSS[idx];
             }
         } else {
             // WIN or BREAK EVEN
             lossStreakRef.current = 0;
         }
+
+        if (selectedSound) {
+            playFile(selectedSound.path);
+            if (onPlay) onPlay(selectedSound.text);
+        }
+
     }, [playFile]);
 
     return {
         playTaunt,
         playFile,
         availableSounds: [
-            ...SOUNDS.MILD_LOSS,
-            ...SOUNDS.BIG_LOSS,
-            ...SOUNDS.STREAK_LOSS
+            ...SOUNDS.MILD_LOSS.map(s => s.path),
+            ...SOUNDS.BIG_LOSS.map(s => s.path),
+            ...SOUNDS.STREAK_LOSS.map(s => s.path)
         ]
     };
 };
