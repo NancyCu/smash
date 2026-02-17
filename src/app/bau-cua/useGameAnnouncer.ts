@@ -50,12 +50,6 @@ export const useGameAnnouncer = () => {
     }, []);
 
     // Sequencer: Plays the queue
-    useEffect(() => {
-        if (audioQueue.length > 0 && !isPlaying) {
-            playNext();
-        }
-    }, [audioQueue, isPlaying]);
-
     const playNext = useCallback(() => {
         if (audioQueue.length === 0) {
             setIsPlaying(false);
@@ -93,6 +87,15 @@ export const useGameAnnouncer = () => {
         });
 
     }, [audioQueue]);
+
+    useEffect(() => {
+        if (audioQueue.length > 0 && !isPlaying) {
+            const timer = setTimeout(() => {
+                playNext();
+            }, 0);
+            return () => clearTimeout(timer);
+        }
+    }, [audioQueue, isPlaying, playNext]);
 
     return { announceResult };
 };

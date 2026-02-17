@@ -1081,18 +1081,24 @@ export default function BauCuaPage() {
                         <div className="relative h-full flex flex-col justify-center">
 
                             {/* === 3D DICE SHAKER === */}
-                            <div className="mb-2 md:mb-[1vw]">
-                                <DiceShaker
-                                    trigger={shakeTrigger}
-                                    shakeType={shakeType}
-                                    onRollComplete={handleDiceResult}
-                                    onShakeEnd={handleShakeEnd}
-                                    onBowlTap={handleOpenClick}
-                                    disabled={currentStatus === 'RESULT'}
-                                    isOpen={isBowlOpen}
-                                    forcedResult={isLive ? syncedRollIndices : undefined}
-                                    className="border border-white/10 shadow-2xl"
-                                />
+                            <div className="mb-2 md:mb-[1vw] min-h-[300px] flex flex-col justify-center">
+                                <React.Suspense fallback={
+                                    <div className="w-full aspect-square md:aspect-video flex items-center justify-center bg-white/5 rounded-xl animate-pulse">
+                                        <div className="text-white/30 font-bold uppercase tracking-widest">Loading Items...</div>
+                                    </div>
+                                }>
+                                    <DiceShaker
+                                        trigger={shakeTrigger}
+                                        shakeType={shakeType}
+                                        onRollComplete={handleDiceResult}
+                                        onShakeEnd={handleShakeEnd}
+                                        onBowlTap={handleOpenClick}
+                                        disabled={currentStatus === 'RESULT'}
+                                        isOpen={isBowlOpen}
+                                        forcedResult={isLive ? syncedRollIndices : undefined}
+                                        className="border border-white/10 shadow-2xl"
+                                    />
+                                </React.Suspense>
                                 {/* Shake buttons (below canvas, only during BETTING or ROLLING-Hidden) */}
                                 {(!isLive || isHost) && (
                                     <div className="mt-3 grid grid-cols-2 gap-3">
