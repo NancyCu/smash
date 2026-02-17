@@ -60,7 +60,7 @@ export const useGameAnnouncer = () => {
 
             return {
                 url: `/sounds/${count}-${animalKey}.mp3`,
-                text: `${num} ${classifier} ${name}`
+                text: '' // Audio only for results -> Bubble removed as per user request
             };
         });
 
@@ -80,12 +80,15 @@ export const useGameAnnouncer = () => {
         const currentItem = queue[currentIndex];
 
         // --- 1. SET BUBBLE (Enter) ---
-        setActiveBubble({
-            id: Date.now(),
-            text: currentItem.text,
-            user: 'Announcer',
-            isExiting: false
-        });
+        // Only show bubble if text is present (Result items are now empty string)
+        if (currentItem.text) {
+            setActiveBubble({
+                id: Date.now(),
+                text: currentItem.text,
+                user: 'Announcer',
+                isExiting: false
+            });
+        }
 
         // --- 2. PLAY AUDIO ---
         // Safety: Stop previous
@@ -100,8 +103,10 @@ export const useGameAnnouncer = () => {
 
         // Handler for finishing this step
         const handleStepComplete = () => {
-            // Trigger exit animation
-            setActiveBubble(prev => prev ? { ...prev, isExiting: true } : null);
+            // Trigger exit animation ONLY if we showed a bubble for THIS item
+            if (currentItem.text) {
+                setActiveBubble(prev => prev ? { ...prev, isExiting: true } : null);
+            }
 
             // Wait for exit, then advance index
             setTimeout(() => {
