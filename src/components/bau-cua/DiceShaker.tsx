@@ -751,6 +751,13 @@ function Scene({
       }
     } else {
       // IDLE
+      if (isOpen) {
+        // Recovery: If we mount/idle and the bowl is open, lift it (and trigger result).
+        clockRef.current = 0;
+        setState("REVEALED");
+        playChime();
+        return;
+      }
       if (groupRef.current) {
         groupRef.current.position.y = 0;
         groupRef.current.rotation.set(0, 0, 0);

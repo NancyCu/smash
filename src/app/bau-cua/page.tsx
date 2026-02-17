@@ -406,6 +406,10 @@ export default function BauCuaPage() {
                 if (lastSeenShakeCount.current === -1) {
                     // First load — just record the current count, don't trigger animation
                     lastSeenShakeCount.current = s.shakeCount;
+                    // Also load existing roll indices so we show the correct result if we are reconnecting
+                    if (s.rollIndices && s.rollIndices.length === 3) {
+                        setSyncedRollIndices(s.rollIndices as [number, number, number]);
+                    }
                 } else if (s.shakeCount > lastSeenShakeCount.current) {
                     // A NEW shake happened! Trigger animation + sound for EVERYONE
                     lastSeenShakeCount.current = s.shakeCount;
