@@ -129,12 +129,23 @@ export const updatePlayerStats = async (
     await updateDoc(playerRef, updates);
 };
 
-export const setPlayerBalance = async (playerId: string, newBalance: number) => {
+export const setPlayerBalance = async (playerId: string, newBalance: number, reason: string = 'Unknown Update') => {
+    console.warn(`[Firestore Write] setPlayerBalance - ID: ${playerId}, New Balance: $${newBalance}, Reason: ${reason}`);
     const playerRef = doc(db, PLAYERS_COL, playerId);
     await updateDoc(playerRef, {
         balance: newBalance,
         lastActive: serverTimestamp()
     });
+};
+
+export const getPlayerBets = async (playerId: string): Promise<Record<string, number> | null> => {
+    const docRef = doc(db, BETS_COL, playerId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+        const data = snap.data() as PlayerBet;
+        return data.bets;
+    }
+    return null;
 };
 
 

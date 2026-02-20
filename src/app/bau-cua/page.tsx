@@ -275,6 +275,7 @@ export default function BauCuaPage() {
     // Multiplayer State
     const [playerName, setPlayerName] = useState("");
     const [playerId, setPlayerId] = useState("");
+    const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [showIdentityModal, setShowIdentityModal] = useState(false);
     const [activePlayers, setActivePlayers] = useState<Player[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -323,8 +324,14 @@ export default function BauCuaPage() {
                 setPlayerId(user.uid);
                 setPlayerName(user.displayName || 'Anonymous');
                 setShowIdentityModal(false);
+
                 const player = await identifyPlayer(user.uid, user.displayName || 'Anonymous');
                 if (player) setBalance(player.balance);
+
+                const existingBets = await getPlayerBets(user.uid);
+                if (existingBets) setBets(existingBets);
+
+                setIsDataLoaded(true);
                 return;
             }
 
@@ -335,9 +342,15 @@ export default function BauCuaPage() {
             if (storedId && storedName) {
                 setPlayerId(storedId);
                 setPlayerName(storedName);
-                // Sync with DB
+
+                // Fetch initial DB state before allowing writes
                 const player = await identifyPlayer(storedId, storedName);
                 if (player) setBalance(player.balance);
+
+                const existingBets = await getPlayerBets(storedId);
+                if (existingBets) setBets(existingBets);
+
+                setIsDataLoaded(true);
             } else {
                 setShowIdentityModal(true);
             }
@@ -523,20 +536,19 @@ export default function BauCuaPage() {
         };
     }, [playerId]); // Re-sub if playerId changes (for filtering)
 
-    // Sync Local Bets to Firestore (Debounced)
     // Sync Local Bets & BALANCE to Firestore (Debounced)
     useEffect(() => {
-        if (!playerId || !playerName) return;
+        if (!playerId || !playerName || !isDataLoaded) return;
 
         // Sync whenever `bets` changes
         const timeout = setTimeout(() => {
             updateBet(playerId, playerName, bets);
             // Also sync balance immediately so the list updates
-            setPlayerBalance(playerId, balance);
+            setPlayerBalance(playerId, balance, "Debounced Sync");
         }, 300); // 300ms debounce
 
         return () => clearTimeout(timeout);
-    }, [bets, balance, playerId, playerName]);
+    }, [bets, balance, playerId, playerName, isDataLoaded]);
 
     // 3. React to Result from Session (Client Side Win Calculation)
     // 3. React to Result from Session (Client Side Win Calculation)
