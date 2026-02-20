@@ -358,18 +358,35 @@ export default function BauCuaPage() {
         checkIdentity();
     }, [user]);
 
-    // Timer Effect
+    // Timer and Cleanup Effect
+    const prevStatusForClearRef = useRef(currentStatus);
+    const prevRoundTimeForClearRef = useRef(session?.roundStartTime);
+    const hasInitializedClearRef = useRef(false);
+
     useEffect(() => {
         setElapsedTime(0); // Reset elapsed on status change
 
-        // Reset countdown when entering BETTING status
         if (currentStatus === 'BETTING') {
             setTimeLeft(45);
-            // Clear bets for the new round
-            if (Object.keys(bets).length > 0) {
-                setBets({});
+
+            // Only clear bets if the transition is explicitly a NEW round,
+            // NOT just component mount or fetching existing bets after a refresh.
+            if (isDataLoaded) {
+                if (!hasInitializedClearRef.current) {
+                    hasInitializedClearRef.current = true;
+                } else {
+                    const statusChangedToBetting = prevStatusForClearRef.current !== 'BETTING';
+                    const roundRestarted = session?.roundStartTime !== prevRoundTimeForClearRef.current;
+
+                    if (statusChangedToBetting || roundRestarted) {
+                        setBets({});
+                    }
+                }
             }
         }
+
+        prevStatusForClearRef.current = currentStatus;
+        prevRoundTimeForClearRef.current = session?.roundStartTime;
 
         const interval = setInterval(() => {
             setElapsedTime(t => t + 1);
@@ -390,7 +407,7 @@ export default function BauCuaPage() {
             }
         }, 1000);
         return () => clearInterval(interval);
-    }, [currentStatus, isLive, session?.roundStartTime]);
+    }, [currentStatus, isLive, session?.roundStartTime, isDataLoaded]);
 
     // Auto-Roll Trigger
     useEffect(() => {
