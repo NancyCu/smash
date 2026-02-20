@@ -193,6 +193,7 @@ export const getCurrentGameState = async (playerId: string): Promise<{ balance: 
 
 /**
  * ACID Transaction: Safely place a bet by locking the player's balance.
+ * Validates the session is in BETTING state before committing.
  */
 export const placeBetTransaction = async (
     playerId: string,
@@ -203,12 +204,25 @@ export const placeBetTransaction = async (
 ): Promise<boolean> => {
     try {
         await runTransaction(db, async (transaction) => {
+            const sessionRef = doc(db, SESSION_COL, SESSION_DOC_ID);
             const playerRef = doc(db, PLAYERS_COL, playerId);
             const betRef = doc(db, BETS_COL, playerId);
             const txRef = doc(collection(db, TRANSACTIONS_COL));
 
+            // 0. Read session status — reject bet if round is not open
+            const [sessionDoc, playerDoc, betDoc] = await Promise.all([
+                transaction.get(sessionRef),
+                transaction.get(playerRef),
+                transaction.get(betRef)
+            ]);
+
+            if (!sessionDoc.exists()) throw new Error("Session not found.");
+            const sessionStatus = sessionDoc.data()?.status;
+            if (sessionStatus !== 'BETTING') {
+                throw new Error(`Cannot bet during session status: ${sessionStatus}`);
+            }
+
             // 1. Read Balance (Lock)
-            const playerDoc = await transaction.get(playerRef);
             if (!playerDoc.exists()) {
                 throw new Error("Player does not exist!");
             }
@@ -221,7 +235,6 @@ export const placeBetTransaction = async (
             }
 
             // 3. Read Current Bets
-            const betDoc = await transaction.get(betRef);
             let currentBets: Record<string, number> = {};
             if (betDoc.exists()) {
                 currentBets = (betDoc.data() as PlayerBet).bets || {};
@@ -259,7 +272,7 @@ export const placeBetTransaction = async (
         });
         return true;
     } catch (error) {
-        console.error("Bet transaction failed: ", error);
+        console.warn("Bet transaction rejected: ", error);
         return false;
     }
 };
@@ -353,6 +366,11 @@ export const addTransaction = async (
  * Highly Secure, Idempotent Server-Side Settlement
  * Executes the entire round's financial resolution as a single ACID Database Transaction.
  * Guarantees that neither players nor the dealer can be double-charged or double-paid.
+ *
+ * IMPORTANT: Firestore `runTransaction` does NOT allow `getDocs` (collection queries) inside it.
+ * We use a two-phase approach:
+ *   Phase 1 (outside transaction): Discover all bet documents via `getDocs`.
+ *   Phase 2 (inside transaction): Lock all individual player docs and commit atomically.
  */
 export const secureSettleRoundTransaction = async (
     hostId: string,
@@ -362,56 +380,56 @@ export const secureSettleRoundTransaction = async (
     if (result.length !== 3) return false;
 
     try {
+        // --- PHASE 1: DISCOVER BETS (outside transaction, collection queries allowed here) ---
+        const betsQuery = query(collection(db, BETS_COL));
+        const betsDocs = await getDocs(betsQuery);
+
+        if (betsDocs.empty) {
+            // No bets — just close the round
+            const sessionRef = doc(db, SESSION_COL, SESSION_DOC_ID);
+            await updateDoc(sessionRef, { status: 'COMPLETED' });
+            console.log("No bets placed, round closed cleanly.");
+            return true;
+        }
+
+        const allBets: { id: string, data: PlayerBet }[] = [];
+        betsDocs.forEach(d => allBets.push({ id: d.id, data: d.data() as PlayerBet }));
+
+        // --- PHASE 2: ATOMIC UPDATE (inside transaction, individual doc reads only) ---
         await runTransaction(db, async (transaction) => {
             const sessionRef = doc(db, SESSION_COL, SESSION_DOC_ID);
 
-            // 1. IDEMPOTENCY CHECK
+            // 1. IDEMPOTENCY CHECK — Read session status atomically
             const sessionDoc = await transaction.get(sessionRef);
             if (!sessionDoc.exists()) throw new Error("Session not found");
             const sessionData = sessionDoc.data() as GameSession;
 
-            if (sessionData.status === 'COMPLETED') {
-                console.log("Round already settled. Aborting to prevent duplicate payouts.");
-                return; // Graceful abort, already handled
+            if (sessionData.status === 'COMPLETED' || sessionData.status === 'PROCESSING') {
+                console.log("Round already settled or currently settling. Aborting.");
+                return; // Graceful abort
             }
 
             // Lock the session to PROCESSING to prevent concurrent settlement attempts
             transaction.update(sessionRef, { status: 'PROCESSING', result });
 
-            // 2. FETCH ALL PENDING BETS
-            const betsQuery = query(collection(db, BETS_COL));
-            const betsDocs = await getDocs(betsQuery); // getDocs is not natively part of a transaction's read lock, 
-            // but we can lock individual player/bet docs within the loop. For a small game, we can read them first, then lock them.
-            // Alternatively, in Firebase transactions, you must do all gets before all writes.
-
-            // To be strictly ACID compliant in Firestore, we must read the specific docs we plan to write to *first*.
-            const allBets: { id: string, data: PlayerBet }[] = [];
-            betsDocs.forEach(d => allBets.push({ id: d.id, data: d.data() as PlayerBet }));
-
-            if (allBets.length === 0) {
-                // No bets, just close the round
-                transaction.update(sessionRef, { status: 'COMPLETED' });
-                return;
-            }
-
-            // We must now lock all involved Player profiles and Dealer profile.
+            // 2. LOCK all individual player docs — required by Firestore before writes
             const playerRefs = allBets.map(b => doc(db, PLAYERS_COL, b.id));
             const hostRef = doc(db, PLAYERS_COL, hostId);
 
-            // Fetch all locked documents
+            // All reads must happen before any writes
             const allPlayerDocs = await Promise.all(playerRefs.map(ref => transaction.get(ref)));
             const hostDoc = await transaction.get(hostRef);
 
             let dealerNetBalanceChange = 0;
             const hostBalance = hostDoc.exists() ? (hostDoc.data()?.balance || 0) : 0;
-            const updatesMap: Map<string, any> = new Map(); // Store player balance updates
-            const ledgerEntries: any[] = [];
+            const updatesMap: Map<string, any> = new Map();
+            const ledgerEntries: { ref: any, data: any }[] = [];
 
-            // 3. CALCULATE PAYOUTS
+            // 3. CALCULATE PAYOUTS PER PLAYER
             for (let i = 0; i < allBets.length; i++) {
                 const betDoc = allBets[i];
-                const playerId = betDoc.id;
-                const playerName = betDoc.data.playerName;
+                const pId = betDoc.id;
+                const pName = betDoc.data.playerName;
                 const bets = betDoc.data.bets || {};
 
                 const playerDoc = allPlayerDocs[i];
@@ -423,54 +441,56 @@ export const secureSettleRoundTransaction = async (
                 let playerLost = 0;
 
                 Object.entries(bets).forEach(([animalId, amount]) => {
+                    const numAmount = Number(amount);
                     const matches = result.filter(r => r === animalId).length;
                     if (matches === 0) {
-                        playerLost += amount;
-                        dealerNetBalanceChange += amount; // Dealer keeps losing bets
+                        playerLost += numAmount;
+                        dealerNetBalanceChange += numAmount; // Dealer keeps losing bets
                     } else {
-                        playerReturn += amount; // Return original bet
-                        const winnings = amount * matches;
+                        playerReturn += numAmount; // Return original bet
+                        const winnings = numAmount * matches;
                         playerWon += winnings;
-                        dealerNetBalanceChange -= (playerReturn + winnings); // Dealer pays out
+                        dealerNetBalanceChange -= (numAmount + winnings); // Dealer pays out bet + winnings
                     }
                 });
 
-                // Prepare Player Ledger & Balance
+                // Prepare Player Balance & Ledger
                 if (playerWon > 0) {
                     const totalPayout = playerReturn + playerWon;
-                    currentBalance += totalPayout;
-                    updatesMap.set(playerId, {
-                        balance: currentBalance,
+                    const newBalance = currentBalance + totalPayout;
+                    updatesMap.set(pId, {
+                        balance: newBalance,
                         wins: increment(1),
                         lastActive: serverTimestamp()
                     });
-
                     ledgerEntries.push({
                         ref: doc(collection(db, TRANSACTIONS_COL)),
                         data: {
-                            playerId, playerName, type: 'WIN', amount: playerWon,
-                            description: `Won ${playerWon} on ${result.join(',')}`,
-                            timestamp: serverTimestamp(), newBalance: currentBalance, sessionId: sessionData.historyId
+                            playerId: pId, playerName: pName, type: 'WIN',
+                            amount: playerWon,
+                            description: `Won $${playerWon} — got back $${playerReturn} bet + $${playerWon} winnings`,
+                            timestamp: serverTimestamp(), newBalance, sessionId: sessionData.historyId
                         }
                     });
-                } else if (playerLost > 0) {
-                    updatesMap.set(playerId, {
+                } else {
+                    // Player lost — bet was already deducted on placement, just log it
+                    updatesMap.set(pId, {
                         losses: increment(1),
                         lastActive: serverTimestamp()
                     });
-                    // Bet was already deducted locally when placed, so we just log the formal LOSS result
                     ledgerEntries.push({
                         ref: doc(collection(db, TRANSACTIONS_COL)),
                         data: {
-                            playerId, playerName, type: 'LOSS', amount: playerLost,
-                            description: `Lost ${playerLost} on ${result.join(',')}`,
+                            playerId: pId, playerName: pName, type: 'LOSS',
+                            amount: playerLost,
+                            description: `Lost $${playerLost} on ${result.join(', ')}`,
                             timestamp: serverTimestamp(), newBalance: currentBalance, sessionId: sessionData.historyId
                         }
                     });
                 }
 
-                // Clear the active bet since the round is over
-                transaction.delete(doc(db, BETS_COL, playerId));
+                // Delete the bet document — round is now settled for this player
+                transaction.delete(doc(db, BETS_COL, pId));
             }
 
             // 4. APPLY DEALER UPDATES
@@ -483,31 +503,27 @@ export const secureSettleRoundTransaction = async (
                     losses: !isWin ? increment(1) : increment(0),
                     lastActive: serverTimestamp()
                 });
-
                 ledgerEntries.push({
                     ref: doc(collection(db, TRANSACTIONS_COL)),
                     data: {
                         playerId: hostId, playerName: hostName,
                         type: isWin ? 'WIN' : 'LOSS',
                         amount: Math.abs(dealerNetBalanceChange),
-                        description: `Dealer ${isWin ? 'Collected' : 'Paid'} (Round Result)`,
+                        description: `Dealer ${isWin ? 'Collected' : 'Paid'} $${Math.abs(dealerNetBalanceChange)} (Round Result)`,
                         timestamp: serverTimestamp(), newBalance: newHostBalance, sessionId: sessionData.historyId
                     }
                 });
             }
 
-            // 5. COMMIT WRITES (Strict ACID sequence)
-            // Write Player Balances
+            // 5. COMMIT ALL WRITES (after all reads above)
             updatesMap.forEach((updates, pId) => {
                 transaction.update(doc(db, PLAYERS_COL, pId), updates);
             });
-            // Write Ledger Entries
             ledgerEntries.forEach(entry => {
                 transaction.set(entry.ref, entry.data);
             });
-            // Finalize Session Status
+            // Finalize — mark session COMPLETED to prevent any re-runs
             transaction.update(sessionRef, { status: 'COMPLETED' });
-
         });
 
         console.log("Round successfully settled via secure transaction.");

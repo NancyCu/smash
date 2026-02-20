@@ -707,7 +707,7 @@ export default function BauCuaPage() {
         if (isLive) {
             const success = await placeBetTransaction(playerId, playerName, animalId, selectedChip, session?.historyId);
             if (!success) {
-                alert("Bet failed to process due to a server error or lack of funds. Your chip has been refunded.");
+                console.warn("Bet was rejected. SSOT sync will correct the display.");
             }
             // --- SSOT: Aggressively Sync After Transaction ---
             // Whether it succeeded or failed, fetch the absolute truth from the DB to fix any optimistic desync.
