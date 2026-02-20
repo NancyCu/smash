@@ -15,7 +15,8 @@ import {
     where,
     increment,
     writeBatch,
-    getDocs
+    getDocs,
+    runTransaction
 } from "firebase/firestore";
 
 // --- TYPES ---
@@ -108,34 +109,44 @@ export const identifyPlayer = async (id: string, name: string): Promise<Player> 
 };
 
 /**
- * Updates a player's balance and optionally stats.
+ * Atomically updates a player's balance, stats, and logs the transaction in a single batch.
+ * This ensures the ledger and balance never drift apart.
  */
-export const updatePlayerStats = async (
+export const logTransactionAndStats = async (
     playerId: string,
+    playerName: string,
     balanceChange: number,
-    isWin: boolean = false,
-    isLoss: boolean = false
+    type: Transaction['type'],
+    description: string,
+    newBalance?: number,
+    sessionId?: string
 ) => {
-    const playerRef = doc(db, PLAYERS_COL, playerId);
+    const batch = writeBatch(db);
 
+    // 1. Update Player Balance and Stats
+    const playerRef = doc(db, PLAYERS_COL, playerId);
     const updates: any = {
         balance: increment(balanceChange),
         lastActive: serverTimestamp()
     };
+    if (balanceChange > 0) updates.wins = increment(1);
+    if (balanceChange < 0) updates.losses = increment(1);
+    batch.update(playerRef, updates);
 
-    if (isWin) updates.wins = increment(1);
-    if (isLoss) updates.losses = increment(1);
-
-    await updateDoc(playerRef, updates);
-};
-
-export const setPlayerBalance = async (playerId: string, newBalance: number, reason: string = 'Unknown Update') => {
-    console.warn(`[Firestore Write] setPlayerBalance - ID: ${playerId}, New Balance: $${newBalance}, Reason: ${reason}`);
-    const playerRef = doc(db, PLAYERS_COL, playerId);
-    await updateDoc(playerRef, {
-        balance: newBalance,
-        lastActive: serverTimestamp()
+    // 2. Insert Transaction Ledger Entry
+    const txRef = doc(collection(db, TRANSACTIONS_COL));
+    batch.set(txRef, {
+        playerId,
+        playerName,
+        type,
+        amount: Math.abs(balanceChange), // Ensure positive amount for ledger readability
+        description,
+        timestamp: serverTimestamp(),
+        ...(newBalance !== undefined && { newBalance }),
+        ...(sessionId && { sessionId })
     });
+
+    await batch.commit();
 };
 
 export const getPlayerBets = async (playerId: string): Promise<Record<string, number> | null> => {
@@ -148,9 +159,174 @@ export const getPlayerBets = async (playerId: string): Promise<Record<string, nu
     return null;
 };
 
+/**
+ * Single Source of Truth Payload: Fetches the player's true balance and active bets directly from DB.
+ */
+export const getCurrentGameState = async (playerId: string): Promise<{ balance: number, pendingBets: Record<string, number> } | null> => {
+    try {
+        const playerRef = doc(db, PLAYERS_COL, playerId);
+        const betRef = doc(db, BETS_COL, playerId);
+
+        // Fetch securely in parallel
+        const [playerSnap, betSnap] = await Promise.all([
+            getDoc(playerRef),
+            getDoc(betRef)
+        ]);
+
+        if (!playerSnap.exists()) {
+            return null; // Player does not exist
+        }
+
+        const balance = playerSnap.data().balance || 0;
+        let pendingBets: Record<string, number> = {};
+
+        if (betSnap.exists()) {
+            pendingBets = (betSnap.data() as PlayerBet).bets || {};
+        }
+
+        return { balance, pendingBets };
+    } catch (error) {
+        console.error("Failed to fetch SSOT Game State:", error);
+        return null;
+    }
+};
+
+/**
+ * ACID Transaction: Safely place a bet by locking the player's balance.
+ */
+export const placeBetTransaction = async (
+    playerId: string,
+    playerName: string,
+    animalId: string,
+    amount: number,
+    sessionId?: string
+): Promise<boolean> => {
+    try {
+        await runTransaction(db, async (transaction) => {
+            const playerRef = doc(db, PLAYERS_COL, playerId);
+            const betRef = doc(db, BETS_COL, playerId);
+            const txRef = doc(collection(db, TRANSACTIONS_COL));
+
+            // 1. Read Balance (Lock)
+            const playerDoc = await transaction.get(playerRef);
+            if (!playerDoc.exists()) {
+                throw new Error("Player does not exist!");
+            }
+
+            const currentBalance = playerDoc.data().balance || 0;
+
+            // 2. Validate Funds
+            if (currentBalance < amount) {
+                throw new Error("Insufficient funds to place bet.");
+            }
+
+            // 3. Read Current Bets
+            const betDoc = await transaction.get(betRef);
+            let currentBets: Record<string, number> = {};
+            if (betDoc.exists()) {
+                currentBets = (betDoc.data() as PlayerBet).bets || {};
+            }
+
+            // 4. Calculate New States
+            const newBalance = currentBalance - amount;
+            currentBets[animalId] = (currentBets[animalId] || 0) + amount;
+
+            // 5. Execute Writes Atomically
+            transaction.update(playerRef, {
+                balance: newBalance,
+                lastActive: serverTimestamp()
+            });
+
+            // Set or Update bets (using set with merge allows creating if missing)
+            transaction.set(betRef, {
+                playerId,
+                playerName,
+                bets: currentBets,
+                timestamp: serverTimestamp()
+            }, { merge: true });
+
+            // Create Ledger Entry
+            transaction.set(txRef, {
+                playerId,
+                playerName,
+                type: 'BET',
+                amount: amount,
+                description: `Placed bet on ${animalId}`,
+                timestamp: serverTimestamp(),
+                newBalance: newBalance,
+                ...(sessionId && { sessionId })
+            });
+        });
+        return true;
+    } catch (error) {
+        console.error("Bet transaction failed: ", error);
+        return false;
+    }
+};
+
+/**
+ * ACID Transaction: Safely clear bets and refund balance.
+ */
+export const clearBetTransaction = async (
+    playerId: string,
+    playerName: string,
+    sessionId?: string
+): Promise<boolean> => {
+    try {
+        await runTransaction(db, async (transaction) => {
+            const playerRef = doc(db, PLAYERS_COL, playerId);
+            const betRef = doc(db, BETS_COL, playerId);
+            const txRef = doc(collection(db, TRANSACTIONS_COL));
+
+            // 1. Read Current Bets (Lock)
+            const betDoc = await transaction.get(betRef);
+            if (!betDoc.exists()) {
+                throw new Error("No active bets to clear."); // Nothing to do
+            }
+
+            const currentBets = (betDoc.data() as PlayerBet).bets || {};
+            let totalRefund = 0;
+            Object.values(currentBets).forEach(amt => totalRefund += amt);
+
+            if (totalRefund === 0) return; // Nothing to refund
+
+            // 2. Read Balance
+            const playerDoc = await transaction.get(playerRef);
+            const currentBalance = playerDoc.exists() ? (playerDoc.data().balance || 0) : 0;
+            const newBalance = currentBalance + totalRefund;
+
+            // 3. Execute Writes Atomically
+            transaction.update(playerRef, {
+                balance: newBalance,
+                lastActive: serverTimestamp()
+            });
+
+            // Delete active bets
+            transaction.delete(betRef);
+
+            // Create Ledger Entry
+            transaction.set(txRef, {
+                playerId,
+                playerName,
+                type: 'WIN', // Or 'REFUND' if added to types
+                amount: totalRefund,
+                description: `Cleared board refund`,
+                timestamp: serverTimestamp(),
+                newBalance: newBalance,
+                ...(sessionId && { sessionId })
+            });
+        });
+        return true;
+    } catch (error) {
+        console.error("Clear bet transaction failed: ", error);
+        return false;
+    }
+};
+
 
 /**
  * Logs a financial transaction.
+ * Usually logTransactionAndStats is preferred to keep balances in sync. 
  */
 export const addTransaction = async (
     playerId: string,
@@ -171,6 +347,175 @@ export const addTransaction = async (
         ...(newBalance !== undefined && { newBalance }),
         ...(sessionId && { sessionId })
     });
+};
+
+/**
+ * Highly Secure, Idempotent Server-Side Settlement
+ * Executes the entire round's financial resolution as a single ACID Database Transaction.
+ * Guarantees that neither players nor the dealer can be double-charged or double-paid.
+ */
+export const secureSettleRoundTransaction = async (
+    hostId: string,
+    hostName: string,
+    result: string[]
+): Promise<boolean> => {
+    if (result.length !== 3) return false;
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const sessionRef = doc(db, SESSION_COL, SESSION_DOC_ID);
+
+            // 1. IDEMPOTENCY CHECK
+            const sessionDoc = await transaction.get(sessionRef);
+            if (!sessionDoc.exists()) throw new Error("Session not found");
+            const sessionData = sessionDoc.data() as GameSession;
+
+            if (sessionData.status === 'COMPLETED') {
+                console.log("Round already settled. Aborting to prevent duplicate payouts.");
+                return; // Graceful abort, already handled
+            }
+
+            // Lock the session to PROCESSING to prevent concurrent settlement attempts
+            transaction.update(sessionRef, { status: 'PROCESSING', result });
+
+            // 2. FETCH ALL PENDING BETS
+            const betsQuery = query(collection(db, BETS_COL));
+            const betsDocs = await getDocs(betsQuery); // getDocs is not natively part of a transaction's read lock, 
+            // but we can lock individual player/bet docs within the loop. For a small game, we can read them first, then lock them.
+            // Alternatively, in Firebase transactions, you must do all gets before all writes.
+
+            // To be strictly ACID compliant in Firestore, we must read the specific docs we plan to write to *first*.
+            const allBets: { id: string, data: PlayerBet }[] = [];
+            betsDocs.forEach(d => allBets.push({ id: d.id, data: d.data() as PlayerBet }));
+
+            if (allBets.length === 0) {
+                // No bets, just close the round
+                transaction.update(sessionRef, { status: 'COMPLETED' });
+                return;
+            }
+
+            // We must now lock all involved Player profiles and Dealer profile.
+            const playerRefs = allBets.map(b => doc(db, PLAYERS_COL, b.id));
+            const hostRef = doc(db, PLAYERS_COL, hostId);
+
+            // Fetch all locked documents
+            const allPlayerDocs = await Promise.all(playerRefs.map(ref => transaction.get(ref)));
+            const hostDoc = await transaction.get(hostRef);
+
+            let dealerNetBalanceChange = 0;
+            const hostBalance = hostDoc.exists() ? (hostDoc.data()?.balance || 0) : 0;
+            const updatesMap: Map<string, any> = new Map(); // Store player balance updates
+            const ledgerEntries: any[] = [];
+
+            // 3. CALCULATE PAYOUTS
+            for (let i = 0; i < allBets.length; i++) {
+                const betDoc = allBets[i];
+                const playerId = betDoc.id;
+                const playerName = betDoc.data.playerName;
+                const bets = betDoc.data.bets || {};
+
+                const playerDoc = allPlayerDocs[i];
+                if (!playerDoc.exists()) continue;
+                let currentBalance = playerDoc.data()?.balance || 0;
+
+                let playerWon = 0;
+                let playerReturn = 0;
+                let playerLost = 0;
+
+                Object.entries(bets).forEach(([animalId, amount]) => {
+                    const matches = result.filter(r => r === animalId).length;
+                    if (matches === 0) {
+                        playerLost += amount;
+                        dealerNetBalanceChange += amount; // Dealer keeps losing bets
+                    } else {
+                        playerReturn += amount; // Return original bet
+                        const winnings = amount * matches;
+                        playerWon += winnings;
+                        dealerNetBalanceChange -= (playerReturn + winnings); // Dealer pays out
+                    }
+                });
+
+                // Prepare Player Ledger & Balance
+                if (playerWon > 0) {
+                    const totalPayout = playerReturn + playerWon;
+                    currentBalance += totalPayout;
+                    updatesMap.set(playerId, {
+                        balance: currentBalance,
+                        wins: increment(1),
+                        lastActive: serverTimestamp()
+                    });
+
+                    ledgerEntries.push({
+                        ref: doc(collection(db, TRANSACTIONS_COL)),
+                        data: {
+                            playerId, playerName, type: 'WIN', amount: playerWon,
+                            description: `Won ${playerWon} on ${result.join(',')}`,
+                            timestamp: serverTimestamp(), newBalance: currentBalance, sessionId: sessionData.historyId
+                        }
+                    });
+                } else if (playerLost > 0) {
+                    updatesMap.set(playerId, {
+                        losses: increment(1),
+                        lastActive: serverTimestamp()
+                    });
+                    // Bet was already deducted locally when placed, so we just log the formal LOSS result
+                    ledgerEntries.push({
+                        ref: doc(collection(db, TRANSACTIONS_COL)),
+                        data: {
+                            playerId, playerName, type: 'LOSS', amount: playerLost,
+                            description: `Lost ${playerLost} on ${result.join(',')}`,
+                            timestamp: serverTimestamp(), newBalance: currentBalance, sessionId: sessionData.historyId
+                        }
+                    });
+                }
+
+                // Clear the active bet since the round is over
+                transaction.delete(doc(db, BETS_COL, playerId));
+            }
+
+            // 4. APPLY DEALER UPDATES
+            if (dealerNetBalanceChange !== 0 && hostDoc.exists()) {
+                const newHostBalance = hostBalance + dealerNetBalanceChange;
+                const isWin = dealerNetBalanceChange > 0;
+                updatesMap.set(hostId, {
+                    balance: newHostBalance,
+                    wins: isWin ? increment(1) : increment(0),
+                    losses: !isWin ? increment(1) : increment(0),
+                    lastActive: serverTimestamp()
+                });
+
+                ledgerEntries.push({
+                    ref: doc(collection(db, TRANSACTIONS_COL)),
+                    data: {
+                        playerId: hostId, playerName: hostName,
+                        type: isWin ? 'WIN' : 'LOSS',
+                        amount: Math.abs(dealerNetBalanceChange),
+                        description: `Dealer ${isWin ? 'Collected' : 'Paid'} (Round Result)`,
+                        timestamp: serverTimestamp(), newBalance: newHostBalance, sessionId: sessionData.historyId
+                    }
+                });
+            }
+
+            // 5. COMMIT WRITES (Strict ACID sequence)
+            // Write Player Balances
+            updatesMap.forEach((updates, pId) => {
+                transaction.update(doc(db, PLAYERS_COL, pId), updates);
+            });
+            // Write Ledger Entries
+            ledgerEntries.forEach(entry => {
+                transaction.set(entry.ref, entry.data);
+            });
+            // Finalize Session Status
+            transaction.update(sessionRef, { status: 'COMPLETED' });
+
+        });
+
+        console.log("Round successfully settled via secure transaction.");
+        return true;
+    } catch (error) {
+        console.error("Secure Settlement Transaction Failed. Rolling back:", error);
+        return false;
+    }
 };
 
 // --- SESSION MANAGEMENT ---

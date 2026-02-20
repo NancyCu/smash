@@ -25,10 +25,15 @@ import {
     updateBet,
     subscribeToBets,
     clearAllBets,
+    logTransactionAndStats,
+    placeBetTransaction,
+    clearBetTransaction,
     triggerShake,
     openBowl,
     triggerSound,
-    setPlayerBalance
+    setPlayerBalance,
+    getCurrentGameState,
+    secureSettleRoundTransaction
 } from '@/lib/bau-cua-service';
 import { indicesToAnimalIds, secureRoll } from '@/lib/secure-roll';
 import { useAuth } from '@/context/AuthContext';
@@ -319,74 +324,56 @@ export default function BauCuaPage() {
     // 1. Identity Check
     useEffect(() => {
         const checkIdentity = async () => {
+            let activeId = "";
+            let activeName = "";
+
             // Priority 1: Global Auth User
             if (user) {
-                setPlayerId(user.uid);
-                setPlayerName(user.displayName || 'Anonymous');
+                activeId = user.uid;
+                activeName = user.displayName || 'Anonymous';
+                setPlayerId(activeId);
+                setPlayerName(activeName);
                 setShowIdentityModal(false);
-
-                const player = await identifyPlayer(user.uid, user.displayName || 'Anonymous');
-                if (player) setBalance(player.balance);
-
-                const existingBets = await getPlayerBets(user.uid);
-                if (existingBets) setBets(existingBets);
-
-                setIsDataLoaded(true);
-                return;
-            }
-
-            // Priority 2: Standard LocalStorage fallback
-            const storedId = localStorage.getItem('bauCuaPlayerId');
-            const storedName = localStorage.getItem('bauCuaPlayerName');
-
-            if (storedId && storedName) {
-                setPlayerId(storedId);
-                setPlayerName(storedName);
-
-                // Fetch initial DB state before allowing writes
-                const player = await identifyPlayer(storedId, storedName);
-                if (player) setBalance(player.balance);
-
-                const existingBets = await getPlayerBets(storedId);
-                if (existingBets) setBets(existingBets);
-
-                setIsDataLoaded(true);
             } else {
-                setShowIdentityModal(true);
+                // Priority 2: Standard LocalStorage fallback
+                const storedId = localStorage.getItem('bauCuaPlayerId');
+                const storedName = localStorage.getItem('bauCuaPlayerName');
+
+                if (storedId && storedName) {
+                    activeId = storedId;
+                    activeName = storedName;
+                    setPlayerId(activeId);
+                    setPlayerName(activeName);
+                } else {
+                    setShowIdentityModal(true);
+                    return; // Stop here if no identity
+                }
             }
+
+            // --- SSOT: Fetch Verified Unified State ---
+            // Even if the DB says they have a `Player` doc, only the SSOT payload 
+            // has the verified parallel fetch of balance and pending bets.
+            // If they are new, we still ensure they exist in DB first.
+            await identifyPlayer(activeId, activeName);
+
+            const gameState = await getCurrentGameState(activeId);
+            if (gameState) {
+                setBalance(gameState.balance);
+                setBets(gameState.pendingBets);
+            }
+
+            setIsDataLoaded(true);
         };
         checkIdentity();
     }, [user]);
 
-    // Timer and Cleanup Effect
-    const prevStatusForClearRef = useRef(currentStatus);
-    const prevRoundTimeForClearRef = useRef(session?.roundStartTime);
-    const hasInitializedClearRef = useRef(false);
-
+    // Timer Effect
     useEffect(() => {
         setElapsedTime(0); // Reset elapsed on status change
 
         if (currentStatus === 'BETTING') {
             setTimeLeft(45);
-
-            // Only clear bets if the transition is explicitly a NEW round,
-            // NOT just component mount or fetching existing bets after a refresh.
-            if (isDataLoaded) {
-                if (!hasInitializedClearRef.current) {
-                    hasInitializedClearRef.current = true;
-                } else {
-                    const statusChangedToBetting = prevStatusForClearRef.current !== 'BETTING';
-                    const roundRestarted = session?.roundStartTime !== prevRoundTimeForClearRef.current;
-
-                    if (statusChangedToBetting || roundRestarted) {
-                        setBets({});
-                    }
-                }
-            }
         }
-
-        prevStatusForClearRef.current = currentStatus;
-        prevRoundTimeForClearRef.current = session?.roundStartTime;
 
         const interval = setInterval(() => {
             setElapsedTime(t => t + 1);
@@ -407,7 +394,25 @@ export default function BauCuaPage() {
             }
         }, 1000);
         return () => clearInterval(interval);
-    }, [currentStatus, isLive, session?.roundStartTime, isDataLoaded]);
+    }, [currentStatus, isLive, session?.roundStartTime]);
+
+    // NEW ROUND LISTENER (Strict Lifecycle)
+    // Listens for explicit transitions marking a new round and clears the board.
+    const initialRoundTimeRef = useRef<number | null>(null);
+    useEffect(() => {
+        if (!session?.roundStartTime) return;
+
+        if (initialRoundTimeRef.current === null) {
+            // Initial component load/connection. Do NOT clear bets.
+            // checkIdentity() is responsible for restoring bets here.
+            initialRoundTimeRef.current = session.roundStartTime;
+        } else if (session.roundStartTime !== initialRoundTimeRef.current) {
+            // The server explicitly broadcasted a new round time while we were connected!
+            // This is the trigger to clear the board.
+            setBets({});
+            initialRoundTimeRef.current = session.roundStartTime;
+        }
+    }, [session?.roundStartTime]);
 
     // Auto-Roll Trigger
     useEffect(() => {
@@ -553,19 +558,10 @@ export default function BauCuaPage() {
         };
     }, [playerId]); // Re-sub if playerId changes (for filtering)
 
-    // Sync Local Bets & BALANCE to Firestore (Debounced)
-    useEffect(() => {
-        if (!playerId || !playerName || !isDataLoaded) return;
-
-        // Sync whenever `bets` changes
-        const timeout = setTimeout(() => {
-            updateBet(playerId, playerName, bets);
-            // Also sync balance immediately so the list updates
-            setPlayerBalance(playerId, balance, "Debounced Sync");
-        }, 300); // 300ms debounce
-
-        return () => clearTimeout(timeout);
-    }, [bets, balance, playerId, playerName, isDataLoaded]);
+    // (Removed unsafe debounced sync)
+    // Local bets and balance are now strictly passive observers of Firestore
+    // Note: To keep the UI snappy, we still use local state for optimistic updates 
+    // inside the new placeBet function.
 
     // 3. React to Result from Session (Client Side Win Calculation)
     // 3. React to Result from Session (Client Side Win Calculation)
@@ -599,30 +595,44 @@ export default function BauCuaPage() {
             }
             runOnceRef.current = resultString;
 
-            // Run settle ONLY if we have bets.
+            // --- IDEMPOTENT SETTLEMENT ---
+            // We no longer calculate payouts uniquely on the client.
+            // When the host's `secureSettleRoundTransaction` succeeds, the backend handles all balance changes.
+            // Our local `subscribeToPlayers` effect will automatically pull the new verified Balance down!
+            // However, to trigger the visual win animations, we simply assess if our CURRENT bets 
+            // match the result.
+
+            // Only run animations if we have bets.
             if (Object.keys(bets).length > 0) {
-                // Calculate Win/Loss for Audio Trigger
+                // Calculate Win/Loss for Audio Trigger only (no UI balance mutation)
                 let totalBet = 0;
                 let totalWin = 0;
                 Object.entries(bets).forEach(([animalId, amount]) => {
                     totalBet += amount;
                     const hits = session.result.filter(r => r === animalId).length;
                     if (hits > 0) {
-                        totalWin += amount + (amount * hits);
+                        totalWin += (amount * hits);
                     }
                 });
 
-                // Trigger Taunt
-                playTaunt(totalBet, totalWin, (text) => {
-                    // Show bubble for the taunt
-                    triggerEmote('auto', playerName, text);
-                });
+                setLastWin(totalWin);
+                setLocalGameState('WIN');
 
-                // Settle the round (update balance)
-                settleClientRound();
+                // Trigger personal sound FX based on result
+                if (totalWin > 0) {
+                    if (totalWin >= totalBet * 2) {
+                        playTaunt('big_win');
+                    } else {
+                        playTaunt('win');
+                    }
+                } else if (totalBet > 0) {
+                    playTaunt('mock');
+                }
+            } else {
+                setLocalGameState('RESULT'); // Just viewers
             }
         }
-    }, [session?.status, session?.result, isLive, session?.roundStartTime]);
+    }, [session?.status, session?.result, isLive, session?.roundStartTime, bets, playerName, playTaunt, triggerEmote]);
 
     // Helper: UUID
     const generateUUID = () => {
@@ -670,8 +680,7 @@ export default function BauCuaPage() {
         setBalance(prev => prev + topUpAmount);
         setShowTopUpModal(false);
         if (playerId) {
-            await addTransaction(playerId, playerName, 'DEPOSIT', topUpAmount, 'Venmo Top-up');
-            await updatePlayerStats(playerId, topUpAmount);
+            await logTransactionAndStats(playerId, playerName, topUpAmount, 'DEPOSIT', 'Venmo Top-up', balance + topUpAmount);
         }
     };
 
@@ -687,27 +696,58 @@ export default function BauCuaPage() {
         }
     }, []);
 
-    const placeBet = (animalId: string) => {
+    const placeBet = async (animalId: string) => {
         // Only allow betting if status is BETTING
         if (currentStatus !== 'BETTING') return;
         if (isHost) return; // HOST CANNOT BET
         if (balance < selectedChip) return;
 
+        // --- OPTIMISTIC UI UPDATE ---
         playChipSound();
-
         setBets(prev => ({
             ...prev,
             [animalId]: (prev[animalId] || 0) + selectedChip
         }));
         setBalance(prev => prev - selectedChip);
+
+        // --- ACID DB TRANSACTION ---
+        if (isLive) {
+            const success = await placeBetTransaction(playerId, playerName, animalId, selectedChip, session?.historyId);
+            if (!success) {
+                alert("Bet failed to process due to a server error or lack of funds. Your chip has been refunded.");
+            }
+            // --- SSOT: Aggressively Sync After Transaction ---
+            // Whether it succeeded or failed, fetch the absolute truth from the DB to fix any optimistic desync.
+            const gameState = await getCurrentGameState(playerId);
+            if (gameState) {
+                setBalance(gameState.balance);
+                setBets(gameState.pendingBets);
+            }
+        }
     };
 
-    const clearBets = () => {
+    const clearBets = async () => {
         if (currentStatus !== 'BETTING') return;
+
+        // --- OPTIMISTIC UI UPDATE ---
         let totalRefund = 0;
         Object.values(bets).forEach(amount => totalRefund += amount);
         setBalance(prev => prev + totalRefund);
         setBets({});
+
+        // --- ACID DB TRANSACTION ---
+        if (isLive) {
+            const success = await clearBetTransaction(playerId, playerName, session?.historyId);
+            if (!success) {
+                alert("Failed to clear bets globally. Your screen may be out of sync.");
+            }
+            // --- SSOT: Aggressively Sync After Transaction ---
+            const gameState = await getCurrentGameState(playerId);
+            if (gameState) {
+                setBalance(gameState.balance);
+                setBets(gameState.pendingBets);
+            }
+        }
     };
 
     // --- GAME FLOW LOGIC ---
@@ -865,47 +905,19 @@ export default function BauCuaPage() {
                 // We should use currentResult here too to be safe.
                 await updateSessionStatus('RESULT', currentResult);
 
-                // --- DEALER LOGIC ---
-                // Host plays against ALL players.
-                // Host Profit = Sum(Player Losses) - Sum(Player Wins)
-                // Effectively: Host Net = -1 * Sum(Player Net Profit)
+                // --- SERVER-SIDE SETTLEMENT (ACID) ---
+                // We delegate ALL mathematical settlement to the server transaction.
+                // It will read all bets, award money, debit the dealer, and mark the round COMPLETED.
+                const success = await secureSettleRoundTransaction(playerId, playerName, currentResult);
 
-                let hostNetProfit = 0;
-                let details = [];
-
-                // We use `allBets` which contains bets from all OTHER players
-                for (const playerBet of allBets) {
-                    let pTotalBet = 0;
-                    let pTotalWin = 0;
-
-                    Object.entries(playerBet.bets).forEach(([animalId, amount]) => {
-                        pTotalBet += amount;
-                        const matches = currentResult.filter(r => r === animalId).length;
-                        if (matches > 0) {
-                            pTotalWin += amount + (amount * matches);
-                        }
-                    });
-
-                    const pNet = pTotalWin - pTotalBet; // Player's profit (positive = win, negative = loss)
-                    const hostChange = -pNet; // Host takes the opposite
-
-                    hostNetProfit += hostChange;
-                }
-
-                // Update Host Balance & Stats
-                if (hostNetProfit !== 0) {
-                    const newHostBalance = balance + hostNetProfit; // Calculate explicitly for log
-                    setBalance(prev => prev + hostNetProfit);
-
-                    // Log Host Transaction
-                    const type = hostNetProfit > 0 ? 'WIN' : 'LOSS';
-                    const desc = `Dealer ${hostNetProfit > 0 ? 'Win' : 'Loss'} (Round Result)`;
-
-                    await addTransaction(playerId, playerName, type, Math.abs(hostNetProfit), desc, newHostBalance, session?.historyId);
-                    await updatePlayerStats(playerId, hostNetProfit, hostNetProfit > 0, hostNetProfit < 0);
+                if (!success) {
+                    console.error("Host Settlement Failed. Either already completed or a severe error occurred.");
+                } else {
+                    console.log("Host Settled Round Successfully.");
                 }
             }
-            // Clients handle their own settlement via effect
+            // Clients handle their own visual animations via the RESULT status effect.
+            // balances update passively via `subscribeToPlayers`.
         } else {
             // Local Mode - Same as before (Solo Play)
             const calculatePayout = (currentBets: Record<string, number>, currentResult: string[]) => {
@@ -932,60 +944,14 @@ export default function BauCuaPage() {
             if (playerId && totalBetAmount > 0) {
                 const newBal = balance + payout; // balance state update is async, so calculate here
                 if (profit > 0) {
-                    await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`, newBal);
-                    await updatePlayerStats(playerId, profit, true, false);
+                    await logTransactionAndStats(playerId, playerName, profit, 'WIN', `Won ${profit}`, newBal);
                 } else if (profit <= 0) {
-                    await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result', newBal);
-                    await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
+                    await logTransactionAndStats(playerId, playerName, profit, profit >= 0 ? 'WIN' : 'LOSS', 'Round Result', newBal);
                 }
             }
         };
     };
-
-    // Triggered by CLIENT when they see the result
-    const settleClientRound = async () => {
-        // Re-run calc for client
-        const currentResult = isLive ? session?.result || [] : result;
-        if (currentResult.length !== 3) return;
-
-        let totalWinnings = 0;
-        let totalBetReturn = 0;
-        let totalBetAmount = 0;
-
-        Object.entries(bets).forEach(([animalId, betAmount]) => {
-            totalBetAmount += betAmount;
-            const matches = currentResult.filter(r => r === animalId).length;
-            if (matches > 0) {
-                totalBetReturn += betAmount;
-                totalWinnings += betAmount * matches;
-            }
-        });
-
-        const payout = totalBetReturn + totalWinnings;
-        const profit = payout - totalBetAmount;
-
-        if (totalBetAmount > 0) {
-            const newBal = balance + payout; // Calc strictly based on current 'balance' prop or state? 
-            // In settleClientRound, 'balance' is from state.
-
-            setBalance(prev => prev + payout);
-            setLastWin(totalWinnings);
-
-            // Log
-            if (profit > 0) {
-                await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`, newBal, session?.historyId);
-                await updatePlayerStats(playerId, profit, true, false);
-            } else if (profit <= 0) {
-                await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result', newBal, session?.historyId);
-                await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
-            }
-        }
-
-        // DO NOT CLEAR BETS YET.
-        // We want the user to see "I bet on Chicken, Chicken Won, I see 'WIN'"
-        // Bets will be cleared when the NEXT round starts (currentStatus goes back to BETTING).
-        // setBets({}); 
-    };
+    // 'settleClientRound' has been entirely removed as the backend strictly governs financial accounting.
 
     const newGame = async () => {
         if (isLive) {
