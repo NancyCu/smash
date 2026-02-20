@@ -45,7 +45,7 @@ export interface GameSession {
     isActive: boolean;
     hostId: string | null;
     hostName: string | null;
-    status: 'BETTING' | 'ROLLING' | 'RESULT';
+    status: 'BETTING' | 'ROLLING' | 'RESULT' | 'PROCESSING' | 'COMPLETED';
     timerEnd: any; // Timestamp
     result: string[]; // [deer, gourd, crab]
     historyId: string; // ID to group transactions for archiving

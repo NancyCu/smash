@@ -9,7 +9,6 @@ import Link from 'next/link';
 import {
     identifyPlayer,
     addTransaction,
-    updatePlayerStats,
     subscribeToPlayers,
     subscribeToTransactions,
     type Player,
@@ -31,7 +30,6 @@ import {
     triggerShake,
     openBowl,
     triggerSound,
-    setPlayerBalance,
     getCurrentGameState,
     secureSettleRoundTransaction
 } from '@/lib/bau-cua-service';
@@ -267,7 +265,7 @@ export default function BauCuaPage() {
 
     // Game State: Derived from Session for Clients, or Local for Host overrides
     // We'll trust the session if active
-    const [localGameState, setLocalGameState] = useState<'BETTING' | 'ROLLING' | 'RESULT' | 'WIN'>('BETTING');
+    const [localGameState, setLocalGameState] = useState<'BETTING' | 'ROLLING' | 'RESULT' | 'WIN' | 'COMPLETED'>('BETTING');
 
     const [result, setResult] = useState<string[]>([]); // Current round result keys
     const [lastWin, setLastWin] = useState(0);
@@ -492,7 +490,7 @@ export default function BauCuaPage() {
             }
 
             // Sync local result display if session has result
-            if (s?.status === 'RESULT' && s.result) {
+            if ((s?.status === 'RESULT' || s?.status === 'COMPLETED') && s.result) {
                 setResult(s.result);
                 // Auto-calculate winnings if logic hasn't run yet? 
                 // We'll rely on an explicit effect for that.
@@ -569,7 +567,7 @@ export default function BauCuaPage() {
 
     useEffect(() => {
         if (!isLive) return;
-        if (session?.status === 'RESULT' && session.result?.length === 3) {
+        if ((session?.status === 'RESULT' || session?.status === 'COMPLETED') && session.result?.length === 3) {
             const resultString = session.result.join(',');
 
             // Prevent double-processing the same result ID/string locally within the same session instance
@@ -618,16 +616,11 @@ export default function BauCuaPage() {
                 setLastWin(totalWin);
                 setLocalGameState('WIN');
 
-                // Trigger personal sound FX based on result
-                if (totalWin > 0) {
-                    if (totalWin >= totalBet * 2) {
-                        playTaunt('big_win');
-                    } else {
-                        playTaunt('win');
-                    }
-                } else if (totalBet > 0) {
-                    playTaunt('mock');
-                }
+                // Trigger Taunt
+                playTaunt(totalBet, totalWin, (text) => {
+                    // Show bubble for the taunt
+                    triggerEmote('auto', playerName, text);
+                });
             } else {
                 setLocalGameState('RESULT'); // Just viewers
             }
@@ -868,12 +861,11 @@ export default function BauCuaPage() {
         setLocalGameState('WIN');
 
         if (playerId && totalBetAmount > 0) {
+            const newBal = balance + payout;
             if (profit > 0) {
-                await addTransaction(playerId, playerName, 'WIN', profit, `Won ${profit}`);
-                await updatePlayerStats(playerId, profit, true, false);
+                await logTransactionAndStats(playerId, playerName, profit, 'WIN', `Won ${profit}`, newBal);
             } else if (profit <= 0) {
-                await addTransaction(playerId, playerName, profit >= 0 ? 'WIN' : 'LOSS', profit, 'Round Result');
-                await updatePlayerStats(playerId, profit, profit > 0, profit < 0);
+                await logTransactionAndStats(playerId, playerName, profit, profit >= 0 ? 'WIN' : 'LOSS', 'Round Result', newBal);
             }
         }
     };
@@ -1154,7 +1146,7 @@ export default function BauCuaPage() {
 
                 {/* --- LEFT: BOARD (Desktop: expands, Mobile: Full) --- */}
                 <div className="flex-1 min-h-0">
-                    {(currentStatus === 'BETTING' || currentStatus === 'ROLLING' || currentStatus === 'RESULT') ? (
+                    {(currentStatus === 'BETTING' || currentStatus === 'ROLLING' || currentStatus === 'RESULT' || currentStatus === 'COMPLETED') ? (
                         <div className="relative h-full flex flex-col justify-center">
 
                             {/* === ANNOUNCER BUBBLE === */}
@@ -1184,7 +1176,7 @@ export default function BauCuaPage() {
                                         onRollComplete={handleDiceResult}
                                         onShakeEnd={handleShakeEnd}
                                         onBowlTap={handleOpenClick}
-                                        disabled={currentStatus === 'RESULT'}
+                                        disabled={currentStatus === 'RESULT' || currentStatus === 'COMPLETED'}
                                         isOpen={isBowlOpen}
                                         forcedResult={isLive ? syncedRollIndices : undefined}
                                         className="border border-white/10 shadow-2xl"
@@ -1305,10 +1297,11 @@ export default function BauCuaPage() {
                                             disabled={
                                                 (currentStatus === 'BETTING' && balance < selectedChip) ||
                                                 (currentStatus === 'ROLLING') ||
-                                                (currentStatus === 'RESULT')
+                                                (currentStatus === 'RESULT') ||
+                                                (currentStatus === 'COMPLETED')
                                             }
-                                            isWinner={currentStatus === 'RESULT' && (session?.result?.includes(animal.id) || result.includes(animal.id))}
-                                            showResult={currentStatus === 'RESULT'}
+                                            isWinner={(currentStatus === 'RESULT' || currentStatus === 'COMPLETED') && (session?.result?.includes(animal.id) || result.includes(animal.id))}
+                                            showResult={currentStatus === 'RESULT' || currentStatus === 'COMPLETED'}
                                             matchCount={matchCount}
                                             allBets={allBets}
                                         />
@@ -1326,7 +1319,7 @@ export default function BauCuaPage() {
                     <div className="hidden md:flex bg-[#151725]/90 backdrop-blur-xl p-4 md:p-6 rounded-3xl border border-white/10 shadow-2xl flex-col gap-4 md:gap-6">
 
                         {/* HOST START NEXT ROUND */}
-                        {isHost && currentStatus === 'RESULT' && (
+                        {isHost && (currentStatus === 'RESULT' || currentStatus === 'COMPLETED') && (
                             <div className="flex flex-col gap-4">
                                 <h2 className="text-xl font-bold text-white text-center">Round Over</h2>
                                 <div className="flex justify-center gap-2 mb-2">
@@ -1685,7 +1678,7 @@ export default function BauCuaPage() {
                 )}
 
                 {/* STATE: RESULT/ROUND OVER */}
-                {isHost && currentStatus === 'RESULT' && (
+                {isHost && (currentStatus === 'RESULT' || currentStatus === 'COMPLETED') && (
                     <button onClick={newGame} className="w-full h-12 bg-blue-600 rounded-xl font-bold uppercase text-white shadow-lg animate-pulse">
                         Start Next Round
                     </button>
