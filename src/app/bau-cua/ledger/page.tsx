@@ -8,6 +8,7 @@ import { subscribeToTransactions, type Transaction } from '@/lib/bau-cua-service
 export default function LedgerPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
 
+
     useEffect(() => {
         const unsub = subscribeToTransactions(setTransactions);
         return () => unsub();
