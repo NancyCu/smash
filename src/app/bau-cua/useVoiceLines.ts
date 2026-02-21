@@ -24,6 +24,21 @@ const SOUNDS = {
     ]
 };
 
+export const ANIMAL_SOUND_MAP: Record<string, string> = {
+    'deer': '/sounds/nai.mp3',
+    'gourd': '/sounds/bau.mp3',
+    'chicken': '/sounds/ga.mp3',
+    'fish': '/sounds/ca.mp3',
+    'crab': '/sounds/cua.mp3',
+    'shrimp': '/sounds/tom.mp3',
+    'nai': '/sounds/nai.mp3',
+    'bau': '/sounds/bau.mp3',
+    'ga': '/sounds/ga.mp3',
+    'ca': '/sounds/ca.mp3',
+    'cua': '/sounds/cua.mp3',
+    'tom': '/sounds/tom.mp3'
+};
+
 export const useVoiceLines = () => {
     const audioRef = useRef<HTMLAudioElement | null>(null);
     // Track consecutive ZERO return losses
@@ -38,6 +53,46 @@ export const useVoiceLines = () => {
         audioRef.current = audio;
         console.log(`[Audio] Playing: ${path}`);
         audio.play().catch(e => console.warn("Audio play error (interaction needed?):", e));
+    }, []);
+
+    const playSequence = useCallback((paths: string[], overlapMs = 600) => {
+        if (!paths || paths.length === 0) return;
+
+        let currentIndex = 0;
+
+        const playNext = () => {
+            if (currentIndex >= paths.length) return;
+
+            const audio = new Audio(paths[currentIndex]);
+
+            // Only set audioRef for the first one so we don't accidentally pause the sequence if called again
+            if (currentIndex === 0) {
+                if (audioRef.current) {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                }
+                audioRef.current = audio;
+            }
+
+            console.log(`[Audio Sequence ${currentIndex + 1}/${paths.length}]: ${paths[currentIndex]}`);
+
+            audio.onloadedmetadata = () => {
+                if (currentIndex < paths.length - 1) {
+                    // Start the next audio BEFORE this one finishes (overlap)
+                    const durationMs = audio.duration * 1000;
+                    const triggerTimeMs = Math.max(0, durationMs - overlapMs);
+
+                    setTimeout(() => {
+                        currentIndex++;
+                        playNext();
+                    }, triggerTimeMs);
+                }
+            };
+
+            audio.play().catch(e => console.warn("Audio sequence play error:", e));
+        };
+
+        playNext();
     }, []);
 
     const playTaunt = useCallback((bet: number, win: number, onPlay?: (text: string) => void) => {
@@ -84,6 +139,7 @@ export const useVoiceLines = () => {
     return {
         playTaunt,
         playFile,
+        playSequence,
         availableSounds: [
             ...SOUNDS.MILD_LOSS.map(s => s.path),
             ...SOUNDS.BIG_LOSS.map(s => s.path),

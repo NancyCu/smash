@@ -35,7 +35,7 @@ import {
 } from '@/lib/bau-cua-service';
 import { indicesToAnimalIds, secureRoll } from '@/lib/secure-roll';
 import { useAuth } from '@/context/AuthContext';
-import { useVoiceLines } from './useVoiceLines';
+import { useVoiceLines, ANIMAL_SOUND_MAP } from './useVoiceLines';
 import { useGameAnnouncer } from './useGameAnnouncer';
 
 // Dynamic import – R3F Canvas must be client-only (no SSR)
@@ -247,6 +247,7 @@ export default function BauCuaPage() {
 
     // --- STATE ---
     const [balance, setBalance] = useState(0);
+    const [dealerLossCount, setDealerLossCount] = useState(0);
     // Balance Delta Visuals
     const prevBalance = useRef(balance);
     const [balanceDelta, setBalanceDelta] = useState<{ amount: number; id: number } | null>(null);
@@ -310,7 +311,7 @@ export default function BauCuaPage() {
     const lastSeenSoundCount = useRef(-1);
     const [troiOiUsed, setTroiOiUsed] = useState(false);
     const [chetMeUsed, setChetMeUsed] = useState(false);
-    const { playTaunt, playFile, availableSounds } = useVoiceLines();
+    const { playTaunt, playFile, playSequence, availableSounds } = useVoiceLines();
 
     // --- DERIVED STATE ---
     const isLive = session?.isActive ?? false;
@@ -599,6 +600,51 @@ export default function BauCuaPage() {
             // Our local `subscribeToPlayers` effect will automatically pull the new verified Balance down!
             // However, to trigger the visual win animations, we simply assess if our CURRENT bets 
             // match the result.
+
+            // --- DEALER MELTDOWN LOGIC ---
+            let boardTotalBet = 0;
+            let boardTotalPayout = 0;
+
+            // Check local bets
+            Object.entries(bets).forEach(([animalId, amount]) => {
+                boardTotalBet += amount;
+                const normAnimalId = animalId.toLowerCase().trim();
+                const hits = session.result.filter(r => r.toLowerCase().trim() === normAnimalId).length;
+                if (hits > 0) {
+                    boardTotalPayout += amount + (amount * hits);
+                }
+            });
+
+            // Check all other bets
+            allBets.forEach(pb => {
+                const pBets = pb.bets || {};
+                Object.entries(pBets).forEach(([animalId, amount]) => {
+                    boardTotalBet += amount;
+                    const normAnimalId = animalId.toLowerCase().trim();
+                    const hits = session.result.filter(r => r.toLowerCase().trim() === normAnimalId).length;
+                    if (hits > 0) {
+                        boardTotalPayout += amount + (amount * hits);
+                    }
+                });
+            });
+
+            if (boardTotalPayout > boardTotalBet) {
+                setDealerLossCount(prev => {
+                    const nextCount = prev + 1;
+                    if (nextCount >= 3) {
+                        try {
+                            const meltdownAudio = new Audio('/sounds/aiya-nha-cai-xong-roi.mp3');
+                            meltdownAudio.volume = 1;
+                            meltdownAudio.play().catch(e => console.warn('Meltdown trigger blocked:', e));
+                            triggerEmote('auto', 'Admin', 'Aiya, nhà cái xong rồi!');
+                        } catch (e) {
+                            console.warn('Audio play failed', e);
+                        }
+                        return 0; // reset
+                    }
+                    return nextCount;
+                });
+            }
 
             // Only run animations if we have bets.
             if (Object.keys(bets).length > 0) {
@@ -1276,6 +1322,28 @@ export default function BauCuaPage() {
                                         `}
                                     >
                                         <span className="text-lg">💀</span> Chết mẹ!
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const totalBetAmount = Object.values(bets).reduce((sum, val) => sum + val, 0);
+                                            if (totalBetAmount === 0) {
+                                                playFile('/sounds/lets-go.mp3');
+                                            } else {
+                                                const betKeys = Object.keys(bets).filter(k => bets[k] > 0);
+                                                if (betKeys.length > 0) {
+                                                    const randomKey = betKeys[Math.floor(Math.random() * betKeys.length)];
+                                                    const mappedSound = ANIMAL_SOUND_MAP[randomKey.toLowerCase()] || ANIMAL_SOUND_MAP['deer'];
+                                                    playSequence(['/sounds/lets-go.mp3', mappedSound]);
+                                                }
+                                            }
+                                        }}
+                                        className={`
+                                            flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-sm
+                                            border transition-all duration-200
+                                            bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border-blue-500/40 text-blue-300 hover:scale-105 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] active:scale-95
+                                        `}
+                                    >
+                                        Let's Go 🚀
                                     </button>
                                 </div>
                             )}
