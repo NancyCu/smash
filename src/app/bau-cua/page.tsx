@@ -606,10 +606,12 @@ export default function BauCuaPage() {
                 let totalBet = 0;
                 let totalWin = 0;
                 Object.entries(bets).forEach(([animalId, amount]) => {
-                    totalBet += amount;
-                    const hits = session.result.filter(r => r === animalId).length;
+                    totalBet += Number(amount);
+                    const normAnimalId = animalId.toLowerCase().trim();
+                    const hits = session.result.filter(r => r.toLowerCase().trim() === normAnimalId).length;
+                    console.log(`[PAYOUT DEBUG] Phase 3 Client: ${playerName} | Bet: ${normAnimalId} ($${amount}) | Result: ${JSON.stringify(session.result)} | Hits: ${hits}`);
                     if (hits > 0) {
-                        totalWin += (amount * hits);
+                        totalWin += Number(amount) * Number(hits);
                     }
                 });
 

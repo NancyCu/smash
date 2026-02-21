@@ -442,17 +442,20 @@ export const secureSettleRoundTransaction = async (
 
                 Object.entries(bets).forEach(([animalId, amount]) => {
                     const numAmount = Number(amount);
-                    const matches = result.filter(r => r === animalId).length;
+                    const normAnimalId = animalId.toLowerCase().trim();
+                    const matches = result.filter(r => r.toLowerCase().trim() === normAnimalId).length;
+                    console.log(`[PAYOUT DEBUG] Player: ${pName} | Bet: ${normAnimalId} ($${numAmount}) | Result: ${JSON.stringify(result)} | Matches: ${matches}`);
                     if (matches === 0) {
                         playerLost += numAmount;
                         dealerNetBalanceChange += numAmount; // Dealer keeps losing bets
                     } else {
-                        playerReturn += numAmount; // Return original bet
-                        const winnings = numAmount * matches;
+                        playerReturn += Number(numAmount); // Return original bet
+                        const winnings = Number(numAmount) * Number(matches);
                         playerWon += winnings;
-                        dealerNetBalanceChange -= (numAmount + winnings); // Dealer pays out bet + winnings
+                        dealerNetBalanceChange -= (Number(numAmount) + Number(winnings)); // Dealer pays out bet + winnings
                     }
                 });
+                console.log(`[PAYOUT DEBUG] Player: ${pName} | Won: $${playerWon} | Lost: $${playerLost} | Return: $${playerReturn}`);
 
                 // Prepare Player Balance & Ledger
                 if (playerWon > 0) {
@@ -495,7 +498,8 @@ export const secureSettleRoundTransaction = async (
 
             // 4. APPLY DEALER UPDATES
             if (dealerNetBalanceChange !== 0 && hostDoc.exists()) {
-                const newHostBalance = hostBalance + dealerNetBalanceChange;
+                const newHostBalance = Number(hostBalance) + Number(dealerNetBalanceChange);
+                console.log(`[PAYOUT DEBUG] Dealer: ${hostName} | hostBalance: $${hostBalance} | Net: $${dealerNetBalanceChange} | New: $${newHostBalance}`);
                 const isWin = dealerNetBalanceChange > 0;
                 updatesMap.set(hostId, {
                     balance: newHostBalance,
