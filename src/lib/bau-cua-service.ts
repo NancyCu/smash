@@ -409,16 +409,17 @@ export const secureSettleRoundTransaction = async (
                 return; // Graceful abort
             }
 
-            // Lock the session to PROCESSING to prevent concurrent settlement attempts
-            transaction.update(sessionRef, { status: 'PROCESSING', result });
-
             // 2. LOCK all individual player docs — required by Firestore before writes
+            // IMPORTANT: All reads (transaction.get) must happen before ANY writes (transaction.update/set)
             const playerRefs = allBets.map(b => doc(db, PLAYERS_COL, b.id));
             const hostRef = doc(db, PLAYERS_COL, hostId);
 
-            // All reads must happen before any writes
             const allPlayerDocs = await Promise.all(playerRefs.map(ref => transaction.get(ref)));
             const hostDoc = await transaction.get(hostRef);
+
+            // 3. APPLY LOCKS (Writes begin here)
+            // Lock the session to PROCESSING to prevent concurrent settlement attempts
+            transaction.update(sessionRef, { status: 'PROCESSING', result });
 
             let dealerNetBalanceChange = 0;
             const hostBalance = hostDoc.exists() ? (hostDoc.data()?.balance || 0) : 0;

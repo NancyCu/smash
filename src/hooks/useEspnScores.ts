@@ -43,6 +43,13 @@ export function useEspnScores() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchScores = useCallback(async () => {
+    // --- [DISABLED] ---
+    // User requested to turn off the ESPN API to prevent slowing down the app.
+    // To re-enable ESPN scores, simply remove this early return:
+    setLoading(false);
+    return;
+    // ------------------
+
     try {
       // STREET SMART CONFIG: 
       // We define exactly how far to look ahead for EACH league.
