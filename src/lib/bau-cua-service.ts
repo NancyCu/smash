@@ -650,7 +650,7 @@ export const subscribeToTransactions = (callback: (txs: Transaction[]) => void) 
     const q = query(
         collection(db, TRANSACTIONS_COL),
         orderBy("timestamp", "desc"),
-        limit(50)
+        limit(1000)
     );
     return onSnapshot(q, (snapshot) => {
         const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
