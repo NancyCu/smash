@@ -152,7 +152,7 @@ export const useGameAnnouncer = () => {
     }, [currentIndex, queue.length]);
 
     // Immediate Emote Trigger (Interrups/Overlays)
-    const triggerEmote = useCallback((soundKey: string, user: string) => {
+    const triggerEmote = useCallback((soundKey: string, user: string, customText?: string) => {
         // Stop any current sequencer to focus on the emote? 
         // Or just overwrite the bubble? 
         // Let's overwrite the bubble. If audio is playing, it keeps playing (funny chaos).
@@ -163,7 +163,7 @@ export const useGameAnnouncer = () => {
             'chetme': 'Chết mẹ!'
         };
 
-        const text = EMOTE_TEXT[soundKey] || '...';
+        const text = customText || EMOTE_TEXT[soundKey] || '...';
 
         setActiveBubble({
             id: Date.now(),

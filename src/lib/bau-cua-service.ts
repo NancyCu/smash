@@ -453,7 +453,7 @@ export const secureSettleRoundTransaction = async (
                         playerReturn += Number(numAmount); // Return original bet
                         const winnings = Number(numAmount) * Number(matches);
                         playerWon += winnings;
-                        dealerNetBalanceChange -= (Number(numAmount) + Number(winnings)); // Dealer pays out bet + winnings
+                        dealerNetBalanceChange -= Number(winnings); // Dealer ONLY pays out winnings out-of-pocket
                     }
                 });
                 console.log(`[PAYOUT DEBUG] Player: ${pName} | Won: $${playerWon} | Lost: $${playerLost} | Return: $${playerReturn}`);

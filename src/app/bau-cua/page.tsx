@@ -1035,7 +1035,7 @@ export default function BauCuaPage() {
             {/* PRINTABLE LEDGER (Same as before) */}
             <div className="print-only p-8 text-black bg-white">
                 <h1 className="text-3xl font-bold mb-4">Bau Cua Ledger Report</h1>
-                <p className="mb-4">Generated: {new Date().toLocaleString()}</p>
+                <p className="mb-4" suppressHydrationWarning>Generated: {new Date().toLocaleString()}</p>
                 <h2 className="text-xl font-bold mt-6 mb-2">Player Balances</h2>
                 <table className="w-full text-left border-collapse">
                     <thead>
@@ -1071,7 +1071,7 @@ export default function BauCuaPage() {
                     <tbody>
                         {transactions.slice(0, 50).map(t => (
                             <tr key={t.id} className="border-b border-gray-200">
-                                <td className="py-1">{t.timestamp ? new Date(t.timestamp.seconds * 1000).toLocaleTimeString() : 'Pending'}</td>
+                                <td className="py-1" suppressHydrationWarning>{t.timestamp ? new Date(t.timestamp.seconds * 1000).toLocaleTimeString() : 'Pending'}</td>
                                 <td className="py-1">{t.playerName}</td>
                                 <td className="py-1 font-bold">{t.type}</td>
                                 <td className="py-1">${t.amount}</td>
@@ -1287,7 +1287,10 @@ export default function BauCuaPage() {
                             {/* Mobile: Use h-full and content-center to keep it centered and packed. gap-2 to save space. */}
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-[clamp(0.5rem,1.5vw,2rem)] max-w-md md:max-w-none mx-auto w-full h-full md:h-auto content-center md:content-start">
                                 {ANIMALS.map(animal => {
-                                    const matchCount = (isLive && session?.result && session.result.length > 0) ? session.result.filter(r => r === animal.id).length : result.filter(r => r === animal.id).length;
+                                    const normId = animal.id.toLowerCase().trim();
+                                    const matchCount = (isLive && session?.result && session.result.length > 0)
+                                        ? session.result.filter(r => r.toLowerCase().trim() === normId).length
+                                        : result.filter(r => r.toLowerCase().trim() === normId).length;
                                     const betAmount = bets[animal.id] || 0;
 
                                     return (
@@ -1302,7 +1305,7 @@ export default function BauCuaPage() {
                                                 (currentStatus === 'RESULT') ||
                                                 (currentStatus === 'COMPLETED')
                                             }
-                                            isWinner={(currentStatus === 'RESULT' || currentStatus === 'COMPLETED') && (session?.result?.includes(animal.id) || result.includes(animal.id))}
+                                            isWinner={(currentStatus === 'RESULT' || currentStatus === 'COMPLETED') && ((session?.result || []).some(r => r.toLowerCase().trim() === normId) || result.some(r => r.toLowerCase().trim() === normId))}
                                             showResult={currentStatus === 'RESULT' || currentStatus === 'COMPLETED'}
                                             matchCount={matchCount}
                                             allBets={allBets}
@@ -1344,7 +1347,8 @@ export default function BauCuaPage() {
                                                 let pTotalWin = 0;
                                                 Object.entries(pb.bets).forEach(([aid, amt]) => {
                                                     pTotalBet += amt;
-                                                    const matches = result.filter(r => r === aid).length;
+                                                    const normAid = aid.toLowerCase().trim();
+                                                    const matches = (session?.result && session.result.length > 0 ? session.result : result).filter(r => r.toLowerCase().trim() === normAid).length;
                                                     if (matches > 0) pTotalWin += amt + (amt * matches);
                                                 });
                                                 const pNet = pTotalWin - pTotalBet;
