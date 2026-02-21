@@ -3,15 +3,20 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ArrowUpRight, ArrowDownLeft, Wallet, History as HistoryIcon } from 'lucide-react';
-import { subscribeToTransactions, type Transaction } from '@/lib/bau-cua-service';
+import { subscribeToTransactions, subscribeToHistory, type Transaction } from '@/lib/bau-cua-service';
 
 export default function LedgerPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [history, setHistory] = useState<any[]>([]);
 
 
     useEffect(() => {
-        const unsub = subscribeToTransactions(setTransactions);
-        return () => unsub();
+        const unsubTx = subscribeToTransactions(setTransactions);
+        const unsubHist = subscribeToHistory(setHistory);
+        return () => {
+            unsubTx();
+            unsubHist();
+        };
     }, []);
 
     // Group by Session ID (or "Unknown Session" if missing)
@@ -56,6 +61,40 @@ export default function LedgerPage() {
 
                 {/* LEDGER GROUPS */}
                 <div className="space-y-8">
+                    {/* LATEST GAME FINAL BALANCES */}
+                    {history.length > 0 && history[0].playersSnapshot && (
+                        <div className="bg-[#151725] border border-white/5 rounded-3xl overflow-hidden shadow-2xl mb-8">
+                            <div className="bg-white/5 p-4 md:p-6 border-b border-white/5 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Wallet className="text-green-400" />
+                                    <div>
+                                        <h2 className="font-bold text-lg text-white/90">
+                                            Final Balances (Last Game)
+                                        </h2>
+                                        <p className="text-xs text-white/30 font-mono">
+                                            {formatTime(history[0].timestamp)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-xs font-bold px-3 py-1 bg-white/10 rounded-full text-white/50">
+                                    {history[0].playersSnapshot.length} Players
+                                </div>
+                            </div>
+
+                            <div className="p-4 md:p-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {history[0].playersSnapshot.map((player: any, idx: number) => (
+                                    <div key={idx} className="bg-white/5 rounded-xl p-4 flex flex-col items-center justify-center border border-white/5 hover:bg-white/10 transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center mb-2">
+                                            <span className="font-bold text-white/80">{player.name.charAt(0).toUpperCase()}</span>
+                                        </div>
+                                        <span className="font-bold text-white/90 text-sm truncate w-full text-center">{player.name}</span>
+                                        <span className="text-green-400 font-mono font-black mt-1 text-lg">${player.balance}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {groupedTransactions.map(([sessionId, txs]) => (
                         <div key={sessionId} className="bg-[#151725] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
                             {/* Session Header */}
